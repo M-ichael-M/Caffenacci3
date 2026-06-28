@@ -1,0 +1,68 @@
+# =========================
+# LOGS
+# =========================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# =========================
+# DEPENDENCIES
+# =========================
+node_modules/
+
+# =========================
+# BUILD OUTPUT (Vite / frontend)
+# =========================
+dist/
+dist-ssr/
+*.local
+
+# =========================
+# ENV FILES (WSZYSTKIE WARSTWY)
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# BACKEND (Python / API)
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+.env/
+*.sqlite3
+*.db
+
+# =========================
+# EDITOR / IDE
+# =========================
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# =========================
+# SYSTEM FILES
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# CACHE / TEMP
+# =========================
+.cache/
+.parcel-cache/
+tmp/
+temp/
