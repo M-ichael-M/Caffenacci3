@@ -2,7 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
+from app.models import cafe  # noqa: F401 — rejestruje model w metadanych
+from app.models import menu  # noqa: F401 — rejestruje modele menu
 from app.routers import auth, me
+from app.routers import menu as menu_router
 
 # Tworzenie tabel przy starcie (dla developmentu; na produkcji użyj Alembic)
 Base.metadata.create_all(bind=engine)
@@ -27,6 +30,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(me.router)
+app.include_router(menu_router.router)
 
 
 @app.get("/", tags=["health"])
