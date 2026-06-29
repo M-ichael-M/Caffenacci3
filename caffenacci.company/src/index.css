@@ -1118,3 +1118,323 @@ body {
     width: 90px;
   }
 }
+
+/* ════════════════════════════════════════════════
+   DASHBOARD TABS
+   ════════════════════════════════════════════════ */
+
+.dashboard-tabs {
+  background: var(--espresso);
+  display: flex;
+  align-items: flex-end;
+  padding: 0 2.5rem;
+  border-bottom: 1px solid rgba(240, 228, 204, 0.1);
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.dashboard-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(240, 228, 204, 0.45);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.875rem 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-tab:hover {
+  color: rgba(240, 228, 204, 0.8);
+}
+
+.dashboard-tab--active {
+  color: var(--parchment);
+  border-bottom-color: var(--gold);
+}
+
+.dashboard-tab__icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.dashboard-tab__label {
+  line-height: 1;
+}
+
+@media (max-width: 820px) {
+  .dashboard-tabs {
+    padding: 0 1.25rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .dashboard-tabs::-webkit-scrollbar { display: none; }
+
+  .dashboard-tab {
+    padding: 0.75rem 1rem;
+    font-size: 0.8125rem;
+  }
+  .dashboard-tab__icon { display: none; }
+}
+
+/* ════════════════════════════════════════════════
+   RESERVATION TAB
+   ════════════════════════════════════════════════ */
+
+/* Empty / disabled state */
+.res-empty-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3rem 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.res-empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.7;
+}
+
+.res-empty-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.res-empty-sub {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  max-width: 40ch;
+  line-height: 1.6;
+}
+
+/* Settings block */
+.res-settings-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem 1.375rem;
+  margin-bottom: 1rem;
+}
+
+.res-settings-block__title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1rem;
+}
+
+/* Mode buttons */
+.res-mode-btn {
+  appearance: none;
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.625rem 1.125rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.res-mode-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text-dark);
+}
+.res-mode-btn--active {
+  background: var(--espresso);
+  border-color: var(--espresso);
+  color: var(--parchment);
+}
+
+/* Table row in settings */
+.res-table-row {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.875rem 1rem;
+  background: var(--cream);
+}
+
+/* Time input */
+.res-time-input {
+  width: 100px !important;
+  padding: 0.375rem 0 !important;
+  font-size: 0.875rem !important;
+}
+
+/* Tables summary chips */
+.res-tables-summary {
+  display: flex;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.res-table-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.625rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Day navigation */
+.res-day-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+
+.res-day-nav__btn {
+  appearance: none;
+  background: none;
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.res-day-nav__btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.res-date-input {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--border);
+  padding: 0.375rem 0;
+  font-size: 1rem;
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--text-dark);
+  text-align: center;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+  max-width: 200px;
+  transition: border-color 0.15s;
+}
+.res-date-input:focus {
+  border-bottom-color: var(--gold);
+}
+
+/* Reservation row */
+.res-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.res-row:last-child { border-bottom: none; }
+.res-row:hover { background: rgba(240, 228, 204, 0.18); }
+.res-row--cancelled { opacity: 0.55; }
+
+.res-row__time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 56px;
+  flex-shrink: 0;
+  padding-top: 0.125rem;
+}
+
+.res-row__start {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.res-row__end {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.res-row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.res-row__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.125rem;
+}
+
+.res-row__name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.res-row__guests {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  background: var(--border);
+  border-radius: 100px;
+  padding: 1px 8px;
+}
+
+.res-row__table {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.res-row__tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 100px;
+  padding: 1px 7px;
+}
+.res-row__tag--owner { background: #FEF3C7; color: #92400E; }
+.res-row__tag--client { background: #DBEAFE; color: #1E40AF; }
+
+@media (max-width: 820px) {
+  .res-day-nav { flex-wrap: wrap; }
+  .res-date-input { max-width: 160px; }
+  .res-row { gap: 0.625rem; padding: 0.875rem 1rem; }
+  .res-row__time { min-width: 48px; }
+}
