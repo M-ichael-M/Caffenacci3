@@ -1,7 +1,8 @@
 from __future__ import annotations
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 from enum import Enum
+from datetime import datetime
 
 
 # ── Enums ──────────────────────────────────────────────────────────────────
@@ -13,6 +14,7 @@ class TableTypeEnum(str, Enum):
 
 
 class ReservationStatusEnum(str, Enum):
+    pending   = "pending"
     confirmed = "confirmed"
     cancelled = "cancelled"
 
@@ -35,7 +37,7 @@ class DayHoursOut(DayHoursIn):
 class CafeTableIn(BaseModel):
     table_type: TableTypeEnum
     seats:      int = Field(..., ge=1, le=50)
-    quantity:   int = Field(1, ge=1, le=100)   # dla standard; dla communal/special = 1
+    quantity:   int = Field(1, ge=1, le=100)
     label:      Optional[str] = Field(None, max_length=200)
 
 
@@ -65,9 +67,23 @@ class ReservationSettingsOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── Rezerwacje ─────────────────────────────────────────────────────────────
+# ── Rezerwacja publiczna (od klienta) ─────────────────────────────────────
+
+class PublicReservationIn(BaseModel):
+    """Formularz klienta — prosty, bez wyboru stolika."""
+    date:        str  = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
+    start_time:  str  = Field(..., pattern=r"^\d{2}:\d{2}$")
+    guests:      int  = Field(..., ge=1, le=50)
+    guest_name:  str  = Field(..., min_length=2, max_length=150)
+    guest_phone: Optional[str] = Field(None, max_length=30)
+    guest_email: Optional[str] = Field(None, max_length=255)
+    comment:     Optional[str] = Field(None, max_length=1000)
+
+
+# ── Rezerwacja właściciela (zaawansowana) ─────────────────────────────────
 
 class ReservationIn(BaseModel):
+    """Pełny formularz — dla właściciela w trybie advanced."""
     table_id:    str
     date:        str  = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     start_time:  str  = Field(..., pattern=r"^\d{2}:\d{2}$")
@@ -76,12 +92,21 @@ class ReservationIn(BaseModel):
     guest_phone: Optional[str] = Field(None, max_length=30)
     guest_email: Optional[str] = Field(None, max_length=255)
     comment:     Optional[str] = Field(None, max_length=1000)
-    client_id:   Optional[str] = None   # wypełnia portal klienta
+    client_id:   Optional[str] = None
 
+
+# ── Status update (akceptacja/odrzucenie) ─────────────────────────────────
+
+class ReservationStatusUpdate(BaseModel):
+    status:     ReservationStatusEnum  # confirmed | cancelled
+    owner_note: Optional[str] = Field(None, max_length=500)
+
+
+# ── Output ─────────────────────────────────────────────────────────────────
 
 class ReservationOut(BaseModel):
     id:               str
-    table_id:         str
+    table_id:         Optional[str]
     cafe_id:          str
     date:             str
     start_time:       str
@@ -93,7 +118,9 @@ class ReservationOut(BaseModel):
     client_id:        Optional[str]
     created_by_owner: bool
     status:           ReservationStatusEnum
-    # Denormalizowane dane stolika (dla wygody widoku)
+    owner_note:       Optional[str]
+    created_at:       Optional[datetime]
+    # Denormalizowane dane stolika
     table_seats:      Optional[int]  = None
     table_type:       Optional[str]  = None
     table_label:      Optional[str]  = None
@@ -101,5 +128,5 @@ class ReservationOut(BaseModel):
 
 
 class ReservationListOut(BaseModel):
-    date:         str
+    date:         Optional[str]
     reservations: List[ReservationOut]

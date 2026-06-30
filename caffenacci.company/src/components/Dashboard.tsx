@@ -50,9 +50,9 @@ interface Props {
 type TabId = 'overview' | 'menu' | 'reservations'
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: 'overview',     label: 'Przegląd',   icon: '🏠' },
-  { id: 'menu',        label: 'Menu',        icon: '📋' },
-  { id: 'reservations',label: 'Rezerwacje',  icon: '📅' },
+  { id: 'overview',      label: 'Przegląd',   icon: '🏠' },
+  { id: 'menu',         label: 'Menu',        icon: '📋' },
+  { id: 'reservations', label: 'Rezerwacje',  icon: '📅' },
 ]
 
 export default function Dashboard({ auth, profile, loadingProfile, onLogout }: Props) {
@@ -61,10 +61,10 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
   const ownerName = p?.owner_name ?? auth.owner_name
   const cafeId    = p?.id         ?? auth.cafe_id
 
-  const [activeTab, setActiveTab]       = useState<TabId>('overview')
+  const [activeTab, setActiveTab]           = useState<TabId>('overview')
   const [showMenuEditor, setShowMenuEditor] = useState(false)
-  const [menuSections, setMenuSections] = useState<ServerSection[]>([])
-  const [loadingMenu, setLoadingMenu]   = useState(true)
+  const [menuSections, setMenuSections]     = useState<ServerSection[]>([])
+  const [loadingMenu, setLoadingMenu]       = useState(true)
 
   useEffect(() => { fetchMenu() }, [])
 
@@ -210,7 +210,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                     </div>
                   )}
 
-                  {/* Skróty */}
+                  {/* Szybkie akcje */}
                   <div className="info-card">
                     <div className="info-card__header">
                       <span className="info-card__icon">⚡</span>
@@ -255,7 +255,6 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                 </button>
               </div>
 
-              {/* Menu preview */}
               <div className="menu-preview-card">
                 <div className="menu-preview-card__header">
                   <div className="menu-preview-card__title-wrap">
@@ -319,7 +318,8 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
           {/* REZERWACJE */}
           {activeTab === 'reservations' && (
             <div className="dashboard-content">
-              <ReservationTab token={auth.token} />
+              {/* Przekazujemy cafeId potrzebne do linku publicznego i SimpleReservationTab */}
+              <ReservationTab token={auth.token} cafeId={cafeId} />
             </div>
           )}
 

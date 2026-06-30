@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import SimpleReservationTab from './SimpleReservationTab'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -52,13 +53,15 @@ interface ReservationOut {
   client_id:        string | null
   created_by_owner: boolean
   status:           string
+  owner_note:       string | null
   table_seats:      number | null
   table_type:       string | null
   table_label:      string | null
 }
 
 interface Props {
-  token: string
+  token:  string
+  cafeId: string
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -106,13 +109,12 @@ function todayStr() {
 // MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════════════════
 
-export default function ReservationTab({ token }: Props) {
+export default function ReservationTab({ token, cafeId }: Props) {
   const [settings, setSettings]       = useState<ReservationSettings | null>(null)
   const [loading, setLoading]         = useState(true)
   const [saving, setSaving]           = useState(false)
   const [saveMsg, setSaveMsg]         = useState<{ type: 'ok'|'err'; text: string } | null>(null)
 
-  // draft state for settings editor
   const [enabled, setEnabled]         = useState(false)
   const [mode, setMode]               = useState<ResModeType>('simple')
   const [slotDuration, setSlotDuration] = useState(60)
@@ -120,12 +122,9 @@ export default function ReservationTab({ token }: Props) {
   const [hours, setHours]             = useState<DayHours[]>(defaultHours())
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  // reservations view
   const [viewDate, setViewDate]       = useState(todayStr())
   const [reservations, setReservations] = useState<ReservationOut[]>([])
   const [loadingRes, setLoadingRes]   = useState(false)
-
-  // add reservation modal
   const [showAddModal, setShowAddModal] = useState(false)
 
   // ── Fetch settings ───────────────────────────────────────────────────────
@@ -142,7 +141,6 @@ export default function ReservationTab({ token }: Props) {
         setEnabled(data.enabled)
         setMode(data.mode as ResModeType)
         setSlotDuration(data.slot_duration_minutes)
-        // Convert tables to drafts
         const drafts = groupTablesToDisplay(data.tables)
         setTables(drafts)
         const h = data.hours.length > 0 ? data.hours.map(x => ({
@@ -150,7 +148,6 @@ export default function ReservationTab({ token }: Props) {
           open_time:  x.open_time,
           close_time: x.close_time,
         })) : defaultHours()
-        // ensure all 7 days present
         const filled = DAYS.map((_, i) => h.find(d => d.day_of_week === i) ?? {
           day_of_week: i, open_time: null, close_time: null,
         })
@@ -162,7 +159,7 @@ export default function ReservationTab({ token }: Props) {
 
   useEffect(() => { fetchSettings() }, [fetchSettings])
 
-  // ── Fetch reservations ───────────────────────────────────────────────────
+  // ── Fetch reservations (advanced) ────────────────────────────────────────
 
   const fetchReservations = useCallback(async (date: string) => {
     if (!settings?.enabled || settings.mode !== 'advanced') return
@@ -221,8 +218,6 @@ export default function ReservationTab({ token }: Props) {
     } finally { setSaving(false) }
   }
 
-  // ── Delete reservation ───────────────────────────────────────────────────
-
   const handleDelete = async (id: string) => {
     if (!confirm('Czy na pewno chcesz usunąć tę rezerwację?')) return
     try {
@@ -233,8 +228,6 @@ export default function ReservationTab({ token }: Props) {
       setReservations(prev => prev.filter(r => r.id !== id))
     } catch { /* ignore */ }
   }
-
-  // ── Loading state ─────────────────────────────────────────────────────────
 
   if (loading) return (
     <div className="loading-state">
@@ -250,7 +243,7 @@ export default function ReservationTab({ token }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-      {/* ── Nagłówek sekcji ─────────────────────────────────────────────── */}
+      {/* ── Nagłówek ─────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.25rem' }}>
@@ -275,13 +268,13 @@ export default function ReservationTab({ token }: Props) {
         </div>
       )}
 
-      {/* ── Rezerwacje wyłączone ─────────────────────────────────────────── */}
+      {/* ── Wyłączone ────────────────────────────────────────────────────── */}
       {!settings?.enabled && (
         <div className="res-empty-card">
           <div className="res-empty-icon">📅</div>
           <div className="res-empty-title">System rezerwacji jest wyłączony</div>
           <div className="res-empty-sub">
-            Włącz go w ustawieniach, by zacząć przyjmować rezerwacje.
+            Włącz go w ustawieniach, by zacząć przyjmować rezerwacje od klientów.
           </div>
           <button
             className="btn btn--primary"
@@ -293,19 +286,12 @@ export default function ReservationTab({ token }: Props) {
         </div>
       )}
 
-      {/* ── Tryb prosty ──────────────────────────────────────────────────── */}
+      {/* ── Tryb SIMPLE — nowy panel zarządzania ─────────────────────────── */}
       {settings?.enabled && settings.mode === 'simple' && (
-        <div className="res-empty-card">
-          <div className="res-empty-icon">🔧</div>
-          <div className="res-empty-title">Prosty system rezerwacji</div>
-          <div className="res-empty-sub">
-            Funkcja prostego systemu rezerwacji jest w przygotowaniu.<br />
-            Przełącz na tryb zaawansowany, by korzystać z pełnego zarządzania.
-          </div>
-        </div>
+        <SimpleReservationTab token={token} cafeId={cafeId} />
       )}
 
-      {/* ── Tryb zaawansowany: podgląd dnia ─────────────────────────────── */}
+      {/* ── Tryb ADVANCED ────────────────────────────────────────────────── */}
       {settings?.enabled && settings.mode === 'advanced' && (
         <AdvancedView
           token={token}
@@ -321,7 +307,7 @@ export default function ReservationTab({ token }: Props) {
         />
       )}
 
-      {/* ── Panel ustawień (slide-in) ────────────────────────────────────── */}
+      {/* ── Panel ustawień ───────────────────────────────────────────────── */}
       {settingsOpen && (
         <SettingsPanel
           enabled={enabled}          setEnabled={setEnabled}
@@ -379,7 +365,6 @@ function SettingsPanel({
   return (
     <div className="menu-editor-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="menu-editor">
-        {/* Header */}
         <div className="me-header">
           <div>
             <div className="me-eyebrow">Konfiguracja</div>
@@ -388,10 +373,7 @@ function SettingsPanel({
           <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij">✕</button>
         </div>
 
-        {/* Body */}
         <div className="me-body">
-
-          {/* Włącznik główny */}
           <div className="res-settings-block">
             <div className="res-settings-block__title">System rezerwacji</div>
             <ToggleRow
@@ -403,7 +385,6 @@ function SettingsPanel({
 
           {enabled && (
             <>
-              {/* Tryb */}
               <div className="res-settings-block">
                 <div className="res-settings-block__title">Tryb systemu</div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -419,15 +400,15 @@ function SettingsPanel({
                   ))}
                 </div>
                 {mode === 'simple' && (
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                    Prosty system rezerwacji jest w przygotowaniu.
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.625rem', lineHeight: 1.6 }}>
+                    Klienci składają prośbę o rezerwację podając datę, godzinę i liczbę osób.
+                    Ty decydujesz czy ją zaakceptować czy odrzucić.
                   </p>
                 )}
               </div>
 
               {mode === 'advanced' && (
                 <>
-                  {/* Czas slotu */}
                   <div className="res-settings-block">
                     <div className="res-settings-block__title">Czas rezerwacji</div>
                     <div className="field" style={{ maxWidth: 260 }}>
@@ -445,16 +426,13 @@ function SettingsPanel({
                     </div>
                   </div>
 
-                  {/* Stoliki */}
                   <div className="res-settings-block">
                     <div className="res-settings-block__title">Stoliki</div>
-
                     {tables.length === 0 && (
                       <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                         Nie dodano jeszcze żadnych stolików.
                       </p>
                     )}
-
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
                       {tables.map(t => (
                         <div key={t._uid} className="res-table-row">
@@ -463,70 +441,45 @@ function SettingsPanel({
                             <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-dark)', flex: 1 }}>
                               {TABLE_TYPE_LABELS[t.table_type]}
                             </span>
-                            <button
-                              type="button"
-                              className="me-remove-btn me-remove-item"
-                              onClick={() => removeTable(t._uid)}
-                              title="Usuń"
-                            >✕</button>
+                            <button type="button" className="me-remove-btn me-remove-item" onClick={() => removeTable(t._uid)} title="Usuń">✕</button>
                           </div>
-
                           <div style={{ display: 'flex', gap: '0.875rem', flexWrap: 'wrap' }}>
                             <div className="field" style={{ flex: '1 1 80px', minWidth: 80 }}>
                               <label className="me-label">Miejsca</label>
-                              <input
-                                type="number" min={1} max={50}
-                                className="me-input"
-                                value={t.seats}
-                                onChange={e => updateTable(t._uid, { seats: Number(e.target.value) })}
-                              />
+                              <input type="number" min={1} max={50} className="me-input" value={t.seats}
+                                onChange={e => updateTable(t._uid, { seats: Number(e.target.value) })} />
                             </div>
                             {t.table_type === 'standard' && (
                               <div className="field" style={{ flex: '1 1 80px', minWidth: 80 }}>
                                 <label className="me-label">Ilość</label>
-                                <input
-                                  type="number" min={1} max={100}
-                                  className="me-input"
-                                  value={t.quantity}
-                                  onChange={e => updateTable(t._uid, { quantity: Number(e.target.value) })}
-                                />
+                                <input type="number" min={1} max={100} className="me-input" value={t.quantity}
+                                  onChange={e => updateTable(t._uid, { quantity: Number(e.target.value) })} />
                               </div>
                             )}
                             {(t.table_type === 'special' || t.table_type === 'communal') && (
                               <div className="field" style={{ flex: '3 1 160px' }}>
-                                <label className="me-label">
-                                  {t.table_type === 'special' ? 'Co jest wyjątkowego?' : 'Opis (opcjonalnie)'}
-                                </label>
-                                <input
-                                  type="text"
-                                  className="me-input"
+                                <label className="me-label">{t.table_type === 'special' ? 'Co jest wyjątkowego?' : 'Opis (opcjonalnie)'}</label>
+                                <input type="text" className="me-input"
                                   placeholder={t.table_type === 'special' ? 'np. zamiast krzeseł są huśtawki' : ''}
                                   value={t.label}
-                                  onChange={e => updateTable(t._uid, { label: e.target.value })}
-                                />
+                                  onChange={e => updateTable(t._uid, { label: e.target.value })} />
                               </div>
                             )}
                           </div>
                         </div>
                       ))}
                     </div>
-
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                       {(['standard','communal','special'] as TableTypeEnum[]).map(type => (
-                        <button
-                          key={type}
-                          type="button"
-                          className="me-add-item-btn"
+                        <button key={type} type="button" className="me-add-item-btn"
                           style={{ width: 'auto', padding: '0.5rem 0.875rem', fontSize: '0.8rem' }}
-                          onClick={() => addTable(type)}
-                        >
+                          onClick={() => addTable(type)}>
                           + {type === 'standard' ? 'Zwykły stolik' : type === 'communal' ? 'Stół komunalny' : 'Stolik specjalny'}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Godziny */}
                   <div className="res-settings-block">
                     <div className="res-settings-block__title">Godziny przyjmowania rezerwacji</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
@@ -537,26 +490,17 @@ function SettingsPanel({
                             <div style={{ width: 110, fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-dark)' }}>
                               {DAYS[h.day_of_week]}
                             </div>
-                            <ToggleSmall
-                              checked={isOpen}
-                              onChange={v => toggleDay(h.day_of_week, v)}
-                            />
+                            <ToggleSmall checked={isOpen} onChange={v => toggleDay(h.day_of_week, v)} />
                             {isOpen ? (
-                              <>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                                  <input
-                                    type="time" className="me-input res-time-input"
-                                    value={h.open_time ?? ''}
-                                    onChange={e => updateHours(h.day_of_week, 'open_time', e.target.value)}
-                                  />
-                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>–</span>
-                                  <input
-                                    type="time" className="me-input res-time-input"
-                                    value={h.close_time ?? ''}
-                                    onChange={e => updateHours(h.day_of_week, 'close_time', e.target.value)}
-                                  />
-                                </div>
-                              </>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                <input type="time" className="me-input res-time-input"
+                                  value={h.open_time ?? ''}
+                                  onChange={e => updateHours(h.day_of_week, 'open_time', e.target.value)} />
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>–</span>
+                                <input type="time" className="me-input res-time-input"
+                                  value={h.close_time ?? ''}
+                                  onChange={e => updateHours(h.day_of_week, 'close_time', e.target.value)} />
+                              </div>
                             ) : (
                               <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Zamknięte</span>
                             )}
@@ -571,17 +515,11 @@ function SettingsPanel({
           )}
         </div>
 
-        {/* Footer */}
         <div className="me-footer">
           <div className="me-footer-actions">
             <button type="button" className="btn btn--outline-dark" onClick={onClose}>Anuluj</button>
-            <button
-              type="button"
-              className="btn btn--primary"
-              style={{ width: 'auto', minWidth: 160 }}
-              onClick={onSave}
-              disabled={saving}
-            >
+            <button type="button" className="btn btn--primary" style={{ width: 'auto', minWidth: 160 }}
+              onClick={onSave} disabled={saving}>
               {saving ? 'Zapisywanie…' : 'Zapisz ustawienia'}
             </button>
           </div>
@@ -592,7 +530,7 @@ function SettingsPanel({
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// ADVANCED VIEW – podgląd dnia
+// ADVANCED VIEW
 // ═════════════════════════════════════════════════════════════════════════════
 
 function AdvancedView({
@@ -627,7 +565,6 @@ function AdvancedView({
 
   return (
     <>
-      {/* Info cards – podsumowanie stolików */}
       <div className="res-tables-summary">
         {groupForDisplay(settings.tables).map((grp, i) => (
           <div key={i} className="res-table-chip">
@@ -640,16 +577,11 @@ function AdvancedView({
         ))}
       </div>
 
-      {/* Nawigacja po dacie */}
       <div className="res-day-nav">
         <button type="button" className="res-day-nav__btn" onClick={prevDay}>‹</button>
         <div style={{ flex: 1, textAlign: 'center' }}>
-          <input
-            type="date"
-            value={viewDate}
-            onChange={e => setViewDate(e.target.value)}
-            className="res-date-input"
-          />
+          <input type="date" value={viewDate}
+            onChange={e => setViewDate(e.target.value)} className="res-date-input" />
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem', textTransform: 'capitalize' }}>
             {formatDate(viewDate)}
           </div>
@@ -657,7 +589,6 @@ function AdvancedView({
         <button type="button" className="res-day-nav__btn" onClick={nextDay}>›</button>
       </div>
 
-      {/* Lista rezerwacji */}
       <div className="info-card">
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
@@ -670,17 +601,13 @@ function AdvancedView({
               }}>{confirmed.length}</span>
             )}
           </div>
-          <button
-            type="button"
-            className="btn btn--primary btn--sm"
-            style={{ width: 'auto' }}
-            onClick={() => setShowAddModal(true)}
-          >
+          <button type="button" className="btn btn--primary btn--sm"
+            style={{ width: 'auto' }} onClick={() => setShowAddModal(true)}>
             + Dodaj rezerwację
           </button>
         </div>
 
-        <div style={{ padding: '0' }}>
+        <div>
           {loadingRes ? (
             <div className="loading-state" style={{ padding: '2rem' }}>
               <div className="loading-spinner" />
@@ -688,9 +615,6 @@ function AdvancedView({
           ) : confirmed.length === 0 ? (
             <div className="menu-empty-state">
               <p>Brak rezerwacji na ten dzień.</p>
-              <p style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>
-                Kliknij „Dodaj rezerwację" aby wpisać rezerwację telefoniczną.
-              </p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -702,7 +626,6 @@ function AdvancedView({
         </div>
       </div>
 
-      {/* Anulowane */}
       {cancelled.length > 0 && (
         <div className="info-card info-card--muted">
           <div className="info-card__header">
@@ -717,7 +640,6 @@ function AdvancedView({
         </div>
       )}
 
-      {/* Modal dodawania */}
       {showAddModal && (
         <AddReservationModal
           token={token}
@@ -731,14 +653,14 @@ function AdvancedView({
   )
 }
 
-// ── Reservation row ──────────────────────────────────────────────────────────
+// ── Reservation row (advanced) ────────────────────────────────────────────────
 
 function ReservationRow({ r, onDelete, settings, cancelled = false }: {
   r: ReservationOut; onDelete: (id: string) => void
   settings: ReservationSettings; cancelled?: boolean
 }) {
-  const endMin   = toMinutes(r.start_time) + settings.slot_duration_minutes
-  const endTime  = fromMinutes(endMin)
+  const endMin  = toMinutes(r.start_time) + settings.slot_duration_minutes
+  const endTime = fromMinutes(endMin)
   const tableDesc = tableDescription(r)
 
   return (
@@ -769,20 +691,16 @@ function ReservationRow({ r, onDelete, settings, cancelled = false }: {
         )}
       </div>
       {!cancelled && (
-        <button
-          type="button"
-          className="me-remove-btn me-remove-item"
-          onClick={() => onDelete(r.id)}
-          title="Usuń rezerwację"
-          style={{ flexShrink: 0, alignSelf: 'flex-start', marginTop: '0.25rem' }}
-        >✕</button>
+        <button type="button" className="me-remove-btn me-remove-item"
+          onClick={() => onDelete(r.id)} title="Usuń rezerwację"
+          style={{ flexShrink: 0, alignSelf: 'flex-start', marginTop: '0.25rem' }}>✕</button>
       )}
     </div>
   )
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// ADD RESERVATION MODAL
+// ADD RESERVATION MODAL (advanced)
 // ═════════════════════════════════════════════════════════════════════════════
 
 function AddReservationModal({ token, settings, date, onClose, onAdded }: {
@@ -842,16 +760,10 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
         </div>
 
         <div className="me-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-
-          {/* Stolik */}
           <div className="field">
             <label className="me-label">Stolik</label>
-            <select
-              value={tableId}
-              onChange={e => { setTableId(e.target.value); setGuests(1) }}
-              className="me-input"
-              style={{ cursor: 'pointer' }}
-            >
+            <select value={tableId} onChange={e => { setTableId(e.target.value); setGuests(1) }}
+              className="me-input" style={{ cursor: 'pointer' }}>
               {settings.tables.map(t => (
                 <option key={t.id} value={t.id}>
                   {tableTypeLabel(t.table_type)} · {t.seats} os.{t.label ? ` (${t.label})` : ''}
@@ -860,39 +772,24 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
             </select>
           </div>
 
-          {/* Data + czas */}
           <div style={{ display: 'flex', gap: '1rem' }}>
             <div className="field" style={{ flex: 1 }}>
               <label className="me-label">Data</label>
-              <input
-                type="date" className="me-input"
-                value={date} disabled
-              />
+              <input type="date" className="me-input" value={date} disabled />
             </div>
             <div className="field" style={{ flex: 1 }}>
-              <label className="me-label">Godzina rozpoczęcia</label>
-              <input
-                type="time" className="me-input"
-                value={startTime}
-                onChange={e => setStartTime(e.target.value)}
-              />
+              <label className="me-label">Godzina</label>
+              <input type="time" className="me-input" value={startTime}
+                onChange={e => setStartTime(e.target.value)} />
             </div>
           </div>
 
-          {/* Liczba gości */}
           <div className="field" style={{ maxWidth: 160 }}>
-            <label className="me-label">
-              Liczba gości {selectedTable ? `(maks. ${selectedTable.seats})` : ''}
-            </label>
-            <input
-              type="number" className="me-input"
-              min={1} max={selectedTable?.seats ?? 50}
-              value={guests}
-              onChange={e => setGuests(Number(e.target.value))}
-            />
+            <label className="me-label">Liczba gości {selectedTable ? `(maks. ${selectedTable.seats})` : ''}</label>
+            <input type="number" className="me-input" min={1} max={selectedTable?.seats ?? 50}
+              value={guests} onChange={e => setGuests(Number(e.target.value))} />
           </div>
 
-          {/* Dane gościa */}
           <div className="field">
             <label className="me-label">Imię i nazwisko gościa *</label>
             <input type="text" className="me-input" value={name}
@@ -911,7 +808,7 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
             </div>
           </div>
           <div className="field">
-            <label className="me-label">Komentarz gościa</label>
+            <label className="me-label">Komentarz</label>
             <input type="text" className="me-input" value={comment}
               onChange={e => setComment(e.target.value)}
               placeholder="np. urodziny, alergia, życzenie…" />
@@ -923,12 +820,9 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
         <div className="me-footer">
           <div className="me-footer-actions">
             <button type="button" className="btn btn--outline-dark" onClick={onClose}>Anuluj</button>
-            <button
-              type="button"
-              className="btn btn--primary"
+            <button type="button" className="btn btn--primary"
               style={{ width: 'auto', minWidth: 160 }}
-              onClick={handleSubmit} disabled={saving}
-            >
+              onClick={handleSubmit} disabled={saving}>
               {saving ? 'Zapisywanie…' : 'Zapisz rezerwację'}
             </button>
           </div>
@@ -939,7 +833,7 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// SMALL HELPERS & PURE COMPONENTS
+// SMALL HELPERS
 // ═════════════════════════════════════════════════════════════════════════════
 
 function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
@@ -953,20 +847,14 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
+    <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
       style={{
         width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
         background: checked ? 'var(--espresso)' : 'var(--border)',
         position: 'relative', flexShrink: 0, transition: 'background 0.2s',
-      }}
-    >
+      }}>
       <span style={{
-        position: 'absolute', top: 3,
-        left: checked ? 23 : 3,
+        position: 'absolute', top: 3, left: checked ? 23 : 3,
         width: 18, height: 18, borderRadius: '50%',
         background: checked ? 'var(--gold)' : '#fff',
         transition: 'left 0.2s, background 0.2s',
@@ -978,20 +866,14 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 function ToggleSmall({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
+    <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
       style={{
         width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
         background: checked ? 'var(--espresso)' : 'var(--border)',
         position: 'relative', flexShrink: 0, transition: 'background 0.2s',
-      }}
-    >
+      }}>
       <span style={{
-        position: 'absolute', top: 2,
-        left: checked ? 17 : 2,
+        position: 'absolute', top: 2, left: checked ? 17 : 2,
         width: 16, height: 16, borderRadius: '50%',
         background: checked ? 'var(--gold)' : '#fff',
         transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.18)',
@@ -999,8 +881,6 @@ function ToggleSmall({ checked, onChange }: { checked: boolean; onChange: (v: bo
     </button>
   )
 }
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function toMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number)
@@ -1040,7 +920,6 @@ function groupForDisplay(tables: CafeTableOut[]): TableGroup[] {
 }
 
 function groupTablesToDisplay(tables: CafeTableOut[]): CafeTableDraft[] {
-  // Group standard tables back into quantity-groups for the editor
   const groups: CafeTableDraft[] = []
   const std = tables.filter(t => t.table_type === 'standard')
   const others = tables.filter(t => t.table_type !== 'standard')
