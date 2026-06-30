@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import MenuEditor from './MenuEditor'
 import ReservationTab from './ReservationTab'
+import ProfileTab from './ProfileTab'
 
 interface AuthState {
   token: string
@@ -47,12 +48,13 @@ interface Props {
   onLogout: () => void
 }
 
-type TabId = 'overview' | 'menu' | 'reservations'
+type TabId = 'overview' | 'menu' | 'reservations' | 'profile'
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'overview',      label: 'Przegląd',   icon: '🏠' },
   { id: 'menu',         label: 'Menu',        icon: '📋' },
   { id: 'reservations', label: 'Rezerwacje',  icon: '📅' },
+  { id: 'profile',      label: 'Profil',      icon: '⚙' },
 ]
 
 export default function Dashboard({ auth, profile, loadingProfile, onLogout }: Props) {
@@ -231,6 +233,13 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                       >
                         📅 Zarządzaj rezerwacjami
                       </button>
+                      <button
+                        className="btn btn--outline-dark"
+                        style={{ width: '100%', padding: '0.75rem' }}
+                        onClick={() => setActiveTab('profile')}
+                      >
+                        ⚙ Uzupełnij profil kawiarni
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -318,8 +327,14 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
           {/* REZERWACJE */}
           {activeTab === 'reservations' && (
             <div className="dashboard-content">
-              {/* Przekazujemy cafeId potrzebne do linku publicznego i SimpleReservationTab */}
               <ReservationTab token={auth.token} cafeId={cafeId} />
+            </div>
+          )}
+
+          {/* PROFIL */}
+          {activeTab === 'profile' && (
+            <div className="dashboard-content">
+              <ProfileTab token={auth.token} />
             </div>
           )}
 

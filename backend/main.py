@@ -2,12 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
-from app.models import cafe      # noqa: F401
-from app.models import menu      # noqa: F401
+from app.models import cafe         # noqa: F401
+from app.models import menu         # noqa: F401
 from app.models import reservation  # noqa: F401  ← rejestruje modele rezerwacji
+from app.models import cafe_profile # noqa: F401  ← rejestruje modele profilu kawiarni
 from app.routers import auth, me
 from app.routers import menu as menu_router
 from app.routers import reservation as reservation_router
+from app.routers import cafe_profile as cafe_profile_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -32,6 +34,7 @@ app.include_router(auth.router)
 app.include_router(me.router)
 app.include_router(menu_router.router)
 app.include_router(reservation_router.router)
+app.include_router(cafe_profile_router.router)
 
 
 @app.get("/", tags=["health"])
