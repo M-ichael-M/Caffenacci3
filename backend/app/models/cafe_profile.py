@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime,
-    ForeignKey, Text,
+    ForeignKey, Text, Float,
 )
 from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.orm import relationship
@@ -60,6 +60,17 @@ class CafeProfile(Base):
         "ProfileEmployee", back_populates="profile",
         cascade="all, delete-orphan", order_by="ProfileEmployee.position",
     )
+
+    # ── Lokalizacja na mapie ─────────────────────────────────────────────
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+
+    location_visible = Column(Boolean, nullable=False, default=False)
+    location_show_map = Column(Boolean, nullable=False, default=True)
+    location_show_gmaps_link = Column(Boolean, nullable=False, default=True)
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=True, onupdate=datetime.utcnow)
 
 
 # ── Plan tygodniowy godzin otwarcia ────────────────────────────────────────

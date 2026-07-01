@@ -120,6 +120,36 @@ class CafeProfileIn(BaseModel):
     social_links: List[SocialLinkIn] = []
     employees:    List[EmployeeIn]   = []
 
+    # ── Lokalizacja ──────────────────────────────────────────────────────
+    latitude: Optional[float] = Field(None, ge=-90, le=90)
+    longitude: Optional[float] = Field(None, ge=-180, le=180)
+    location_visible: bool = False
+    location_show_map: bool = True
+    location_show_gmaps_link: bool = True
+
+    # Godziny — obowiązkowe (min. jeden dzień otwarty), zawsze publiczne
+    weekly_hours: List[WeeklyHoursIn] = Field(..., min_length=7, max_length=7)
+
+    social_links: List[SocialLinkIn] = []
+    employees: List[EmployeeIn] = []
+
+    @field_validator("longitude")
+    @classmethod
+    def validate_lat_lng_pair(cls, v, info):
+        lat = info.data.get("latitude")
+        if (lat is None) != (v is None):
+            raise ValueError("latitude i longitude muszą być podane razem.")
+        return v
+
+    @field_validator("location_visible")
+    @classmethod
+    def validate_location_requires_coords(cls, v, info):
+        if v and (info.data.get("latitude") is None or info.data.get("longitude") is None):
+            raise ValueError(
+                "Aby włączyć widoczność lokalizacji, najpierw zaznacz pinezkę na mapie."
+            )
+        return v
+
     @field_validator("weekly_hours")
     @classmethod
     def validate_all_days_present(cls, v: List[WeeklyHoursIn]) -> List[WeeklyHoursIn]:
@@ -151,11 +181,17 @@ class CafeProfileOut(BaseModel):
     contact_phone:         Optional[str]
     contact_phone_visible: bool
 
-    description:         Optional[str]
+    description: Optional[str]
     description_visible: bool
 
-    logo_url: Optional[str]   # pełny URL do pobrania, zbudowany przez backend
-    logo_complete: bool       # True jeśli logo zostało wgrane (do walidacji "kompletności")
+    latitude: Optional[float]
+    longitude: Optional[float]
+    location_visible: bool
+    location_show_map: bool
+    location_show_gmaps_link: bool
+
+    logo_url: Optional[str]
+    logo_complete: bool
 
     weekly_hours:    List[WeeklyHoursOut]
     hour_exceptions: List[HourExceptionOut]
@@ -198,26 +234,28 @@ class PublicHourExceptionOut(BaseModel):
 
 class PublicCafeProfileOut(BaseModel):
     cafe_id:   str
-    cafe_name: str  # zawsze publiczne
+    cafe_name: str
 
-    # Adres — zawsze publiczny
     country:         str
     city:            str
     street:          str
     building_number: str
     postal_code:     str
 
-    # Warunkowo widoczne (None jeśli właściciel wyłączył)
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
     description:   Optional[str] = None
 
     logo_url: Optional[str]
 
-    # Zawsze publiczne, obowiązkowe
+    # ── Lokalizacja (tylko jeśli właściciel włączył widoczność) ────────
+    latitude:  Optional[float] = None
+    longitude: Optional[float] = None
+    location_show_map:        bool = False
+    location_show_gmaps_link: bool = False
+
     weekly_hours:    List[PublicWeeklyHoursOut]
     hour_exceptions: List[PublicHourExceptionOut]
 
-    # Tylko widoczne wpisy
     social_links: List[PublicSocialLinkOut]
     employees:    List[PublicEmployeeOut]

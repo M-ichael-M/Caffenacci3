@@ -130,6 +130,11 @@ def _profile_to_out(cafe: Cafe, profile: CafeProfile) -> CafeProfileOut:
         contact_phone_visible=profile.contact_phone_visible,
         description=profile.description,
         description_visible=profile.description_visible,
+        latitude=profile.latitude,
+        longitude=profile.longitude,
+        location_visible=profile.location_visible,
+        location_show_map=profile.location_show_map,
+        location_show_gmaps_link=profile.location_show_gmaps_link,
         logo_url=_logo_url(cafe.id, profile),
         logo_complete=logo_complete,
         weekly_hours=profile.weekly_hours,
@@ -179,6 +184,14 @@ def save_profile(
     profile.contact_phone_visible = payload.contact_phone_visible if payload.contact_phone else False
     profile.description           = payload.description
     profile.description_visible   = payload.description_visible if payload.description else False
+
+    # Lokalizacja na mapie
+    profile.latitude                 = payload.latitude
+    profile.longitude                = payload.longitude
+    profile.location_visible         = payload.location_visible
+    profile.location_show_map        = payload.location_show_map
+    profile.location_show_gmaps_link = payload.location_show_gmaps_link
+
     profile.updated_at            = datetime.utcnow()
 
     # Godziny tygodniowe — replace-all
@@ -419,11 +432,23 @@ def get_public_profile(cafe_id: str, db: Session = Depends(get_db)):
             contact_phone=None,
             description=None,
             logo_url=None,
+            latitude=None,
+            longitude=None,
+            location_show_map=False,
+            location_show_gmaps_link=False,
             weekly_hours=[],
             hour_exceptions=[],
             social_links=[],
             employees=[],
         )
+
+    # Lokalizacja jest widoczna publicznie tylko gdy właściciel to włączył
+    # ORAZ pinezka faktycznie została ustawiona.
+    loc_visible = bool(
+        profile.location_visible
+        and profile.latitude is not None
+        and profile.longitude is not None
+    )
 
     return PublicCafeProfileOut(
         cafe_id=cafe.id,
@@ -437,6 +462,10 @@ def get_public_profile(cafe_id: str, db: Session = Depends(get_db)):
         contact_phone=profile.contact_phone if profile.contact_phone_visible else None,
         description=profile.description if profile.description_visible else None,
         logo_url=_logo_url(cafe.id, profile),
+        latitude=profile.latitude if loc_visible else None,
+        longitude=profile.longitude if loc_visible else None,
+        location_show_map=profile.location_show_map if loc_visible else False,
+        location_show_gmaps_link=profile.location_show_gmaps_link if loc_visible else False,
         weekly_hours=[
             {"day_of_week": h.day_of_week, "open_time": h.open_time, "close_time": h.close_time}
             for h in profile.weekly_hours

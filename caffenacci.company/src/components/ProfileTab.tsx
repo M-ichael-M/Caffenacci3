@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import LocationPicker from './LocationPicker'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,11 @@ interface CafeProfileData {
   contact_phone_visible: boolean
   description: string | null
   description_visible: boolean
+  latitude: number | null
+  longitude: number | null
+  location_visible: boolean
+  location_show_map: boolean
+  location_show_gmaps_link: boolean
   logo_url: string | null
   logo_complete: boolean
   weekly_hours: WeeklyHours[]
@@ -197,6 +203,13 @@ export default function ProfileTab({ token }: Props) {
   const [exceptions, setExceptions]     = useState<HourException[]>([])
   const [exceptionsLoading, setExceptionsLoading] = useState(false)
 
+  // Lokalizacja na mapie
+  const [latitude, setLatitude]   = useState<number | null>(null)
+  const [longitude, setLongitude] = useState<number | null>(null)
+  const [locationVisible, setLocationVisible]             = useState(false)
+  const [locationShowMap, setLocationShowMap]             = useState(true)
+  const [locationShowGmapsLink, setLocationShowGmapsLink] = useState(true)
+
   // ── Fetch ───────────────────────────────────────────────────────────────
 
   const fetchProfile = useCallback(async () => {
@@ -227,6 +240,11 @@ export default function ProfileTab({ token }: Props) {
         setEmployees(data.employees)
         setLogoUrl(data.logo_url)
         setExceptions(data.hour_exceptions)
+        setLatitude(data.latitude ?? null)
+        setLongitude(data.longitude ?? null)
+        setLocationVisible(data.location_visible)
+        setLocationShowMap(data.location_show_map)
+        setLocationShowGmapsLink(data.location_show_gmaps_link)
       }
     } catch { /* ignore */ }
     finally { setLoading(false) }
@@ -351,6 +369,20 @@ export default function ProfileTab({ token }: Props) {
   const removeEmployee = (idx: number) =>
     setEmployees(prev => prev.filter((_, i) => i !== idx))
 
+  // ── Location mutations ───────────────────────────────────────────────────
+
+  const handlePositionChange = (lat: number, lng: number) => {
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      // Sygnał kasowania pinezki z LocationPicker
+      setLatitude(null)
+      setLongitude(null)
+      setLocationVisible(false)
+      return
+    }
+    setLatitude(lat)
+    setLongitude(lng)
+  }
+
   // ── Save full profile ────────────────────────────────────────────────────
 
   const handleSave = async () => {
@@ -370,6 +402,11 @@ export default function ProfileTab({ token }: Props) {
         contact_phone_visible: contactPhoneVisible,
         description: description.trim() || null,
         description_visible: descriptionVisible,
+        latitude,
+        longitude,
+        location_visible: locationVisible,
+        location_show_map: locationShowMap,
+        location_show_gmaps_link: locationShowGmapsLink,
         weekly_hours: weeklyHours,
         social_links: socialLinks
           .filter(s => s.url.trim())
@@ -391,6 +428,11 @@ export default function ProfileTab({ token }: Props) {
       setProfile(data)
       setSocialLinks(data.social_links)
       setEmployees(data.employees)
+      setLatitude(data.latitude ?? null)
+      setLongitude(data.longitude ?? null)
+      setLocationVisible(data.location_visible)
+      setLocationShowMap(data.location_show_map)
+      setLocationShowGmapsLink(data.location_show_gmaps_link)
       setSaveMsg({ type: 'ok', text: 'Profil kawiarni został zapisany.' })
     } catch (err: unknown) {
       setSaveMsg({ type: 'err', text: err instanceof Error ? err.message : 'Błąd zapisu.' })
@@ -684,6 +726,40 @@ export default function ProfileTab({ token }: Props) {
               onDelete={deleteException}
             />
           </div>
+        </div>
+      </div>
+
+      {/* ── Lokalizacja na mapie (pełna szerokość) ──────────────────────── */}
+      <div className="info-card" style={{ gridColumn: '1 / -1' }}>
+        <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+              Nowe dane · opcjonalne
+            </div>
+            <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
+              Lokalizacja na mapie
+            </h2>
+          </div>
+          {locationVisible
+            ? <span className="pf-badge pf-badge--public">publiczne</span>
+            : <span className="pf-badge pf-badge--private">prywatne</span>}
+        </div>
+        <div className="info-card__body">
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.5rem', lineHeight: 1.6 }}>
+            To osobna pinezka od adresu — dzięki temu możesz dokładnie wskazać wejście do lokalu,
+            nawet jeśli adres pocztowy wskazuje na środek budynku lub podwórko.
+          </p>
+          <LocationPicker
+            latitude={latitude}
+            longitude={longitude}
+            onPositionChange={handlePositionChange}
+            locationVisible={locationVisible}
+            onLocationVisibleChange={setLocationVisible}
+            showMap={locationShowMap}
+            onShowMapChange={setLocationShowMap}
+            showGmapsLink={locationShowGmapsLink}
+            onShowGmapsLinkChange={setLocationShowGmapsLink}
+          />
         </div>
       </div>
 
