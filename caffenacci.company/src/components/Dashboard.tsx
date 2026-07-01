@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import MenuEditor from './MenuEditor'
 import ReservationTab from './ReservationTab'
 import ProfileTab from './ProfileTab'
+import ReviewsTab from './ReviewsTab'
 
 interface AuthState {
   token: string
@@ -41,6 +42,11 @@ interface MeProfile {
   postal_code?: string
 }
 
+interface ReviewSummary {
+  average_rating: number
+  count: number
+}
+
 interface Props {
   auth: AuthState
   profile: Record<string, unknown> | null
@@ -48,12 +54,13 @@ interface Props {
   onLogout: () => void
 }
 
-type TabId = 'overview' | 'menu' | 'reservations' | 'profile'
+type TabId = 'overview' | 'menu' | 'reservations' | 'profile' | 'reviews'
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'overview',      label: 'Przegląd',   icon: '🏠' },
   { id: 'menu',         label: 'Menu',        icon: '📋' },
   { id: 'reservations', label: 'Rezerwacje',  icon: '📅' },
+  { id: 'reviews',      label: 'Opinie',      icon: '⭐' },
   { id: 'profile',      label: 'Profil',      icon: '⚙' },
 ]
 
@@ -68,7 +75,13 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
   const [menuSections, setMenuSections]     = useState<ServerSection[]>([])
   const [loadingMenu, setLoadingMenu]       = useState(true)
 
-  useEffect(() => { fetchMenu() }, [])
+  const [reviewSummary, setReviewSummary]   = useState<ReviewSummary | null>(null)
+  const [loadingReviews, setLoadingReviews] = useState(true)
+
+  useEffect(() => {
+    fetchMenu()
+    fetchReviewSummary()
+  }, [])
 
   async function fetchMenu() {
     setLoadingMenu(true)
@@ -82,6 +95,19 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
       }
     } catch { /* ignore */ }
     finally { setLoadingMenu(false) }
+  }
+
+  async function fetchReviewSummary() {
+    setLoadingReviews(true)
+    try {
+      const res = await fetch('http://localhost:8000/reviews/summary', {
+        headers: { Authorization: `Bearer ${auth.token}` },
+      })
+      if (res.ok) {
+        setReviewSummary(await res.json())
+      }
+    } catch { /* ignore */ }
+    finally { setLoadingReviews(false) }
   }
 
   function handleMenuEditorClose() {
@@ -212,6 +238,50 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                     </div>
                   )}
 
+                  {/* Opinie */}
+                  <div className="info-card">
+                    <div className="info-card__header">
+                      <span className="info-card__icon">⭐</span>
+                      <h2 className="info-card__title">Opinie</h2>
+                    </div>
+                    <div className="info-card__body">
+                      {loadingReviews ? (
+                        <div className="loading-state" style={{ padding: '0.5rem' }}>
+                          <div className="loading-spinner" />
+                        </div>
+                      ) : reviewSummary && reviewSummary.count > 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+                            {reviewSummary.average_rating.toFixed(1)}
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--gold)', fontSize: '1.125rem', letterSpacing: '1px' }}>
+                              {[1, 2, 3, 4, 5].map(i => (
+                                <span key={i} style={{ opacity: i <= Math.round(reviewSummary.average_rating) ? 1 : 0.25 }}>★</span>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                              {reviewSummary.count === 1
+                                ? '1 opinia'
+                                : reviewSummary.count < 5
+                                  ? `${reviewSummary.count} opinie`
+                                  : `${reviewSummary.count} opinii`}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Brak opinii jeszcze.</p>
+                      )}
+                      <button
+                        className="btn btn--outline-dark"
+                        style={{ width: '100%', padding: '0.625rem', marginTop: '0.5rem' }}
+                        onClick={() => setActiveTab('reviews')}
+                      >
+                        Zobacz wszystkie opinie
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Szybkie akcje */}
                   <div className="info-card">
                     <div className="info-card__header">
@@ -328,6 +398,13 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
           {activeTab === 'reservations' && (
             <div className="dashboard-content">
               <ReservationTab token={auth.token} cafeId={cafeId} />
+            </div>
+          )}
+
+          {/* OPINIE */}
+          {activeTab === 'reviews' && (
+            <div className="dashboard-content">
+              <ReviewsTab token={auth.token} cafeId={cafeId} />
             </div>
           )}
 
