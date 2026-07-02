@@ -3,6 +3,7 @@ import MenuEditor from './MenuEditor'
 import ReservationTab from './ReservationTab'
 import ProfileTab from './ProfileTab'
 import ReviewsTab from './ReviewsTab'
+import OrdersTab from './OrdersTab'
 
 interface AuthState {
   token: string
@@ -54,11 +55,12 @@ interface Props {
   onLogout: () => void
 }
 
-type TabId = 'overview' | 'menu' | 'reservations' | 'profile' | 'reviews'
+type TabId = 'overview' | 'menu' | 'orders' | 'reservations' | 'profile' | 'reviews'
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'overview',      label: 'Przegląd',   icon: '🏠' },
   { id: 'menu',         label: 'Menu',        icon: '📋' },
+  { id: 'orders',       label: 'Zamówienia',  icon: '🛒' },
   { id: 'reservations', label: 'Rezerwacje',  icon: '📅' },
   { id: 'reviews',      label: 'Opinie',      icon: '⭐' },
   { id: 'profile',      label: 'Profil',      icon: '⚙' },
@@ -398,6 +400,13 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
           {activeTab === 'reservations' && (
             <div className="dashboard-content">
               <ReservationTab token={auth.token} cafeId={cafeId} />
+            </div>
+          )}
+
+          {/* ZAMÓWIENIA */}
+          {activeTab === 'orders' && (
+            <div className="dashboard-content">
+              <OrdersTab token={auth.token} cafeId={cafeId} />
             </div>
           )}
 

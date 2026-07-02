@@ -1658,3 +1658,40 @@ textarea.field__input::placeholder {
   .rv-summary { padding: 1.25rem; gap: 1rem; }
   .rv-summary__score { font-size: 2.25rem; }
 }
+
+/* ════════════════════════════════════════════════
+   ORDERS TAB
+   ════════════════════════════════════════════════ */
+
+.ord-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.ord-item-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-body);
+}
+
+.ord-item-row__qty {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--gold);
+  min-width: 1.75rem;
+}
+
+.ord-item-row__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.ord-item-row__price {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
