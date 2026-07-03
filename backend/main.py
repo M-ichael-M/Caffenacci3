@@ -8,12 +8,14 @@ from app.models import reservation  # noqa: F401  ← rejestruje modele rezerwac
 from app.models import cafe_profile # noqa: F401  ← rejestruje modele profilu kawiarni
 from app.models import review       # noqa: F401  ← rejestruje model opinii
 from app.models import order        # noqa: F401  ← rejestruje modele zamówień
+from app.models import client       # noqa: F401  ← rejestruje model konta klienta
 from app.routers import auth, me
 from app.routers import menu as menu_router
 from app.routers import reservation as reservation_router
 from app.routers import cafe_profile as cafe_profile_router
 from app.routers import review as review_router
 from app.routers import order as order_router
+from app.routers import client_auth as client_auth_router
 
 
 Base.metadata.create_all(bind=engine)
@@ -29,6 +31,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:5173",
+        "http://localhost:5174",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -42,6 +45,7 @@ app.include_router(reservation_router.router)
 app.include_router(cafe_profile_router.router)
 app.include_router(review_router.router)
 app.include_router(order_router.router)
+app.include_router(client_auth_router.router)
 
 
 @app.get("/", tags=["health"])

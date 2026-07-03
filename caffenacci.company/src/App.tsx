@@ -155,6 +155,10 @@ export default function App() {
               onSwitchToLogin={() => setView('login')}
             />
           )}
+          <p className="cross-app-link">
+            Jesteś gościem kawiarni?{' '}
+            <a href="http://localhost:5174">Przejdź do strony dla klientów →</a>
+          </p>
         </div>
       </main>
     </div>
