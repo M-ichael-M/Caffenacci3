@@ -50,8 +50,8 @@ export default function App() {
   const [registerSuccess, setRegisterSuccess] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
 
-  // Przywróć sesję przy starcie — ale NIE przekierowuj na siłę,
-  // strona główna zostaje stroną główną niezależnie od tego, czy user jest zalogowany.
+  // Przywróć sesję przy starcie — strona główna zostaje stroną główną
+  // niezależnie od tego, czy user jest zalogowany.
   useEffect(() => {
     const stored = loadAuth()
     if (!stored) {
@@ -70,7 +70,6 @@ export default function App() {
         }
       })
       .catch(() => {
-        // Błąd sieci — pokaż dane z pamięci, nie wylogowuj na siłę
         setAuth(stored)
       })
       .finally(() => setCheckingSession(false))
@@ -110,11 +109,6 @@ export default function App() {
         <div className="loading-spinner" />
       </div>
     )
-  }
-
-  // ── Konto ──────────────────────────────────────
-  if (view === 'account' && auth) {
-    return <AccountHome auth={auth} onLogout={handleLogout} />
   }
 
   // ── Logowanie ──────────────────────────────────
@@ -188,22 +182,33 @@ export default function App() {
     )
   }
 
-  // ── Strona główna (wyszukiwarka kawiarni) ───────
+  // ── Konto i Strona główna — obie mają pasek nawigacji ───────────────
+  const showAccount = view === 'account' && auth
+
   return (
     <div className="home-layout">
       <TopBar
         authed={!!auth}
         displayName={auth?.full_name}
+        activeView={showAccount ? 'account' : 'home'}
         onLogin={() => setView('login')}
         onRegister={() => { setRegisterSuccess(false); setView('register') }}
         onAccount={() => setView('account')}
-        onLogoClick={() => setView('home')}
+        onSearch={() => setView('home')}
+        onLogout={handleLogout}
       />
-      <HomePage />
-      <p className="cross-app-link" style={{ marginBottom: '2rem' }}>
-        Prowadzisz kawiarnię?{' '}
-        <a href="http://localhost:5173">Przejdź do panelu właściciela →</a>
-      </p>
+
+      {showAccount ? (
+        <AccountHome auth={auth as ClientAuthState} onLogout={handleLogout} />
+      ) : (
+        <>
+          <HomePage />
+          <p className="cross-app-link" style={{ marginBottom: '2rem' }}>
+            Prowadzisz kawiarnię?{' '}
+            <a href="http://localhost:5173">Przejdź do panelu właściciela →</a>
+          </p>
+        </>
+      )}
     </div>
   )
 }

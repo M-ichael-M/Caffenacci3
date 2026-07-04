@@ -10,19 +10,9 @@ interface Props {
   onLogout: () => void
 }
 
-export default function AccountHome({ auth, onLogout }: Props) {
+export default function AccountHome({ auth }: Props) {
   return (
     <div className="dashboard">
-      <header className="dashboard-header">
-        <span className="dashboard-header__wordmark">Caffenacci</span>
-        <div className="dashboard-header__actions">
-          <span className="dashboard-header__greeting">Witaj, {auth.full_name}</span>
-          <button className="btn btn--outline btn--sm" onClick={onLogout}>
-            Wyloguj
-          </button>
-        </div>
-      </header>
-
       <main className="dashboard-main">
         <div className="dashboard-content">
           <div className="page-header">
