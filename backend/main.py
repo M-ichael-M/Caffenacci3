@@ -16,6 +16,7 @@ from app.routers import cafe_profile as cafe_profile_router
 from app.routers import review as review_router
 from app.routers import order as order_router
 from app.routers import client_auth as client_auth_router
+from app.routers import cafe_search as cafe_search_router
 
 
 Base.metadata.create_all(bind=engine)
@@ -46,7 +47,7 @@ app.include_router(cafe_profile_router.router)
 app.include_router(review_router.router)
 app.include_router(order_router.router)
 app.include_router(client_auth_router.router)
-
+app.include_router(cafe_search_router.router)
 
 @app.get("/", tags=["health"])
 def root():

@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
 import AccountHome from './components/AccountHome'
+import HomePage from './components/HomePage'
+import TopBar from './components/TopBar'
 import './index.css'
 
-type View = 'login' | 'register' | 'account'
+type View = 'home' | 'login' | 'register' | 'account'
 
 export interface ClientAuthState {
   token: string
@@ -43,12 +45,13 @@ function loadAuth(): ClientAuthState | null {
 }
 
 export default function App() {
-  const [view, setView] = useState<View>('login')
+  const [view, setView] = useState<View>('home')
   const [auth, setAuth] = useState<ClientAuthState | null>(null)
   const [registerSuccess, setRegisterSuccess] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
 
-  // Przywróć sesję przy starcie
+  // Przywróć sesję przy starcie — ale NIE przekierowuj na siłę,
+  // strona główna zostaje stroną główną niezależnie od tego, czy user jest zalogowany.
   useEffect(() => {
     const stored = loadAuth()
     if (!stored) {
@@ -62,7 +65,6 @@ export default function App() {
       .then(res => {
         if (res.ok) {
           setAuth(stored)
-          setView('account')
         } else {
           clearAuth()
         }
@@ -70,7 +72,6 @@ export default function App() {
       .catch(() => {
         // Błąd sieci — pokaż dane z pamięci, nie wylogowuj na siłę
         setAuth(stored)
-        setView('account')
       })
       .finally(() => setCheckingSession(false))
   }, [])
@@ -100,7 +101,7 @@ export default function App() {
   function handleLogout() {
     clearAuth()
     setAuth(null)
-    setView('login')
+    setView('home')
   }
 
   if (checkingSession) {
@@ -116,48 +117,93 @@ export default function App() {
     return <AccountHome auth={auth} onLogout={handleLogout} />
   }
 
-  // ── Auth layout ────────────────────────────────
-  return (
-    <div className="auth-layout">
-      <aside className="auth-brand">
-        <div className="auth-brand__rings" aria-hidden="true" />
+  // ── Logowanie ──────────────────────────────────
+  if (view === 'login') {
+    return (
+      <div className="auth-layout">
+        <aside className="auth-brand">
+          <div className="auth-brand__rings" aria-hidden="true" />
+          <div className="auth-brand__content">
+            <div className="auth-brand__rule" />
+            <h1 className="auth-brand__wordmark">Caffenacci</h1>
+            <p className="auth-brand__tagline">Konto gościa</p>
+            <div className="auth-brand__sep" />
+            <p className="auth-brand__description">
+              Rezerwuj stoliki, zamawiaj online i zostawiaj opinie w swoich ulubionych kawiarniach — wszystko na jednym koncie.
+            </p>
+          </div>
+          <div className="auth-brand__footer">© {new Date().getFullYear()} Caffenacci</div>
+        </aside>
 
-        <div className="auth-brand__content">
-          <div className="auth-brand__rule" />
-          <h1 className="auth-brand__wordmark">Caffenacci</h1>
-          <p className="auth-brand__tagline">Konto gościa</p>
-          <div className="auth-brand__sep" />
-          <p className="auth-brand__description">
-            Rezerwuj stoliki, zamawiaj online i zostawiaj opinie w swoich ulubionych kawiarniach — wszystko na jednym koncie.
-          </p>
-        </div>
-
-        <div className="auth-brand__footer">
-          © {new Date().getFullYear()} Caffenacci
-        </div>
-      </aside>
-
-      <main className="auth-form-panel">
-        <div className="auth-form-container">
-          {view === 'login' ? (
+        <main className="auth-form-panel">
+          <div className="auth-form-container">
             <LoginForm
               onSuccess={handleLoginSuccess}
               onSwitchToRegister={() => { setRegisterSuccess(false); setView('register') }}
               registerSuccess={registerSuccess}
             />
-          ) : (
+            <p className="cross-app-link">
+              <button type="button" className="link-btn" onClick={() => setView('home')}>
+                ← Wróć do strony głównej
+              </button>
+            </p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // ── Rejestracja ────────────────────────────────
+  if (view === 'register') {
+    return (
+      <div className="auth-layout">
+        <aside className="auth-brand">
+          <div className="auth-brand__rings" aria-hidden="true" />
+          <div className="auth-brand__content">
+            <div className="auth-brand__rule" />
+            <h1 className="auth-brand__wordmark">Caffenacci</h1>
+            <p className="auth-brand__tagline">Konto gościa</p>
+            <div className="auth-brand__sep" />
+            <p className="auth-brand__description">
+              Rezerwuj stoliki, zamawiaj online i zostawiaj opinie w swoich ulubionych kawiarniach — wszystko na jednym koncie.
+            </p>
+          </div>
+          <div className="auth-brand__footer">© {new Date().getFullYear()} Caffenacci</div>
+        </aside>
+
+        <main className="auth-form-panel">
+          <div className="auth-form-container">
             <RegisterForm
               onSuccess={handleRegisterSuccess}
               onSwitchToLogin={() => setView('login')}
             />
-          )}
+            <p className="cross-app-link">
+              <button type="button" className="link-btn" onClick={() => setView('home')}>
+                ← Wróć do strony głównej
+              </button>
+            </p>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
-          <p className="cross-app-link">
-            Prowadzisz kawiarnię?{' '}
-            <a href="http://localhost:5173">Przejdź do panelu właściciela →</a>
-          </p>
-        </div>
-      </main>
+  // ── Strona główna (wyszukiwarka kawiarni) ───────
+  return (
+    <div className="home-layout">
+      <TopBar
+        authed={!!auth}
+        displayName={auth?.full_name}
+        onLogin={() => setView('login')}
+        onRegister={() => { setRegisterSuccess(false); setView('register') }}
+        onAccount={() => setView('account')}
+        onLogoClick={() => setView('home')}
+      />
+      <HomePage />
+      <p className="cross-app-link" style={{ marginBottom: '2rem' }}>
+        Prowadzisz kawiarnię?{' '}
+        <a href="http://localhost:5173">Przejdź do panelu właściciela →</a>
+      </p>
     </div>
   )
 }
