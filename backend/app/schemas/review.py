@@ -5,13 +5,18 @@ from datetime import datetime
 
 
 class ReviewIn(BaseModel):
-    """Formularz publiczny — składany przez klienta."""
+    """Formularz publiczny — składany przez klienta, bez logowania."""
     nick:    str = Field(..., min_length=2, max_length=60, examples=["Kasia_W"])
     rating:  int = Field(..., ge=1, le=5)
     comment: Optional[str] = Field(None, max_length=1000)
-    # Identyfikator konta klienta — opcjonalny (systemu kont jeszcze nie ma).
-    # Gdy powstanie, frontend będzie go dołączał automatycznie.
     client_id: Optional[str] = Field(None, max_length=100)
+
+
+class ClientReviewIn(BaseModel):
+    """Opinia od zalogowanego klienta — nick i client_id pochodzą z tokenu,
+    nie z formularza (nie da się podszyć pod inny nick)."""
+    rating:  int = Field(..., ge=1, le=5)
+    comment: Optional[str] = Field(None, max_length=1000)
 
 
 class ReviewOut(BaseModel):

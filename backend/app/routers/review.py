@@ -9,8 +9,10 @@ from sqlalchemy.exc import IntegrityError
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.cafe import Cafe
+from app.models.client import Client
 from app.models.review import Review
-from app.schemas.review import ReviewIn, ReviewOut, ReviewListOut, ReviewSummaryOut
+from app.routers.client_auth import get_current_client
+from app.schemas.review import ReviewIn, ReviewOut, ReviewListOut, ReviewSummaryOut, ClientReviewIn
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 bearer_scheme = HTTPBearer()
@@ -43,7 +45,7 @@ def _aggregate(cafe_id: str, db: Session) -> tuple[float, int]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PUBLICZNY ENDPOINT — klient dodaje opinię
+# PUBLICZNY ENDPOINT — klient dodaje opinię (bez logowania — zachowane wstecznie)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post(
@@ -91,6 +93,72 @@ def create_review(
         )
     db.refresh(review)
     return review
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# OPINIA OD ZALOGOWANEGO KLIENTA — wygenerowana strona kawiarni
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post(
+    "/client/{cafe_id}",
+    response_model=ReviewOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Dodaj opinię jako zalogowany klient",
+)
+def create_review_as_client(
+    cafe_id: str,
+    payload: ClientReviewIn,
+    current_client: Client  = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+    if not cafe:
+        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
+
+    existing = (
+        db.query(Review)
+        .filter(Review.cafe_id == cafe_id, Review.client_id == current_client.id)
+        .first()
+    )
+    if existing:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Dodałeś już opinię o tej kawiarni.")
+
+    review = Review(
+        cafe_id   = cafe_id,
+        nick      = current_client.nick,
+        rating    = payload.rating,
+        comment   = payload.comment,
+        client_id = current_client.id,
+    )
+    db.add(review)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Dodałeś już opinię o tej kawiarni.")
+    db.refresh(review)
+    return review
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PUBLICZNA LISTA OPINII — bez logowania, do wygenerowanej strony kawiarni
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/public/{cafe_id}", response_model=ReviewListOut,
+            summary="Pobierz opinie o kawiarni (publiczne)")
+def list_reviews_public(cafe_id: str, db: Session = Depends(get_db)):
+    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+    if not cafe:
+        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
+
+    rows = (
+        db.query(Review)
+        .filter(Review.cafe_id == cafe_id)
+        .order_by(Review.created_at.desc())
+        .all()
+    )
+    avg, count = _aggregate(cafe_id, db)
+    return ReviewListOut(reviews=rows, average_rating=avg, count=count)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -94,7 +94,12 @@ export default function HomePage() {
         ) : (
           <div className="cafe-list">
             {results.map(cafe => (
-              <div key={cafe.cafe_id} className="cafe-card">
+              <a
+                key={cafe.cafe_id}
+                className="cafe-card"
+                href={`/cafe/${cafe.cafe_id}`}
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
                 <div className="cafe-card__logo">
                   {cafe.logo_url ? (
                     <img src={`http://localhost:8000${cafe.logo_url}`} alt={cafe.cafe_name} />
@@ -115,7 +120,7 @@ export default function HomePage() {
                     {formatTodayHours(cafe.today_hours)}
                   </p>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         )}

@@ -41,6 +41,26 @@ def get_menu(current_cafe: Cafe = Depends(get_current_cafe), db: Session = Depen
     return MenuOut(cafe_id=current_cafe.id, sections=sections)
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# PUBLICZNY ODCZYT MENU — bez logowania, do wygenerowanej strony kawiarni
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/public/{cafe_id}", response_model=MenuOut, summary="Pobierz menu kawiarni (publiczne)")
+def get_public_menu(cafe_id: str, db: Session = Depends(get_db)):
+    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+    if not cafe:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Kawiarnia nie istnieje.")
+
+    sections = (
+        db.query(MenuSection)
+        .options(selectinload(MenuSection.items))
+        .filter(MenuSection.cafe_id == cafe_id)
+        .order_by(MenuSection.position)
+        .all()
+    )
+    return MenuOut(cafe_id=cafe_id, sections=sections)
+
+
 @router.put("", response_model=MenuOut, summary="Zapisz / zaktualizuj całe menu")
 def save_menu(
     payload: MenuSaveIn,

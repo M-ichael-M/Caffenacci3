@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date as date_cls, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, selectinload
@@ -7,21 +9,23 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.cafe import Cafe
+from app.models.client import Client
 from app.models.reservation import (
     ReservationSettings, DayHours, CafeTable, Reservation,
     TableType, ReservationStatus,
 )
+from app.routers.client_auth import get_current_client
 from app.schemas.reservation import (
     ReservationSettingsIn, ReservationSettingsOut,
     ReservationIn, ReservationOut, ReservationListOut,
-    PublicReservationIn, ReservationStatusUpdate,
+    PublicReservationIn, ClientReservationIn, ReservationStatusUpdate,
 )
 
 router = APIRouter(prefix="/reservations", tags=["reservations"])
 bearer_scheme = HTTPBearer()
 
 
-# ── Auth helper ────────────────────────────────────────────────────────────
+# ── Auth helper (właściciel) ─────────────────────────────────────────────────
 
 def get_current_cafe(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
@@ -89,9 +93,8 @@ def _to_minutes(t: str) -> int:
 
 
 def _day_of_week(date_str: str) -> int:
-    from datetime import date
     y, mo, d = date_str.split("-")
-    return date(int(y), int(mo), int(d)).weekday()
+    return date_cls(int(y), int(mo), int(d)).weekday()
 
 
 def _validate_slot(
@@ -225,7 +228,7 @@ def save_settings(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PUBLICZNY ENDPOINT — klient składa rezerwację (tryb simple)
+# PUBLICZNY ENDPOINT — klient składa rezerwację (bez logowania)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post(
@@ -251,8 +254,6 @@ def create_public_reservation(
     if not s or not s.enabled:
         raise HTTPException(400, detail="Ta kawiarnia nie przyjmuje rezerwacji online.")
 
-    # Walidacja daty — nie można rezerwować w przeszłości
-    from datetime import date as date_cls
     y, mo, d = payload.date.split("-")
     if date_cls(int(y), int(mo), int(d)) < date_cls.today():
         raise HTTPException(400, detail="Nie można rezerwować w przeszłości.")
@@ -268,6 +269,55 @@ def create_public_reservation(
         guest_email      = payload.guest_email,
         comment          = payload.comment,
         client_id        = None,
+        created_by_owner = False,
+        status           = ReservationStatus.pending,
+    )
+    db.add(r)
+    db.commit()
+    db.refresh(r)
+
+    return _reservation_to_out(r)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# REZERWACJA OD ZALOGOWANEGO KLIENTA — wygenerowana strona kawiarni
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post(
+    "/client/{cafe_id}",
+    response_model=ReservationOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Złóż rezerwację jako zalogowany klient",
+)
+def create_reservation_as_client(
+    cafe_id: str,
+    payload: ClientReservationIn,
+    current_client: Client  = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+    if not cafe:
+        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
+
+    s = db.query(ReservationSettings).filter(ReservationSettings.cafe_id == cafe_id).first()
+    if not s or not s.enabled:
+        raise HTTPException(400, detail="Ta kawiarnia nie przyjmuje rezerwacji online.")
+
+    y, mo, d = payload.date.split("-")
+    if date_cls(int(y), int(mo), int(d)) < date_cls.today():
+        raise HTTPException(400, detail="Nie można rezerwować w przeszłości.")
+
+    r = Reservation(
+        table_id         = None,
+        cafe_id          = cafe_id,
+        date             = payload.date,
+        start_time       = payload.start_time,
+        guests           = payload.guests,
+        guest_name       = current_client.full_name,
+        guest_phone      = payload.guest_phone or current_client.phone,
+        guest_email      = payload.guest_email or current_client.email,
+        comment          = payload.comment,
+        client_id        = current_client.id,
         created_by_owner = False,
         status           = ReservationStatus.pending,
     )
@@ -347,7 +397,6 @@ def update_reservation_status(
 
     r.status     = payload.status
     r.owner_note = payload.owner_note
-    from datetime import datetime
     r.updated_at = datetime.utcnow()
 
     db.commit()

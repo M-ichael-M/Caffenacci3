@@ -9,11 +9,13 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.cafe import Cafe
+from app.models.client import Client
 from app.models.menu import MenuItem, MenuSection
 from app.models.order import Order, OrderItem, OrderSettings, OrderStatus
+from app.routers.client_auth import get_current_client
 from app.schemas.order import (
     OrderSettingsIn, OrderSettingsOut,
-    PublicOrderIn, PublicOrderCancelIn,
+    PublicOrderIn, PublicOrderCancelIn, ClientOrderIn,
     OrderStatusUpdate, OrderOut, OrderListOut,
     MAX_ORDER_DAYS_AHEAD,
 )
@@ -22,7 +24,7 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 bearer_scheme = HTTPBearer()
 
 
-# ── Auth helper ────────────────────────────────────────────────────────────
+# ── Auth helper (właściciel) ─────────────────────────────────────────────────
 
 def get_current_cafe(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
@@ -109,7 +111,7 @@ def save_settings(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PUBLICZNY ENDPOINT — klient składa zamówienie
+# PUBLICZNY ENDPOINT — klient składa zamówienie (bez logowania)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post(
@@ -137,6 +139,61 @@ def create_public_order(
         cafe_id     = cafe_id,
         client_nick = payload.client_nick,
         client_id   = payload.client_id,
+        date        = payload.date,
+        start_time  = payload.start_time,
+        status      = OrderStatus.pending,
+    )
+
+    total = 0.0
+    for item_in in payload.items:
+        name, price = _resolve_item(cafe_id, item_in, db)
+        total += price * item_in.quantity
+        order.items.append(OrderItem(
+            menu_item_id = item_in.menu_item_id,
+            name         = name,
+            price        = price,
+            quantity     = item_in.quantity,
+        ))
+    order.total_value = round(total, 2)
+
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ZAMÓWIENIE OD ZALOGOWANEGO KLIENTA — wygenerowana strona kawiarni
+# ══════════════════════════════════════════════════════════════════════════════
+# client_nick / client_id NIE są przyjmowane z ciała żądania — pochodzą
+# z tokenu JWT klienta, dzięki czemu nie da się złożyć zamówienia "pod kogoś".
+
+@router.post(
+    "/client/{cafe_id}",
+    response_model=OrderOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Złóż zamówienie jako zalogowany klient",
+)
+def create_order_as_client(
+    cafe_id: str,
+    payload: ClientOrderIn,
+    current_client: Client  = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+    if not cafe:
+        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
+
+    settings = db.query(OrderSettings).filter(OrderSettings.cafe_id == cafe_id).first()
+    if not settings or not settings.enabled:
+        raise HTTPException(400, detail="Ta kawiarnia nie przyjmuje zamówień online.")
+
+    _validate_order_date(payload.date)
+
+    order = Order(
+        cafe_id     = cafe_id,
+        client_nick = current_client.nick,
+        client_id   = current_client.id,
         date        = payload.date,
         start_time  = payload.start_time,
         status      = OrderStatus.pending,

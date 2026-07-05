@@ -67,7 +67,7 @@ class ReservationSettingsOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── Rezerwacja publiczna (od klienta) ─────────────────────────────────────
+# ── Rezerwacja publiczna (od klienta, bez logowania) ──────────────────────
 
 class PublicReservationIn(BaseModel):
     """Formularz klienta — prosty, bez wyboru stolika."""
@@ -75,6 +75,19 @@ class PublicReservationIn(BaseModel):
     start_time:  str  = Field(..., pattern=r"^\d{2}:\d{2}$")
     guests:      int  = Field(..., ge=1, le=50)
     guest_name:  str  = Field(..., min_length=2, max_length=150)
+    guest_phone: Optional[str] = Field(None, max_length=30)
+    guest_email: Optional[str] = Field(None, max_length=255)
+    comment:     Optional[str] = Field(None, max_length=1000)
+
+
+# ── Rezerwacja od zalogowanego klienta (strona kawiarni) ──────────────────
+# guest_name pochodzi z profilu klienta (nie da się podać czyichś danych),
+# telefon/email można nadpisać jeśli klient chce podać inny kontakt.
+
+class ClientReservationIn(BaseModel):
+    date:        str  = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
+    start_time:  str  = Field(..., pattern=r"^\d{2}:\d{2}$")
+    guests:      int  = Field(..., ge=1, le=50)
     guest_phone: Optional[str] = Field(None, max_length=30)
     guest_email: Optional[str] = Field(None, max_length=255)
     comment:     Optional[str] = Field(None, max_length=1000)

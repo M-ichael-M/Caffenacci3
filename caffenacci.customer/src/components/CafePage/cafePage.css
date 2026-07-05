@@ -1,0 +1,221 @@
+/* ════════════════════════════════════════════════
+   CAFE PAGE — wygenerowana strona publiczna kawiarni
+   ════════════════════════════════════════════════ */
+
+.cafe-page {
+  min-height: 100vh;
+  background: var(--cream);
+  color: var(--text-dark);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* ── Sticky nav ─────────────────────────────────── */
+
+.cp-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.cp-nav__link {
+  appearance: none; background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 0.875rem; font-weight: 500;
+  color: var(--text-muted); padding: 0.5rem 0.875rem; border-radius: 100px;
+  transition: background 0.15s, color 0.15s;
+}
+.cp-nav__link:hover { background: var(--cream); color: var(--text-dark); }
+
+.cp-account {
+  display: flex; align-items: center; gap: 0.625rem;
+}
+
+/* ── Hero ───────────────────────────────────────── */
+
+.cp-hero {
+  background: var(--espresso);
+  color: var(--parchment);
+  padding: 3.5rem 2rem;
+  text-align: center;
+}
+
+.cp-hero__logo {
+  width: 96px; height: 96px; border-radius: 50%;
+  border: 3px solid var(--gold);
+  object-fit: cover;
+  margin: 0 auto 1.25rem;
+  background: var(--coffee);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem;
+}
+
+.cp-hero__name {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 2.5rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.5rem;
+}
+
+.cp-hero__address {
+  font-size: 0.9375rem;
+  color: rgba(240,228,204,0.65);
+}
+
+.cp-hero__status {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 4px 14px;
+  border-radius: 100px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.cp-hero__status--open   { background: rgba(46,125,50,0.18); color: #8FE39A; }
+.cp-hero__status--closed { background: rgba(184,50,50,0.18); color: #F0A0A0; }
+
+/* ── Main layout ───────────────────────────────── */
+
+.cp-main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.cp-section__title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem; font-weight: 600; color: var(--text-dark);
+  margin-bottom: 1rem; letter-spacing: -0.01em;
+}
+
+/* ── Menu / zamówienia ────────────────────────────── */
+
+.cp-menu-section { margin-bottom: 1.75rem; }
+.cp-menu-section:last-child { margin-bottom: 0; }
+
+.cp-menu-section__name {
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+}
+.cp-menu-items { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.cp-menu-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.875rem 0; border-bottom: 1px dashed var(--border);
+}
+.cp-menu-item:last-child { border-bottom: none; }
+.cp-menu-item--unavailable { opacity: 0.45; }
+
+.cp-menu-item__info { flex: 1; min-width: 0; }
+.cp-menu-item__name { font-size: 0.9375rem; font-weight: 600; color: var(--text-dark); display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+.cp-menu-item__desc { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.125rem; }
+.cp-menu-item__price { font-size: 0.875rem; font-weight: 600; color: var(--gold); margin-top: 0.25rem; }
+
+.cp-add-btn {
+  appearance: none; border: 1.5px solid var(--gold); background: transparent; color: var(--gold);
+  border-radius: 100px; padding: 0.4rem 0.9rem; font-size: 0.8125rem; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: all 0.15s; font-family: inherit;
+}
+.cp-add-btn:hover { background: var(--gold); color: #fff; }
+
+.cp-qty-stepper {
+  display: flex; align-items: center; gap: 0.625rem;
+  border: 1.5px solid var(--gold); border-radius: 100px; padding: 0.25rem 0.5rem;
+}
+.cp-qty-stepper button {
+  appearance: none; border: none; background: var(--gold); color: #fff; width: 22px; height: 22px;
+  border-radius: 50%; font-size: 0.9375rem; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;
+}
+.cp-qty-stepper span { min-width: 1rem; text-align: center; font-weight: 700; font-size: 0.875rem; }
+
+.cp-cart-bar {
+  position: sticky; bottom: 1rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  background: var(--espresso); color: var(--parchment);
+  border-radius: 100px; padding: 0.75rem 0.75rem 0.75rem 1.25rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  font-size: 0.9375rem; font-weight: 600; margin-top: 1.5rem;
+}
+
+.cp-muted-note { font-size: 0.875rem; color: var(--text-muted); font-style: italic; }
+
+/* ── Info grid / godziny / lokalizacja ───────────── */
+
+.cp-info-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 1.5rem;
+}
+
+.cp-hours-row { display: flex; justify-content: space-between; font-size: 0.875rem; padding: 0.3rem 0; }
+.cp-hours-row--today { font-weight: 700; color: var(--gold); }
+
+/* ── Social media ─────────────────────────────────── */
+
+.cp-social-links { display: flex; gap: 0.625rem; flex-wrap: wrap; }
+.cp-social-links a {
+  border: 1px solid var(--border); border-radius: 100px; padding: 0.4rem 0.9rem;
+  font-size: 0.8125rem; color: var(--text-dark); text-decoration: none;
+}
+.cp-social-links a:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── Zespół ───────────────────────────────────────── */
+
+.cp-team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 1rem; }
+.cp-team-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+.cp-team-card__name { font-weight: 700; color: var(--text-dark); font-size: 0.9375rem; }
+.cp-team-card__role { font-size: 0.75rem; color: var(--gold); text-transform: uppercase; letter-spacing: 0.08em; margin: 0.25rem 0; }
+.cp-team-card__bio { font-size: 0.8125rem; color: var(--text-muted); }
+
+/* ════════════════════════════════════════════════
+   SZABLON: NOWOCZESNY (modern)
+   ════════════════════════════════════════════════ */
+
+.cafe-page--modern .cp-hero {
+  text-align: left;
+  display: flex; align-items: center; gap: 1.5rem;
+  padding: 2.5rem 2.5rem;
+}
+.cafe-page--modern .cp-hero__logo { margin: 0; flex-shrink: 0; }
+.cafe-page--modern .cp-hero__name {
+  font-family: 'Inter', system-ui, sans-serif; font-style: normal; font-weight: 700; font-size: 2rem;
+}
+
+.cafe-page--modern .cp-main { max-width: 1120px; }
+
+.cafe-page--modern .cp-menu-items {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 0.875rem;
+}
+.cafe-page--modern .cp-menu-item {
+  flex-direction: column; align-items: stretch;
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 1rem; background: var(--surface);
+}
+.cafe-page--modern .cp-menu-item__price { font-size: 1rem; }
+.cafe-page--modern .cp-add-btn,
+.cafe-page--modern .cp-qty-stepper { margin-top: 0.75rem; align-self: flex-start; }
+
+.cafe-page--modern .cp-section__title {
+  font-family: 'Inter', system-ui, sans-serif; text-transform: uppercase;
+  letter-spacing: 0.08em; font-size: 1.0625rem;
+}
+
+.cafe-page--modern .cp-team-card,
+.cafe-page--modern .res-empty-card,
+.cafe-page--modern .info-card {
+  border-radius: 14px;
+}
+
+@media (max-width: 700px) {
+  .cp-main { padding: 1.5rem 1.25rem 3rem; }
+  .cp-hero { padding: 2.5rem 1.25rem; }
+  .cafe-page--modern .cp-hero { flex-direction: column; text-align: center; }
+  .cp-nav { padding: 0.625rem 0.875rem; }
+}

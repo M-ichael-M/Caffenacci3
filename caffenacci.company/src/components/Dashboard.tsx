@@ -4,6 +4,7 @@ import ReservationTab from './ReservationTab'
 import ProfileTab from './ProfileTab'
 import ReviewsTab from './ReviewsTab'
 import OrdersTab from './OrdersTab'
+import WebsiteTab from './WebsiteTab'
 
 interface AuthState {
   token: string
@@ -55,7 +56,7 @@ interface Props {
   onLogout: () => void
 }
 
-type TabId = 'overview' | 'menu' | 'orders' | 'reservations' | 'profile' | 'reviews'
+type TabId = 'overview' | 'menu' | 'orders' | 'reservations' | 'profile' | 'reviews' | 'website'
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'overview',      label: 'Przegląd',   icon: '🏠' },
@@ -64,6 +65,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'reservations', label: 'Rezerwacje',  icon: '📅' },
   { id: 'reviews',      label: 'Opinie',      icon: '⭐' },
   { id: 'profile',      label: 'Profil',      icon: '⚙' },
+  { id: 'website',      label: 'Strona WWW',  icon: '🌐' },
 ]
 
 export default function Dashboard({ auth, profile, loadingProfile, onLogout }: Props) {
@@ -312,6 +314,13 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                       >
                         ⚙ Uzupełnij profil kawiarni
                       </button>
+                      <button
+                        className="btn btn--outline-dark"
+                        style={{ width: '100%', padding: '0.75rem' }}
+                        onClick={() => setActiveTab('website')}
+                      >
+                        🌐 Skonfiguruj stronę WWW
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -421,6 +430,13 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
           {activeTab === 'profile' && (
             <div className="dashboard-content">
               <ProfileTab token={auth.token} />
+            </div>
+          )}
+
+          {/* STRONA WWW */}
+          {activeTab === 'website' && (
+            <div className="dashboard-content">
+              <WebsiteTab token={auth.token} cafeId={cafeId} />
             </div>
           )}
 

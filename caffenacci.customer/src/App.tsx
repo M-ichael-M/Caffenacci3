@@ -4,47 +4,21 @@ import RegisterForm from './components/RegisterForm'
 import AccountHome from './components/AccountHome'
 import HomePage from './components/HomePage'
 import TopBar from './components/TopBar'
+import CafePage from './components/CafePage/CafePage'
+import { loadClientAuth, saveClientAuth, clearClientAuth } from './authStorage'
+import type { ClientAuthState } from './authStorage'
 import './index.css'
 
 type View = 'home' | 'login' | 'register' | 'account'
 
-export interface ClientAuthState {
-  token: string
-  user_id: string
-  nick: string
-  full_name: string
-}
-
-const STORAGE_KEYS = {
-  token:     'caffenacci_client_token',
-  user_id:   'caffenacci_client_user_id',
-  nick:      'caffenacci_client_nick',
-  full_name: 'caffenacci_client_full_name',
-} as const
-
-function saveAuth(data: ClientAuthState) {
-  localStorage.setItem(STORAGE_KEYS.token,     data.token)
-  localStorage.setItem(STORAGE_KEYS.user_id,   data.user_id)
-  localStorage.setItem(STORAGE_KEYS.nick,      data.nick)
-  localStorage.setItem(STORAGE_KEYS.full_name, data.full_name)
-}
-
-function clearAuth() {
-  Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k))
-}
-
-function loadAuth(): ClientAuthState | null {
-  const token     = localStorage.getItem(STORAGE_KEYS.token)
-  const user_id   = localStorage.getItem(STORAGE_KEYS.user_id)
-  const nick      = localStorage.getItem(STORAGE_KEYS.nick)
-  const full_name = localStorage.getItem(STORAGE_KEYS.full_name)
-  if (token && user_id && nick && full_name) {
-    return { token, user_id, nick, full_name }
-  }
-  return null
+function getCafeIdFromPath(): string | null {
+  const m = window.location.pathname.match(/^\/cafe\/([^/]+)/)
+  return m ? decodeURIComponent(m[1]) : null
 }
 
 export default function App() {
+  const cafeIdFromUrl = getCafeIdFromPath()
+
   const [view, setView] = useState<View>('home')
   const [auth, setAuth] = useState<ClientAuthState | null>(null)
   const [registerSuccess, setRegisterSuccess] = useState(false)
@@ -53,7 +27,7 @@ export default function App() {
   // Przywróć sesję przy starcie — strona główna zostaje stroną główną
   // niezależnie od tego, czy user jest zalogowany.
   useEffect(() => {
-    const stored = loadAuth()
+    const stored = loadClientAuth()
     if (!stored) {
       setCheckingSession(false)
       return
@@ -66,7 +40,7 @@ export default function App() {
         if (res.ok) {
           setAuth(stored)
         } else {
-          clearAuth()
+          clearClientAuth()
         }
       })
       .catch(() => {
@@ -87,7 +61,7 @@ export default function App() {
       nick:      data.nick,
       full_name: data.full_name,
     }
-    saveAuth(state)
+    saveClientAuth(state)
     setAuth(state)
     setView('account')
   }
@@ -98,7 +72,7 @@ export default function App() {
   }
 
   function handleLogout() {
-    clearAuth()
+    clearClientAuth()
     setAuth(null)
     setView('home')
   }
@@ -109,6 +83,13 @@ export default function App() {
         <div className="loading-spinner" />
       </div>
     )
+  }
+
+  // ── Wygenerowana strona kawiarni (/cafe/:id) ────────────────────────
+  // Dostępna niezależnie od reszty widoków aplikacji — to osobna,
+  // publiczna strona składana na podstawie ustawień właściciela.
+  if (cafeIdFromUrl) {
+    return <CafePage cafeId={cafeIdFromUrl} />
   }
 
   // ── Logowanie ──────────────────────────────────
