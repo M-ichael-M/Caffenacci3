@@ -67,10 +67,11 @@ class ReservationSettingsOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── Rezerwacja publiczna (od klienta, bez logowania) ──────────────────────
+# ── Rezerwacja publiczna (od klienta, bez logowania) — WYŁĄCZNIE simple ───
 
 class PublicReservationIn(BaseModel):
-    """Formularz klienta — prosty, bez wyboru stolika."""
+    """Formularz klienta bez konta — dozwolony tylko dla trybu simple,
+    bo nie zawiera wyboru stolika."""
     date:        str  = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     start_time:  str  = Field(..., pattern=r"^\d{2}:\d{2}$")
     guests:      int  = Field(..., ge=1, le=50)
@@ -80,11 +81,25 @@ class PublicReservationIn(BaseModel):
     comment:     Optional[str] = Field(None, max_length=1000)
 
 
-# ── Rezerwacja od zalogowanego klienta (strona kawiarni) ──────────────────
-# guest_name pochodzi z profilu klienta (nie da się podać czyichś danych),
-# telefon/email można nadpisać jeśli klient chce podać inny kontakt.
+# ── Rezerwacja od zalogowanego klienta — TRYB SIMPLE ──────────────────────
+# guest_name pochodzi z profilu klienta, brak wyboru stolika — zawsze pending.
 
 class ClientReservationIn(BaseModel):
+    date:        str  = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
+    start_time:  str  = Field(..., pattern=r"^\d{2}:\d{2}$")
+    guests:      int  = Field(..., ge=1, le=50)
+    guest_phone: Optional[str] = Field(None, max_length=30)
+    guest_email: Optional[str] = Field(None, max_length=255)
+    comment:     Optional[str] = Field(None, max_length=1000)
+
+
+# ── Rezerwacja od zalogowanego klienta — TRYB ADVANCED ────────────────────
+# Klient wybiera konkretny stolik i godzinę; backend waliduje dostępność
+# dokładnie tak samo jak przy rezerwacji zakładanej przez właściciela.
+# Zawsze od razu confirmed — brak jakiejkolwiek akceptacji.
+
+class ClientAdvancedReservationIn(BaseModel):
+    table_id:    str
     date:        str  = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     start_time:  str  = Field(..., pattern=r"^\d{2}:\d{2}$")
     guests:      int  = Field(..., ge=1, le=50)
@@ -108,7 +123,7 @@ class ReservationIn(BaseModel):
     client_id:   Optional[str] = None
 
 
-# ── Status update (akceptacja/odrzucenie) ─────────────────────────────────
+# ── Status update (akceptacja/odrzucenie — WYŁĄCZNIE simple) ─────────────
 
 class ReservationStatusUpdate(BaseModel):
     status:     ReservationStatusEnum  # confirmed | cancelled
@@ -143,3 +158,22 @@ class ReservationOut(BaseModel):
 class ReservationListOut(BaseModel):
     date:         Optional[str]
     reservations: List[ReservationOut]
+
+
+# ── Informacje publiczne dla widgetu klienta (tryb + stoliki + zajętość) ──
+
+class OccupiedSlotOut(BaseModel):
+    table_id:   str
+    start_time: str
+    end_time:   str
+    guests:     int   # potrzebne do liczenia wolnych miejsc przy stołach komunalnych
+
+
+class ReservationInfoOut(BaseModel):
+    cafe_id:               str
+    enabled:               bool
+    mode:                  str
+    slot_duration_minutes: int
+    tables:                List[CafeTableOut]   = []
+    hours:                 List[DayHoursOut]    = []
+    occupied:              List[OccupiedSlotOut] = []

@@ -18,7 +18,8 @@ from app.routers.client_auth import get_current_client
 from app.schemas.reservation import (
     ReservationSettingsIn, ReservationSettingsOut,
     ReservationIn, ReservationOut, ReservationListOut,
-    PublicReservationIn, ClientReservationIn, ReservationStatusUpdate,
+    PublicReservationIn, ClientReservationIn, ClientAdvancedReservationIn,
+    ReservationStatusUpdate, ReservationInfoOut, OccupiedSlotOut,
 )
 
 router = APIRouter(prefix="/reservations", tags=["reservations"])
@@ -90,6 +91,12 @@ def _reservation_to_out(r: Reservation) -> ReservationOut:
 def _to_minutes(t: str) -> int:
     h, m = t.split(":")
     return int(h) * 60 + int(m)
+
+
+def _from_minutes(m: int) -> str:
+    hh = str((m // 60) % 24).zfill(2)
+    mm = str(m % 60).zfill(2)
+    return f"{hh}:{mm}"
 
 
 def _day_of_week(date_str: str) -> int:
@@ -228,14 +235,84 @@ def save_settings(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PUBLICZNY ENDPOINT — klient składa rezerwację (bez logowania)
+# INFORMACJE PUBLICZNE — tryb, stoliki, godziny, zajętość (bez logowania)
+# ══════════════════════════════════════════════════════════════════════════════
+# Używane przez widget rezerwacji na stronie klienta, żeby wiedzieć:
+#   • w jakim trybie działa kawiarnia (simple / advanced),
+#   • jakie stoliki są dostępne w trybie advanced,
+#   • które terminy są już zajęte dla wybranej daty (do wyszarzenia w UI).
+
+@router.get(
+    "/info/{cafe_id}",
+    response_model=ReservationInfoOut,
+    summary="Publiczne informacje o rezerwacjach: tryb, stoliki, godziny, zajętość",
+)
+def get_reservation_info(
+    cafe_id: str,
+    date:    str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    db:      Session = Depends(get_db),
+):
+    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+    if not cafe:
+        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
+
+    s = (
+        db.query(ReservationSettings)
+        .options(
+            selectinload(ReservationSettings.tables),
+            selectinload(ReservationSettings.hours),
+        )
+        .filter(ReservationSettings.cafe_id == cafe_id)
+        .first()
+    )
+    if not s:
+        return ReservationInfoOut(
+            cafe_id=cafe_id, enabled=False, mode="simple",
+            slot_duration_minutes=60, tables=[], hours=[], occupied=[],
+        )
+
+    occupied: list[OccupiedSlotOut] = []
+    if date and s.enabled and s.mode == "advanced":
+        rows = (
+            db.query(Reservation)
+            .filter(
+                Reservation.cafe_id == cafe_id,
+                Reservation.date    == date,
+                Reservation.status  == ReservationStatus.confirmed,
+                Reservation.table_id.isnot(None),
+            )
+            .all()
+        )
+        for r in rows:
+            start_m = _to_minutes(r.start_time)
+            end_m   = start_m + s.slot_duration_minutes
+            occupied.append(OccupiedSlotOut(
+                table_id=r.table_id,
+                start_time=r.start_time,
+                end_time=_from_minutes(end_m),
+                guests=r.guests,
+            ))
+
+    return ReservationInfoOut(
+        cafe_id=cafe_id,
+        enabled=s.enabled,
+        mode=s.mode,
+        slot_duration_minutes=s.slot_duration_minutes,
+        tables=s.tables,
+        hours=s.hours,
+        occupied=occupied,
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PUBLICZNY ENDPOINT — klient składa rezerwację (bez logowania) — TRYB SIMPLE
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post(
     "/public/{cafe_id}",
     response_model=ReservationOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Złóż rezerwację jako klient (publiczny, simple mode)",
+    summary="Złóż rezerwację jako klient (publiczny, WYŁĄCZNIE simple mode)",
 )
 def create_public_reservation(
     cafe_id: str,
@@ -253,6 +330,12 @@ def create_public_reservation(
     )
     if not s or not s.enabled:
         raise HTTPException(400, detail="Ta kawiarnia nie przyjmuje rezerwacji online.")
+
+    if s.mode != "simple":
+        raise HTTPException(
+            400,
+            detail="Ta kawiarnia korzysta z zaawansowanego systemu rezerwacji — wymagany jest wybór stolika przez zalogowanego klienta.",
+        )
 
     y, mo, d = payload.date.split("-")
     if date_cls(int(y), int(mo), int(d)) < date_cls.today():
@@ -280,14 +363,14 @@ def create_public_reservation(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# REZERWACJA OD ZALOGOWANEGO KLIENTA — wygenerowana strona kawiarni
+# REZERWACJA OD ZALOGOWANEGO KLIENTA — TRYB SIMPLE (pending → akceptacja właściciela)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post(
     "/client/{cafe_id}",
     response_model=ReservationOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Złóż rezerwację jako zalogowany klient",
+    summary="Złóż rezerwację jako zalogowany klient (tryb simple — czeka na akceptację)",
 )
 def create_reservation_as_client(
     cafe_id: str,
@@ -302,6 +385,12 @@ def create_reservation_as_client(
     s = db.query(ReservationSettings).filter(ReservationSettings.cafe_id == cafe_id).first()
     if not s or not s.enabled:
         raise HTTPException(400, detail="Ta kawiarnia nie przyjmuje rezerwacji online.")
+
+    if s.mode != "simple":
+        raise HTTPException(
+            400,
+            detail="Ta kawiarnia korzysta z zaawansowanego systemu rezerwacji. Użyj POST /reservations/client/{cafe_id}/advanced.",
+        )
 
     y, mo, d = payload.date.split("-")
     if date_cls(int(y), int(mo), int(d)) < date_cls.today():
@@ -320,6 +409,73 @@ def create_reservation_as_client(
         client_id        = current_client.id,
         created_by_owner = False,
         status           = ReservationStatus.pending,
+    )
+    db.add(r)
+    db.commit()
+    db.refresh(r)
+
+    return _reservation_to_out(r)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# REZERWACJA OD ZALOGOWANEGO KLIENTA — TRYB ADVANCED (od razu confirmed)
+# ══════════════════════════════════════════════════════════════════════════════
+# Dokładnie ten sam mechanizm co przy rezerwacji zakładanej przez właściciela:
+# klient wybiera stolik + termin, backend waliduje dostępność (_validate_slot)
+# i od razu potwierdza. Brak statusu pending, brak akceptacji, brak jakiejkolwiek
+# zależności od trybu simple.
+
+@router.post(
+    "/client/{cafe_id}/advanced",
+    response_model=ReservationOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Złóż rezerwację jako zalogowany klient (tryb advanced — od razu potwierdzona)",
+)
+def create_advanced_reservation_as_client(
+    cafe_id: str,
+    payload: ClientAdvancedReservationIn,
+    current_client: Client  = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+    if not cafe:
+        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
+
+    s = (
+        db.query(ReservationSettings)
+        .options(selectinload(ReservationSettings.hours))
+        .filter(ReservationSettings.cafe_id == cafe_id)
+        .first()
+    )
+    if not s or not s.enabled or s.mode != "advanced":
+        raise HTTPException(400, detail="Ta kawiarnia nie obsługuje rezerwacji w trybie zaawansowanym.")
+
+    table = db.query(CafeTable).filter(
+        CafeTable.id == payload.table_id,
+        CafeTable.settings_id == s.id,
+    ).first()
+    if not table:
+        raise HTTPException(404, detail="Wybrany stolik nie istnieje.")
+
+    y, mo, d = payload.date.split("-")
+    if date_cls(int(y), int(mo), int(d)) < date_cls.today():
+        raise HTTPException(400, detail="Nie można rezerwować w przeszłości.")
+
+    _validate_slot(table, s, payload.date, payload.start_time, payload.guests, db)
+
+    r = Reservation(
+        table_id         = table.id,
+        cafe_id          = cafe_id,
+        date             = payload.date,
+        start_time       = payload.start_time,
+        guests           = payload.guests,
+        guest_name       = current_client.full_name,
+        guest_phone      = payload.guest_phone or current_client.phone,
+        guest_email      = payload.guest_email or current_client.email,
+        comment          = payload.comment,
+        client_id        = current_client.id,
+        created_by_owner = False,
+        status           = ReservationStatus.confirmed,  # advanced = od razu potwierdzone
     )
     db.add(r)
     db.commit()
@@ -361,13 +517,13 @@ def list_reservations(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ZMIANA STATUSU — akceptacja lub odrzucenie
+# ZMIANA STATUSU — akceptacja lub odrzucenie — WYŁĄCZNIE TRYB SIMPLE
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.patch(
     "/{reservation_id}/status",
     response_model=ReservationOut,
-    summary="Akceptuj lub odrzuć rezerwację",
+    summary="Akceptuj lub odrzuć rezerwację (tryb simple)",
 )
 def update_reservation_status(
     reservation_id: str,
@@ -406,7 +562,7 @@ def update_reservation_status(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TWORZENIE przez właściciela (zaawansowane)
+# TWORZENIE przez właściciela (zaawansowane) — bez zmian
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post(

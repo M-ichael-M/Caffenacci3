@@ -222,6 +222,7 @@ export default function CafePage({ cafeId }: Props) {
             <ReservationWidget
               cafeId={data.cafe_id}
               enabled={data.reservations_enabled}
+              mode={data.reservations_mode}
               requireLogin={requireLogin}
               authToken={auth?.token ?? null}
             />
