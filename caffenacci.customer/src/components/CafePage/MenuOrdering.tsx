@@ -173,7 +173,10 @@ export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireL
 
       {checkoutOpen && (
         <div className="menu-editor-overlay" onClick={e => { if (e.target === e.currentTarget) setCheckoutOpen(false) }}>
-          <div className="menu-editor" style={{ maxWidth: 480, height: 'auto', maxHeight: '88vh' }}>
+          {/* Bez inline height/maxHeight — korzystamy z domyślnych (hojniejszych)
+              wymiarów z .menu-editor w cafePage.css, żeby podsumowanie
+              zamówienia miało dość miejsca i nie wymagało ciągłego przewijania. */}
+          <div className="menu-editor" style={{ maxWidth: 480 }}>
             <div className="me-header">
               <div>
                 <div className="me-eyebrow">Podsumowanie</div>

@@ -6,13 +6,39 @@ interface Props {
   cafeId: string
 }
 
-const TEMPLATES: { key: 'classic' | 'modern'; label: string; desc: string }[] = [
-  { key: 'classic', label: 'Klasyczny', desc: 'Elegancki, kawiarniany styl — serifowa typografia, wyśrodkowany nagłówek, menu w formie listy.' },
-  { key: 'modern',  label: 'Nowoczesny', desc: 'Minimalistyczny układ — nagłówek z logo z boku, menu w formie kart w siatce, zaokrąglone elementy.' },
+// Musi odpowiadać ALLOWED_TEMPLATES w backend/app/schemas/site.py
+type SiteTemplate = 'classic' | 'modern' | 'magic' | 'usa80s' | 'expressive'
+
+const TEMPLATES: { key: SiteTemplate; label: string; desc: string }[] = [
+  {
+    key: 'classic',
+    label: 'Klasyczny',
+    desc: 'Elegancki, kawiarniany styl — serifowa typografia, złote zdobienia, symetryczny układ i przytulny, tradycyjny klimat.',
+  },
+  {
+    key: 'modern',
+    label: 'Nowoczesny',
+    desc: 'Minimalistyczny, płaski układ — ostre kąty, dużo światła, asymetryczny nagłówek i menu w formie kart w siatce.',
+  },
+  {
+    key: 'magic',
+    label: 'Magiczny',
+    desc: 'Mroczny, magiczny klimat inspirowany światem czarodziejów — świecące złote akcenty, unoszący się dym i migoczące gwiazdy.',
+  },
+  {
+    key: 'usa80s',
+    label: 'USA, lata 80.',
+    desc: 'Neonowy amerykański diner — jaskrawe kontury, retro siatka horyzontu w stylu synthwave i komiksowe cienie na przyciskach.',
+  },
+  {
+    key: 'expressive',
+    label: 'Ekspresyjny',
+    desc: 'Odważne, „żywe” kształty, duże fonty i sprężyste animacje — w duchu Material 3 Expressive od Google.',
+  },
 ]
 
 export default function WebsiteTab({ token, cafeId }: Props) {
-  const [template, setTemplate] = useState<'classic' | 'modern'>('classic')
+  const [template, setTemplate] = useState<SiteTemplate>('classic')
   const [palette, setPalette]   = useState('espresso-gold')
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
@@ -80,7 +106,8 @@ export default function WebsiteTab({ token, cafeId }: Props) {
         Wybierz wygląd swojej publicznej strony. Wszystkie funkcje, które włączyłeś — menu z zamówieniami,
         rezerwacje, opinie, dane kontaktowe, lokalizacja, zespół, social media — pojawią się na niej automatycznie
         i będą w pełni działać dla zalogowanych gości. Sekcje, których nie skonfigurowałeś lub nie włączyłeś,
-        po prostu się nie pojawią.
+        po prostu się nie pojawią. Każdy szablon wygląda kompletnie inaczej, ale korzysta z tej samej wybranej
+        przez Ciebie palety kolorów poniżej.
       </p>
 
       {saveMsg && (
@@ -139,6 +166,10 @@ export default function WebsiteTab({ token, cafeId }: Props) {
           <h2 className="info-card__title">Paleta kolorów</h2>
         </div>
         <div className="info-card__body">
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
+            Ta sama paleta jest używana we wszystkich szablonach — zmienia się tylko sposób, w jaki
+            kolory są wykorzystane (akcenty, tła, poświaty, cienie).
+          </p>
           <div style={{ display: 'flex', gap: '0.875rem', flexWrap: 'wrap' }}>
             {PALETTES.map(p => (
               <button

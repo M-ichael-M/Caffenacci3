@@ -253,19 +253,11 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
                 title={s.reason}
                 disabled={!s.available}
                 onClick={() => setStartTime(s.time)}
-                style={{
-                  appearance: 'none',
-                  border: `1.5px solid ${startTime === s.time ? 'var(--gold)' : 'var(--border)'}`,
-                  background: startTime === s.time ? 'var(--gold)' : (s.available ? 'transparent' : 'var(--border)'),
-                  color: startTime === s.time ? '#fff' : (s.available ? 'var(--text-dark)' : 'var(--text-muted)'),
-                  borderRadius: 6,
-                  padding: '0.375rem 0.625rem',
-                  fontSize: '0.8125rem',
-                  fontFamily: 'inherit',
-                  fontWeight: 600,
-                  cursor: s.available ? 'pointer' : 'not-allowed',
-                  opacity: s.available ? 1 : 0.5,
-                }}
+                className={
+                  'cp-slot-btn' +
+                  (startTime === s.time ? ' cp-slot-btn--selected' : '') +
+                  (!s.available ? ' cp-slot-btn--unavailable' : '')
+                }
               >
                 {s.time}
               </button>

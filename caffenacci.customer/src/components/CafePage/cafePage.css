@@ -1,5 +1,25 @@
-/* ════════════════════════════════════════════════
+/* ════════════════════════════════════════════════════════════════════════
    CAFE PAGE — wygenerowana strona publiczna kawiarni
+   Plik: caffenacci.customer/src/components/CafePage/cafePage.css
+
+   Struktura pliku:
+   1. Fonty dodatkowe (motywy magic / usa80s / expressive)
+   2. Bazowy layout strony (nav, hero, sekcje) — wspólny dla wszystkich motywów
+   3. Elementy, których wcześniej brakowało w CSS (modal, pola formularzy,
+      karty pustych stanów, opinie, pozycje zamówienia, odznaki menu)
+   4. Pływający przycisk powrotu na stronę główną Caffenacci
+   5. Motyw: classic
+   6. Motyw: modern
+   7. Motyw: magic
+   8. Motyw: usa80s
+   9. Motyw: expressive
+   10. Responsywność + prefers-reduced-motion
+   ════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Bungee&family=Fredoka:wght@400;500;600;700&display=swap');
+
+/* ════════════════════════════════════════════════
+   1. BAZOWY LAYOUT
    ════════════════════════════════════════════════ */
 
 .cafe-page {
@@ -7,6 +27,7 @@
   background: var(--cream);
   color: var(--text-dark);
   font-family: 'Inter', system-ui, sans-serif;
+  position: relative;
 }
 
 /* ── Sticky nav ─────────────────────────────────── */
@@ -22,6 +43,7 @@
   position: sticky;
   top: 0;
   z-index: 20;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .cp-nav__link {
@@ -43,6 +65,9 @@
   color: var(--parchment);
   padding: 3.5rem 2rem;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .cp-hero__logo {
@@ -53,6 +78,8 @@
   background: var(--coffee);
   display: flex; align-items: center; justify-content: center;
   font-size: 2rem;
+  position: relative;
+  z-index: 2;
 }
 
 .cp-hero__name {
@@ -62,11 +89,15 @@
   font-size: 2.5rem;
   letter-spacing: -0.01em;
   margin-bottom: 0.5rem;
+  position: relative;
+  z-index: 2;
 }
 
 .cp-hero__address {
   font-size: 0.9375rem;
   color: rgba(240,228,204,0.65);
+  position: relative;
+  z-index: 2;
 }
 
 .cp-hero__status {
@@ -76,6 +107,8 @@
   border-radius: 100px;
   font-size: 0.8125rem;
   font-weight: 600;
+  position: relative;
+  z-index: 2;
 }
 .cp-hero__status--open   { background: rgba(46,125,50,0.18); color: #8FE39A; }
 .cp-hero__status--closed { background: rgba(184,50,50,0.18); color: #F0A0A0; }
@@ -111,6 +144,7 @@
 .cp-menu-item {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
   padding: 0.875rem 0; border-bottom: 1px dashed var(--border);
+  transition: background 0.15s ease;
 }
 .cp-menu-item:last-child { border-bottom: none; }
 .cp-menu-item--unavailable { opacity: 0.45; }
@@ -148,6 +182,21 @@
 
 .cp-muted-note { font-size: 0.875rem; color: var(--text-muted); font-style: italic; }
 
+/* ── Odznaki pozycji menu ─────────────────────────── */
+
+.menu-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border-radius: 100px;
+  padding: 1px 6px;
+  line-height: 1.6;
+  vertical-align: middle;
+}
+.menu-badge--vege    { background: #E8F5E9; color: #2E7D32; }
+.menu-badge--hot     { background: #FFF5F5; color: #B83232; }
+.menu-badge--unavail { background: #F5F5F5; color: #7A6050; }
+
 /* ── Info grid / godziny / lokalizacja ───────────── */
 
 .cp-info-grid {
@@ -163,59 +212,1177 @@
 .cp-social-links a {
   border: 1px solid var(--border); border-radius: 100px; padding: 0.4rem 0.9rem;
   font-size: 0.8125rem; color: var(--text-dark); text-decoration: none;
+  transition: all 0.15s ease;
 }
 .cp-social-links a:hover { border-color: var(--gold); color: var(--gold); }
 
 /* ── Zespół ───────────────────────────────────────── */
 
 .cp-team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 1rem; }
-.cp-team-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+.cp-team-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 1rem; text-align: center; transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
 .cp-team-card__name { font-weight: 700; color: var(--text-dark); font-size: 0.9375rem; }
 .cp-team-card__role { font-size: 0.75rem; color: var(--gold); text-transform: uppercase; letter-spacing: 0.08em; margin: 0.25rem 0; }
 .cp-team-card__bio { font-size: 0.8125rem; color: var(--text-muted); }
 
+
 /* ════════════════════════════════════════════════
-   SZABLON: NOWOCZESNY (modern)
+   3. ELEMENTY WCZEŚNIEJ NIESTYLOWANE
+   (modal, formularze, puste stany, opinie, zamówienia)
    ════════════════════════════════════════════════ */
+
+/* ── Modal: WYŚRODKOWANY na ekranie (nie „pod” stroną) ─────────────── */
+
+.menu-editor-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 10, 4, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 300;
+  display: flex;
+  /* Celowo BEZ align-items/justify-content: align-items:center na
+     przewijalnym kontenerze obcina górę wysokiej zawartości (nie da się
+     do niej doscrollować) — to była przyczyna „za małego” modala
+     podsumowania zamówienia. margin:auto na .menu-editor centruje bez
+     tego efektu i pozwala normalnie przewinąć całość. */
+  width: 100%;
+  min-height: 100%;
+  padding: 2rem 1.5rem;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.menu-editor {
+  width: 100%;
+  max-width: 540px;
+  max-height: min(92vh, 860px);
+  background: var(--cream);
+  border-radius: 16px;
+  /* Grid (nie flex!) z jawnym auto / 1fr / auto — środkowy wiersz
+     dostaje CAŁĄ pozostałą wysokość i sam się przewija. Przy flex +
+     wysokości "auto" (tylko max-height jako górny limit) środkowa
+     sekcja czasem dostawała tylko wysokość jednej linijki tekstu. */
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(17, 10, 4, 0.35);
+  margin: auto;
+}
+
+.me-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.5rem 1.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--espresso);
+}
+
+.me-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 0.25rem;
+}
+
+.me-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--parchment);
+  letter-spacing: -0.01em;
+}
+
+.me-close {
+  appearance: none;
+  background: none;
+  border: 1.5px solid rgba(240, 228, 204, 0.2);
+  color: rgba(240, 228, 204, 0.55);
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+  transition: all 0.15s;
+}
+.me-close:hover {
+  border-color: rgba(240, 228, 204, 0.5);
+  color: var(--parchment);
+}
+
+.me-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.5rem 1.75rem;
+}
+
+.me-footer {
+  border-top: 1px solid var(--border);
+  padding: 1.125rem 1.75rem;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  background: var(--surface);
+}
+
+.me-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.875rem;
+  align-items: center;
+}
+
+.btn--outline-dark {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1.5px solid var(--border);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  border-radius: 4px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn--outline-dark:hover {
+  border-color: var(--text-muted);
+  color: var(--text-dark);
+}
+
+/* ── Pola formularzy w stylu „me-*” (rezerwacje / opinie / zamówienia) ── */
+
+.me-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.me-input {
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--border);
+  border-radius: 0;
+  padding: 0.5rem 0;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--text-dark);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.me-input:focus { border-bottom-color: var(--gold); }
+.me-input::placeholder { color: var(--text-muted); opacity: 0.55; }
+select.me-input { cursor: pointer; }
+
+/* ── Przyciski slotów godzinowych (wybór stolika — tryb zaawansowany) ──
+   Wcześniej kolory były wpisane inline w komponencie (m.in. var(--text-dark)
+   na przezroczystym tle), więc żaden motyw nie mógł ich sensownie
+   przestylować — na ciemnych motywach tekst był niewidoczny. */
+.cp-slot-btn {
+  appearance: none;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text-dark);
+  border-radius: 6px;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.cp-slot-btn:hover:not(:disabled):not(.cp-slot-btn--selected) { border-color: var(--gold); color: var(--gold); }
+.cp-slot-btn--selected {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #fff;
+}
+.cp-slot-btn--unavailable {
+  background: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ── Karta „pustego stanu” (np. rezerwacje wyłączone) ────────────────── */
+
+.res-empty-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.res-empty-icon { font-size: 2.25rem; margin-bottom: 0.375rem; opacity: 0.7; }
+.res-empty-title { font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 600; color: var(--text-dark); }
+.res-empty-sub { font-size: 0.875rem; color: var(--text-muted); max-width: 40ch; line-height: 1.6; }
+
+/* ── Karta formularza otwartego inline (rezerwacja / opinia) ─────────── */
+
+.res-table-row {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem 1.375rem;
+  background: var(--surface);
+}
+
+/* ── Opinie ───────────────────────────────────────────────────────────── */
+
+.rv-summary {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem 1.75rem;
+  flex-wrap: wrap;
+}
+
+.rv-summary__score {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  line-height: 1;
+}
+
+.rv-summary__details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.rv-summary__count {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.rv-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rv-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.rv-card__nick { font-size: 0.9375rem; font-weight: 600; color: var(--text-dark); }
+.rv-card__comment { font-size: 0.875rem; color: var(--text-body); line-height: 1.6; font-style: italic; }
+.rv-card__date { font-size: 0.75rem; color: var(--text-muted); }
+
+/* ── Pozycje w podsumowaniu zamówienia ────────────────────────────────── */
+
+.ord-item-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-body);
+}
+.ord-item-row__qty { flex-shrink: 0; font-weight: 700; color: var(--gold); min-width: 1.75rem; }
+.ord-item-row__name { flex: 1; min-width: 0; }
+.ord-item-row__price { flex-shrink: 0; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+
+/* ════════════════════════════════════════════════
+   4. PŁYWAJĄCY PRZYCISK — POWRÓT DO CAFFENACCI
+   ════════════════════════════════════════════════ */
+
+.cp-home-fab {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--espresso);
+  color: var(--parchment);
+  border: none;
+  border-radius: 100px;
+  padding: 0.75rem 1.125rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease;
+}
+.cp-home-fab:hover { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(0,0,0,0.34); }
+.cp-home-fab:active { transform: translateY(-1px) scale(0.97); }
+.cp-home-fab__icon { font-size: 1rem; line-height: 1; }
+.cp-home-fab__label { white-space: nowrap; }
+
+
+/* ════════════════════════════════════════════════
+   5. MOTYW: CLASSIC
+   Eleganckie, tradycyjne, przytulne — serif, złote
+   zdobienia, symetryczne, spokojne dywidery.
+   ════════════════════════════════════════════════ */
+
+.cafe-page--classic .cp-hero {
+  border-bottom: 6px double var(--gold);
+}
+.cafe-page--classic .cp-hero__logo {
+  box-shadow: 0 0 0 3px var(--espresso), 0 0 0 6px rgba(181,114,10,0.55);
+}
+.cafe-page--classic .cp-nav {
+  font-family: 'Playfair Display', serif;
+}
+.cafe-page--classic .cp-nav__brand,
+.cafe-page--classic .top-bar__brand {
+  font-style: italic;
+}
+
+.cafe-page--classic .cp-section__title {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  color: var(--text-dark);
+}
+.cafe-page--classic .cp-section__title::before,
+.cafe-page--classic .cp-section__title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border) 30%, var(--border) 70%, transparent);
+}
+
+.cafe-page--classic .cp-main > section {
+  position: relative;
+}
+.cafe-page--classic .cp-main > section + section {
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+.cafe-page--classic .cp-main > section + section::before {
+  content: '❖';
+  position: absolute;
+  top: -0.7em;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--cream);
+  color: var(--gold);
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+}
+
+.cafe-page--classic .info-card,
+.cafe-page--classic .res-empty-card,
+.cafe-page--classic .res-table-row,
+.cafe-page--classic .rv-card,
+.cafe-page--classic .cp-team-card {
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(17,10,4,0.05);
+}
+
+.cafe-page--classic .btn--primary {
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.8125rem;
+}
+
+.cafe-page--classic .menu-editor {
+  border-radius: 4px;
+}
+.cafe-page--classic .me-title { font-style: italic; }
+
+
+/* ════════════════════════════════════════════════
+   6. MOTYW: MODERN
+   Minimalistyczne — płaskie, geometryczne, dużo
+   światła, ostre krawędzie, wyrazista typografia sans.
+   ════════════════════════════════════════════════ */
+
+.cafe-page--modern {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.cafe-page--modern .cp-nav {
+  border-bottom: 1px solid var(--text-dark);
+  background: var(--cream);
+}
+.cafe-page--modern .cp-nav__link { border-radius: 0; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.06em; }
+.cafe-page--modern .cp-nav__link:hover { background: none; text-decoration: underline; text-underline-offset: 4px; }
 
 .cafe-page--modern .cp-hero {
   text-align: left;
-  display: flex; align-items: center; gap: 1.5rem;
-  padding: 2.5rem 2.5rem;
+  display: flex; align-items: center; gap: 2rem;
+  padding: 4rem 2.5rem;
+  border-bottom: 3px solid var(--gold);
 }
-.cafe-page--modern .cp-hero__logo { margin: 0; flex-shrink: 0; }
+.cafe-page--modern .cp-hero__logo { margin: 0; flex-shrink: 0; border-radius: 4px; border: none; }
 .cafe-page--modern .cp-hero__name {
-  font-family: 'Inter', system-ui, sans-serif; font-style: normal; font-weight: 700; font-size: 2rem;
+  font-family: 'Inter', system-ui, sans-serif; font-style: normal; font-weight: 800;
+  font-size: 2.5rem; letter-spacing: -0.03em;
 }
+.cafe-page--modern .cp-hero__status { border-radius: 0; }
 
-.cafe-page--modern .cp-main { max-width: 1120px; }
+.cafe-page--modern .cp-main { max-width: 1120px; gap: 4rem; padding-top: 4rem; }
+
+.cafe-page--modern .cp-section__title {
+  font-family: 'Inter', system-ui, sans-serif; text-transform: uppercase;
+  letter-spacing: 0.1em; font-size: 0.8125rem; font-weight: 800;
+  color: var(--text-dark);
+  border-bottom: 3px solid var(--text-dark);
+  /* display:table (nie inline-block!) — kurczy się do szerokości tekstu
+     tak samo jak inline-block, ale jest blokiem, więc kolejny element
+     (np. przycisk „Zarezerwuj stolik”) zawsze wyląduje w nowej linii
+     zamiast wchodzić w tę samą linijkę co nagłówek. */
+  display: table;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
 
 .cafe-page--modern .cp-menu-items {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 0.875rem;
 }
 .cafe-page--modern .cp-menu-item {
   flex-direction: column; align-items: stretch;
-  border: 1px solid var(--border); border-radius: 10px;
-  padding: 1rem; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 0;
+  padding: 1.125rem; background: var(--surface);
 }
 .cafe-page--modern .cp-menu-item__price { font-size: 1rem; }
 .cafe-page--modern .cp-add-btn,
-.cafe-page--modern .cp-qty-stepper { margin-top: 0.75rem; align-self: flex-start; }
+.cafe-page--modern .cp-qty-stepper { margin-top: 0.75rem; align-self: flex-start; border-radius: 0; }
+.cafe-page--modern .cp-qty-stepper button { border-radius: 0; }
 
-.cafe-page--modern .cp-section__title {
-  font-family: 'Inter', system-ui, sans-serif; text-transform: uppercase;
-  letter-spacing: 0.08em; font-size: 1.0625rem;
-}
-
-.cafe-page--modern .cp-team-card,
+.cafe-page--modern .info-card,
 .cafe-page--modern .res-empty-card,
-.cafe-page--modern .info-card {
-  border-radius: 14px;
+.cafe-page--modern .res-table-row,
+.cafe-page--modern .rv-card,
+.cafe-page--modern .cp-team-card,
+.cafe-page--modern .menu-editor {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: 1px solid var(--border);
 }
+
+.cafe-page--modern .btn--primary {
+  border-radius: 0;
+  background: var(--text-dark);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 1rem 1.75rem;
+}
+.cafe-page--modern .btn--outline-dark { border-radius: 0; }
+.cafe-page--modern .cp-add-btn { border-radius: 0; }
+.cafe-page--modern .cp-social-links a,
+.cafe-page--modern .menu-badge,
+.cafe-page--modern .cp-hero__status { border-radius: 0; }
+
+.cafe-page--modern .cp-home-fab { border-radius: 0; box-shadow: none; border: 1.5px solid var(--parchment); }
+
+
+/* ════════════════════════════════════════════════
+   7. MOTYW: MAGIC
+   Mroczny, magiczny klimat — świecące złoto, dym,
+   migoczące gwiazdy, zaklęte karty niczym ze
+   spellbooka.
+   ════════════════════════════════════════════════ */
+
+.cafe-page--magic {
+  background: var(--espresso);
+  color: var(--parchment);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.cafe-page--magic .cp-main,
+.cafe-page--magic .cp-hours-row,
+.cafe-page--magic .cp-team-card__name,
+.cafe-page--magic .info-row__value,
+.cafe-page--magic .home-hero__title {
+  color: var(--parchment);
+}
+
+.cafe-page--magic .cp-nav {
+  background: rgba(17,10,4,0.88);
+  border-bottom: 1px solid rgba(181,114,10,0.35);
+  backdrop-filter: blur(10px);
+}
+.cafe-page--magic .cp-nav__link { color: rgba(240,228,204,0.65); }
+.cafe-page--magic .cp-nav__link:hover { color: var(--gold); background: rgba(181,114,10,0.12); }
+.cafe-page--magic .cp-account span { color: rgba(240,228,204,0.75); }
+
+.cafe-page--magic .cp-hero {
+  background:
+    radial-gradient(ellipse at 25% 15%, rgba(181,114,10,0.22), transparent 55%),
+    radial-gradient(ellipse at 80% 85%, rgba(240,228,204,0.10), transparent 55%),
+    var(--espresso);
+}
+.cafe-page--magic .cp-hero::before {
+  content: '';
+  position: absolute;
+  inset: -25%;
+  background-image:
+    radial-gradient(circle, rgba(240,228,204,0.55) 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(181,114,10,0.4) 1px, transparent 1.5px);
+  background-size: 160px 160px, 100px 100px;
+  background-position: 0 0, 45px 65px;
+  animation: magic-twinkle 5.5s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+.cafe-page--magic .cp-hero::after {
+  content: '';
+  position: absolute;
+  inset: -35%;
+  background:
+    radial-gradient(circle at 22% 35%, rgba(181,114,10,0.32), transparent 42%),
+    radial-gradient(circle at 78% 65%, rgba(240,228,204,0.18), transparent 45%),
+    radial-gradient(circle at 50% 90%, rgba(181,114,10,0.2), transparent 40%);
+  filter: blur(26px);
+  animation: magic-smoke 16s ease-in-out infinite alternate;
+  z-index: 0;
+  pointer-events: none;
+}
+.cafe-page--magic .cp-hero__logo {
+  border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(181,114,10,0.55), 0 0 40px rgba(181,114,10,0.25);
+}
+.cafe-page--magic .cp-hero__name {
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(181,114,10,0.55), 0 0 20px rgba(181,114,10,0.3);
+  animation: magic-glow 3.4s ease-in-out infinite;
+}
+.cafe-page--magic .cp-hero__address { color: rgba(240,228,204,0.6); }
+
+@keyframes magic-twinkle { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.8; } }
+@keyframes magic-smoke {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(5%, -4%) scale(1.18); }
+}
+@keyframes magic-glow {
+  0%, 100% { text-shadow: 0 0 8px rgba(181,114,10,0.5), 0 0 18px rgba(181,114,10,0.28); }
+  50%      { text-shadow: 0 0 18px rgba(181,114,10,0.9), 0 0 36px rgba(181,114,10,0.55); }
+}
+
+/* isolation:isolate sprawia, że ten element tworzy WŁASNY kontekst
+   warstwowania — dzięki temu z-index:-1 poniżej gwarantowanie ląduje
+   POD zwykłą (niepozycjonowaną) treścią strony, zamiast nad nią
+   (typowa pułapka: position:fixed + z-index:0 bez izolacji potrafi
+   wylądować NAD zwykłymi blokami, przez co „dym” był praktycznie
+   niewidoczny). */
+.cafe-page--magic { isolation: isolate; }
+
+/* Dym + gwiazdy unoszące się w tle CAŁEJ strony (nie tylko herosa) —
+   position:fixed pseudo-elementy pod resztą treści. */
+.cafe-page--magic::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 45% at 18% 15%, rgba(181,114,10,0.28), transparent 62%),
+    radial-gradient(ellipse 55% 40% at 82% 75%, rgba(240,228,204,0.16), transparent 62%),
+    radial-gradient(ellipse 50% 35% at 50% 100%, rgba(181,114,10,0.22), transparent 62%);
+  filter: blur(38px);
+  animation: magic-smoke-page 26s ease-in-out infinite alternate;
+}
+.cafe-page--magic::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgba(240,228,204,0.65) 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(181,114,10,0.45) 1px, transparent 1.5px);
+  background-size: 240px 240px, 150px 150px;
+  background-position: 0 0, 75px 95px;
+  opacity: 0.55;
+  animation: magic-twinkle-page 6.5s ease-in-out infinite;
+}
+@keyframes magic-smoke-page {
+  0%   { transform: translate(0,0) scale(1); }
+  100% { transform: translate(-3%, 3%) scale(1.1); }
+}
+@keyframes magic-twinkle-page { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.7; } }
+
+/* Różdżka zamiast zwykłego kursora (tylko na urządzeniach z myszką).
+   Ważne: musimy nadpisać * (przyciski/linki same ustawiają cursor:pointer,
+   który normalnie „wygrywa” z odziedziczonym kursorem rodzica) — stąd
+   !important, żeby różdżka została nawet nad klikalnymi elementami. */
+@media (pointer: fine) {
+  .cafe-page--magic,
+  .cafe-page--magic * {
+    cursor:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30'><line x1='5' y1='26' x2='23' y2='6' stroke='%23110A04' stroke-width='4' stroke-linecap='round'/><line x1='5' y1='26' x2='23' y2='6' stroke='%23B5720A' stroke-width='2' stroke-linecap='round'/><path d='M24 2 L26 8 L24 13 L22 8 Z' fill='%23F0E4CC'/><circle cx='24' cy='8' r='2.2' fill='%23F0E4CC'/></svg>")
+      24 8, auto !important;
+  }
+}
+
+
+/* Warstwa iskier pojawiających się przy kliknięciu (elementy dopisywane
+   z JS w CafePage.tsx — patrz .cp-spark-layer / .cp-spark). */
+.cp-spark-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 310;
+  pointer-events: none;
+}
+.cp-spark {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gold, #B5720A) 0%, rgba(181,114,10,0) 70%);
+  transform: translate(var(--x), var(--y));
+  animation: spark-burst 0.85s ease-out forwards;
+}
+@keyframes spark-burst {
+  0%   { transform: translate(var(--x), var(--y)) scale(1);   opacity: 1; }
+  100% { transform: translate(calc(var(--x) + var(--dx)), calc(var(--y) + var(--dy))) scale(0); opacity: 0; }
+}
+
+.cafe-page--magic .cp-section__title {
+  font-family: 'Cinzel', 'Playfair Display', serif;
+  font-weight: 700;
+  color: var(--gold);
+  text-shadow: 0 0 10px rgba(181,114,10,0.35);
+  letter-spacing: 0.02em;
+}
+.cafe-page--magic .cp-section__title::before { content: '✦ '; }
+.cafe-page--magic .cp-section__title::after  { content: ' ✦'; }
+
+/* „Księga” menu — pergaminowy panel z grzbietem na środku. */
+.cafe-page--magic .cp-menu {
+  position: relative;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,0.28) 0%, transparent 5%, transparent 95%, rgba(0,0,0,0.28) 100%),
+    radial-gradient(ellipse at center, rgba(240,228,204,0.06), transparent 72%);
+  border: 1px solid rgba(181,114,10,0.35);
+  border-radius: 8px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 24px 55px rgba(0,0,0,0.5), inset 0 0 70px rgba(0,0,0,0.35);
+}
+.cafe-page--magic .cp-menu::before {
+  content: '';
+  position: absolute;
+  top: 6%;
+  bottom: 6%;
+  left: 50%;
+  width: 2px;
+  background: linear-gradient(rgba(181,114,10,0), rgba(181,114,10,0.55), rgba(181,114,10,0));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Karty / panele ogólnie — teraz z kolorem tekstu i przestrzenią */
+.cafe-page--magic .info-card,
+.cafe-page--magic .res-empty-card,
+.cafe-page--magic .res-table-row,
+.cafe-page--magic .rv-card,
+.cafe-page--magic .rv-summary,
+.cafe-page--magic .cp-team-card {
+  background: rgba(240,228,204,0.05);
+  border: 1px solid rgba(181,114,10,0.35);
+  box-shadow: 0 0 22px rgba(181,114,10,0.08), inset 0 0 24px rgba(181,114,10,0.03);
+  color: var(--parchment);
+}
+
+/* Pozycje menu jako osobne „karty księgi” z odpowiednim marginesem —
+   wcześniej stały zbyt blisko siebie i tekst dotykał krawędzi. */
+.cafe-page--magic .cp-menu-items { gap: 0.875rem; }
+.cafe-page--magic .cp-menu-item {
+  background: rgba(240,228,204,0.04);
+  border: 1px solid rgba(181,114,10,0.28);
+  border-radius: 8px;
+  box-shadow: inset 0 0 18px rgba(181,114,10,0.05);
+  color: var(--parchment);
+  padding: 1.125rem 1.375rem;
+  margin-bottom: 0;
+}
+.cafe-page--magic .cp-menu-item__name  { color: var(--parchment); }
+.cafe-page--magic .cp-menu-item__desc,
+.cafe-page--magic .cp-team-card__bio,
+.cafe-page--magic .rv-card__comment { color: rgba(240,228,204,0.65); }
+.cafe-page--magic .cp-menu-section__name { border-bottom-color: rgba(181,114,10,0.3); }
+.cafe-page--magic .cp-muted-note { color: rgba(240,228,204,0.55); }
+
+/* Teksty, które zakładały jasne tło (nagłówki opinii, liczby, formularze,
+   pola „me-*”) — na ciemnym tle magic były praktycznie niewidoczne. */
+.cafe-page--magic .rv-summary__score,
+.cafe-page--magic .rv-card__nick,
+.cafe-page--magic .res-empty-title,
+.cafe-page--magic .form-title {
+  color: var(--parchment);
+}
+.cafe-page--magic .rv-summary__count,
+.cafe-page--magic .rv-card__date,
+.cafe-page--magic .res-empty-sub,
+.cafe-page--magic .me-label,
+.cafe-page--magic .field__label,
+.cafe-page--magic .form-subtitle,
+.cafe-page--magic .form-switch,
+.cafe-page--magic .checkbox-field__label {
+  color: rgba(240,228,204,0.62);
+}
+.cafe-page--magic .me-input,
+.cafe-page--magic .field__input {
+  color: var(--parchment);
+  border-bottom-color: rgba(181,114,10,0.4);
+  /* color-scheme:dark każe przeglądarce narysować natywne kontrolki
+     (m.in. ikonkę kalendarza/zegara w <input type="date"/"time">) w
+     jasnym wariancie pasującym do ciemnego tła — bez tego były czarne
+     na czarnym i praktycznie niewidoczne. */
+  color-scheme: dark;
+}
+.cafe-page--magic .me-input::placeholder,
+.cafe-page--magic .field__input::placeholder { color: rgba(240,228,204,0.35); }
+.cafe-page--magic .me-input:focus,
+.cafe-page--magic .field__input:focus { border-bottom-color: var(--gold); }
+.cafe-page--magic .checkbox-field__input { border-color: rgba(181,114,10,0.5); }
+
+/* Godziny przy wyborze stolika (tryb zaawansowany) — domyślny stan
+   zakładał ciemny tekst na jasnym tle i był niewidoczny na ciemnym
+   motywie magic. */
+.cafe-page--magic .cp-slot-btn {
+  color: var(--parchment);
+  border-color: rgba(181,114,10,0.4);
+  background: rgba(240,228,204,0.04);
+}
+.cafe-page--magic .cp-slot-btn:hover:not(:disabled):not(.cp-slot-btn--selected) {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.cafe-page--magic .cp-slot-btn--selected {
+  background: linear-gradient(135deg, var(--gold), var(--gold-hover));
+  color: var(--espresso);
+  box-shadow: 0 0 12px rgba(181,114,10,0.5);
+}
+.cafe-page--magic .cp-slot-btn--unavailable {
+  background: rgba(240,228,204,0.03);
+  color: rgba(240,228,204,0.3);
+  border-color: rgba(181,114,10,0.15);
+}
+
+/* Przyciski ze złotą poświatą i przebłyskiem światła na hover — jak
+   błysk różdżki. */
+.cafe-page--magic .btn--primary,
+.cafe-page--magic .cp-add-btn {
+  position: relative;
+  overflow: hidden;
+}
+.cafe-page--magic .btn--primary::after,
+.cafe-page--magic .cp-add-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+.cafe-page--magic .btn--primary:hover::after,
+.cafe-page--magic .cp-add-btn:hover::after { left: 130%; }
+.cafe-page--magic .btn--primary {
+  background: linear-gradient(135deg, var(--gold), var(--gold-hover));
+  color: var(--espresso);
+  border: none;
+  box-shadow: 0 0 16px rgba(181,114,10,0.5);
+}
+.cafe-page--magic .btn--primary:hover {
+  /* Redeklarujemy background na hover — bez tego bazowa reguła
+     .btn--primary:hover (ciemne tło) nakładała się na ciemny tekst
+     (var(--espresso)) i napis znikał. */
+  background: linear-gradient(135deg, var(--gold-hover), var(--gold));
+  color: var(--espresso);
+  box-shadow: 0 0 30px rgba(181,114,10,0.75);
+  transform: translateY(-2px);
+}
+.cafe-page--magic .btn--outline-dark { color: var(--parchment); border-color: rgba(181,114,10,0.45); }
+.cafe-page--magic .btn--outline-dark:hover { border-color: var(--gold); color: var(--gold); }
+
+.cafe-page--magic .cp-social-links a { border-color: rgba(181,114,10,0.4); color: var(--parchment); }
+.cafe-page--magic .cp-social-links a:hover { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px rgba(181,114,10,0.4); }
+
+.cafe-page--magic .menu-editor { background: var(--espresso); box-shadow: 0 0 60px rgba(181,114,10,0.25), 0 30px 70px rgba(0,0,0,0.5); }
+.cafe-page--magic .me-footer { background: rgba(240,228,204,0.03); border-top-color: rgba(181,114,10,0.25); }
+.cafe-page--magic .me-title { font-family: 'Cinzel', serif; }
+
+.cafe-page--magic .cp-home-fab {
+  background: var(--espresso);
+  border: 1px solid rgba(181,114,10,0.5);
+  box-shadow: 0 0 18px rgba(181,114,10,0.4);
+  animation: magic-fab-pulse 3s ease-in-out infinite;
+}
+@keyframes magic-fab-pulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(181,114,10,0.35); }
+  50%      { box-shadow: 0 0 26px rgba(181,114,10,0.65); }
+}
+
+
+/* ════════════════════════════════════════════════
+   8. MOTYW: USA '80s
+   Neonowy amerykański diner — jaskrawe kontury,
+   siatka horyzontu synthwave, komiksowe cienie.
+   ════════════════════════════════════════════════ */
+
+.cafe-page--usa80s {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--cream);
+}
+
+.cafe-page--usa80s .cp-nav {
+  background: var(--espresso);
+  border-bottom: 3px solid var(--gold);
+}
+.cafe-page--usa80s .cp-nav__link { color: rgba(240,228,204,0.75); text-transform: uppercase; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.05em; }
+.cafe-page--usa80s .cp-nav__link:hover { color: var(--espresso); background: var(--gold); }
+.cafe-page--usa80s .cp-account span { color: var(--parchment); }
+
+.cafe-page--usa80s .cp-hero {
+  background: linear-gradient(180deg, var(--coffee) 0%, var(--espresso) 60%);
+}
+.cafe-page--usa80s .cp-hero::before {
+  content: '';
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  width: 170px; height: 170px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: repeating-linear-gradient(var(--gold-hover) 0 8%, var(--gold) 8% 16%);
+  box-shadow: 0 0 40px rgba(181,114,10,0.6);
+  z-index: 0;
+  opacity: 0.9;
+}
+.cafe-page--usa80s .cp-hero::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -5%;
+  height: 55%;
+  background-image:
+    linear-gradient(var(--gold) 1px, transparent 1px),
+    linear-gradient(90deg, var(--gold) 1px, transparent 1px);
+  background-size: 44px 44px;
+  opacity: 0.3;
+  transform: perspective(220px) rotateX(58deg);
+  transform-origin: bottom;
+  animation: retro-grid-move 6s linear infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+.cafe-page--usa80s .cp-hero__logo,
+.cafe-page--usa80s .cp-hero__name,
+.cafe-page--usa80s .cp-hero__address,
+.cafe-page--usa80s .cp-hero__status { position: relative; z-index: 2; }
+.cafe-page--usa80s .cp-hero__logo { border-radius: 8px; border: 3px solid var(--gold); }
+.cafe-page--usa80s .cp-hero__name {
+  font-family: 'Bungee', 'Inter', sans-serif;
+  text-transform: uppercase;
+  font-size: 2.25rem;
+  letter-spacing: 0.02em;
+  color: var(--gold);
+  text-shadow: 0 0 6px rgba(181,114,10,0.85), 0 0 20px rgba(181,114,10,0.5), 3px 3px 0 var(--espresso);
+  animation: neon-flicker 4s infinite;
+}
+@keyframes retro-grid-move { from { background-position: 0 0; } to { background-position: 0 44px; } }
+@keyframes neon-flicker {
+  0%, 19%, 21%, 23%, 80%, 100% { opacity: 1; }
+  20%, 22%, 24% { opacity: 0.55; }
+}
+
+.cafe-page--usa80s .cp-section__title {
+  font-family: 'Bungee', 'Inter', sans-serif;
+  text-transform: uppercase;
+  font-size: 1.125rem;
+  letter-spacing: 0.03em;
+  color: var(--text-dark);
+}
+
+.cafe-page--usa80s .info-card,
+.cafe-page--usa80s .res-empty-card,
+.cafe-page--usa80s .res-table-row,
+.cafe-page--usa80s .rv-card,
+.cafe-page--usa80s .cp-team-card {
+  border: 3px solid var(--espresso);
+  border-radius: 2px;
+  box-shadow: 6px 6px 0 var(--gold);
+}
+.cafe-page--usa80s .info-card__body,
+.cafe-page--usa80s .rv-card,
+.cafe-page--usa80s .cp-team-card {
+  padding: 1.375rem 1.5rem;
+}
+
+/* Pozycje menu jako osobne, dobrze oddychające „kafle” zamiast wąskiej
+   listy — bez paddingu tekst dotykał wcześniej ramki. */
+.cafe-page--usa80s .cp-menu-items { gap: 1rem; }
+.cafe-page--usa80s .cp-menu-item {
+  border: 3px solid var(--espresso);
+  border-radius: 2px;
+  box-shadow: 6px 6px 0 var(--gold);
+  padding: 1.125rem 1.375rem;
+  margin-bottom: 0.375rem;
+  flex-wrap: wrap;
+  row-gap: 0.75rem;
+}
+.cafe-page--usa80s .cp-add-btn,
+.cafe-page--usa80s .cp-qty-stepper {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.cafe-page--usa80s .btn--primary {
+  background: var(--gold);
+  color: var(--espresso);
+  border: 3px solid var(--espresso);
+  border-radius: 0;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 5px 5px 0 var(--espresso);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.cafe-page--usa80s .btn--primary:hover {
+  /* Bez jawnego background/color tutaj, bazowa reguła .btn--primary:hover
+     (ciemne tło) nadpisywała nasze jasne tło i ciemny napis znikał. */
+  background: var(--gold-hover);
+  color: var(--espresso);
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--espresso);
+}
+.cafe-page--usa80s .btn--primary:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--espresso); }
+.cafe-page--usa80s .btn--outline-dark {
+  border: 2.5px solid var(--espresso);
+  border-radius: 0;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.8125rem;
+}
+
+.cafe-page--usa80s .cp-add-btn { border-radius: 0; border-width: 2px; font-weight: 700; text-transform: uppercase; }
+.cafe-page--usa80s .cp-qty-stepper { border-radius: 0; border-width: 2px; }
+.cafe-page--usa80s .cp-qty-stepper button { border-radius: 0; }
+.cafe-page--usa80s .menu-badge { border-radius: 0; font-weight: 800; }
+.cafe-page--usa80s .cp-hero__status { border-radius: 0; font-weight: 800; text-transform: uppercase; }
+.cafe-page--usa80s .cp-social-links a { border: 2px solid var(--espresso); border-radius: 0; font-weight: 700; text-transform: uppercase; }
+.cafe-page--usa80s .cp-social-links a:hover { background: var(--gold); }
+
+.cafe-page--usa80s .menu-editor { border: 3px solid var(--espresso); border-radius: 4px; box-shadow: 10px 10px 0 var(--gold); }
+.cafe-page--usa80s .me-title { font-family: 'Bungee', sans-serif; font-size: 1.125rem; text-transform: uppercase; }
+
+.cafe-page--usa80s .cp-home-fab {
+  background: var(--gold);
+  color: var(--espresso);
+  border: 3px solid var(--espresso);
+  border-radius: 0;
+  text-transform: uppercase;
+  font-weight: 800;
+  box-shadow: 5px 5px 0 var(--espresso);
+}
+.cafe-page--usa80s .cp-home-fab:hover { box-shadow: 7px 7px 0 var(--espresso); transform: translate(-2px,-2px); }
+
+
+/* ════════════════════════════════════════════════
+   9. MOTYW: EXPRESSIVE (na wzór Material 3 Expressive)
+   Odważne kształty, duże fonty, fizyka sprężynowa,
+   ciekawość i ruch w każdej interakcji.
+   ════════════════════════════════════════════════ */
+
+.cafe-page--expressive {
+  font-family: 'Fredoka', 'Inter', system-ui, sans-serif;
+}
+
+.cafe-page--expressive .cp-nav {
+  margin: 0.75rem auto 0;
+  max-width: 960px;
+  border-radius: 100px;
+  border: none;
+  box-shadow: 0 6px 20px rgba(17,10,4,0.12);
+  position: sticky;
+  top: 0.75rem;
+}
+.cafe-page--expressive .cp-nav__link {
+  font-weight: 600;
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.2s ease;
+}
+.cafe-page--expressive .cp-nav__link:hover { transform: scale(1.08) rotate(-1deg); background: var(--cream); }
+
+.cafe-page--expressive .cp-hero {
+  border-radius: 0 0 48px 48px;
+}
+.cafe-page--expressive .cp-hero::before {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(181,114,10,0.35), transparent 45%),
+    radial-gradient(circle at 80% 70%, rgba(240,228,204,0.25), transparent 45%);
+  border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%;
+  animation: blob-morph 12s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+.cafe-page--expressive .cp-hero__logo,
+.cafe-page--expressive .cp-hero__name,
+.cafe-page--expressive .cp-hero__address,
+.cafe-page--expressive .cp-hero__status { position: relative; z-index: 2; }
+.cafe-page--expressive .cp-hero__logo {
+  border-radius: 38% 62% 60% 40% / 45% 40% 60% 55%;
+  border-width: 4px;
+  transition: border-radius 0.6s ease;
+}
+.cafe-page--expressive .cp-hero__name {
+  font-family: 'Fredoka', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: clamp(2.25rem, 6vw, 3.5rem);
+  letter-spacing: -0.01em;
+}
+.cafe-page--expressive .cp-hero__status { border-radius: 100px; font-weight: 700; }
+
+@keyframes blob-morph {
+  0%, 100% { border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%; transform: rotate(0deg) scale(1); }
+  33%      { border-radius: 60% 40% 35% 65% / 55% 60% 40% 45%; transform: rotate(6deg) scale(1.05); }
+  66%      { border-radius: 35% 65% 55% 45% / 40% 35% 65% 60%; transform: rotate(-5deg) scale(0.98); }
+}
+
+.cafe-page--expressive .cp-section__title {
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 700;
+  font-size: 1.875rem;
+  letter-spacing: -0.01em;
+}
+
+.cafe-page--expressive .info-card,
+.cafe-page--expressive .res-empty-card,
+.cafe-page--expressive .res-table-row,
+.cafe-page--expressive .rv-card,
+.cafe-page--expressive .cp-menu-item,
+.cafe-page--expressive .menu-editor {
+  border-radius: 28px !important;
+  border: none;
+  box-shadow: 0 10px 30px rgba(17,10,4,0.1);
+  transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease;
+}
+.cafe-page--expressive .info-card:hover,
+.cafe-page--expressive .rv-card:hover,
+.cafe-page--expressive .cp-menu-item:hover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: 0 16px 40px rgba(17,10,4,0.16);
+}
+
+/* Menu było zbyt ciasne — pozycje nie miały paddingu poziomego (bazowy
+   styl zakładał listę bez ramek), a teraz mają zaokrąglone „bąble”. */
+.cafe-page--expressive .cp-menu-items { gap: 1rem; }
+.cafe-page--expressive .cp-menu-item {
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 0;
+  background: var(--surface);
+}
+.cafe-page--expressive .info-card__body,
+.cafe-page--expressive .rv-card,
+.cafe-page--expressive .res-table-row {
+  padding: 1.5rem 1.75rem;
+}
+
+.cafe-page--expressive .cp-team-card {
+  border-radius: 24px;
+  transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+.cafe-page--expressive .cp-team-card:nth-child(odd)  { transform: rotate(-1.5deg); }
+.cafe-page--expressive .cp-team-card:nth-child(even)  { transform: rotate(1.5deg); }
+.cafe-page--expressive .cp-team-card:hover { transform: rotate(0deg) scale(1.06); }
+
+.cafe-page--expressive .btn,
+.cafe-page--expressive .cp-add-btn,
+.cafe-page--expressive .cp-home-fab {
+  border-radius: 100px !important;
+  font-weight: 700;
+  transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease;
+}
+.cafe-page--expressive .btn--primary {
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  box-shadow: 0 8px 22px rgba(181,114,10,0.35);
+}
+.cafe-page--expressive .btn:hover,
+.cafe-page--expressive .cp-add-btn:hover { transform: scale(1.07) rotate(-1deg); }
+.cafe-page--expressive .btn:active { transform: scale(0.94); }
+
+.cafe-page--expressive .cp-qty-stepper button { transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+.cafe-page--expressive .cp-qty-stepper button:hover { transform: scale(1.15); }
+
+.cafe-page--expressive .menu-badge { border-radius: 100px; font-weight: 700; }
+.cafe-page--expressive .cp-social-links a { border-radius: 100px; font-weight: 600; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+.cafe-page--expressive .cp-social-links a:hover { transform: scale(1.08) rotate(-2deg); }
+
+.cafe-page--expressive .me-header { border-radius: 28px 28px 0 0; }
+.cafe-page--expressive .me-title { font-family: 'Fredoka', sans-serif; }
+.cafe-page--expressive .cp-home-fab:hover { transform: scale(1.1) rotate(4deg); }
+
+
+/* ════════════════════════════════════════════════
+   10. RESPONSYWNOŚĆ + DOSTĘPNOŚĆ
+   ════════════════════════════════════════════════ */
 
 @media (max-width: 700px) {
   .cp-main { padding: 1.5rem 1.25rem 3rem; }
   .cp-hero { padding: 2.5rem 1.25rem; }
   .cafe-page--modern .cp-hero { flex-direction: column; text-align: center; }
   .cp-nav { padding: 0.625rem 0.875rem; }
+
+  .menu-editor-overlay { padding: 0.75rem; }
+  .menu-editor { max-height: 92vh; }
+  .me-header { padding: 1.25rem 1.25rem 1rem; }
+  .me-body { padding: 1.25rem; }
+  .me-footer { padding: 1rem 1.25rem; }
+
+  .cp-home-fab { right: 0.875rem; bottom: 0.875rem; padding: 0.625rem 0.875rem; font-size: 0.75rem; }
+  .cp-home-fab__label { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cafe-page, .cafe-page *, .cafe-page *::before, .cafe-page *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  .cafe-page *, .cafe-page *::before, .cafe-page *::after {
+    transition-duration: 0.001ms !important;
+  }
 }

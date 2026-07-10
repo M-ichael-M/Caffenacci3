@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import { loadClientAuth, saveClientAuth, clearClientAuth } from '../../authStorage'
 import type { ClientAuthState } from '../../authStorage'
@@ -23,10 +23,13 @@ interface MenuItem {
 interface MenuSection { id: string; name: string; items: MenuItem[] }
 interface ReviewItem { id: string; nick: string; rating: number; comment: string | null; created_at: string }
 
+// Szablon strony — musi odpowiadać ALLOWED_TEMPLATES w backend/app/schemas/site.py
+type SiteTemplate = 'classic' | 'modern' | 'magic' | 'usa80s' | 'expressive'
+
 interface PublicSiteData {
   cafe_id: string
   cafe_name: string
-  template: 'classic' | 'modern'
+  template: SiteTemplate
   palette: string
   country: string; city: string; street: string; building_number: string; postal_code: string
   contact_email: string | null
@@ -70,6 +73,24 @@ function computeTodayStatus(data: PublicSiteData) {
   return { open: isOpen, label: isOpen ? `Otwarte do ${closeTime}` : `Zamknięte · dziś ${openTime}–${closeTime}` }
 }
 
+// ── Pływający przycisk powrotu na stronę główną Caffenacci ─────────────────
+// Widoczny na każdym motywie strony kawiarni — pozwala gościowi w każdej
+// chwili wrócić do wyszukiwarki kawiarni na caffenacci.customer.
+
+function HomeFab() {
+  return (
+    <button
+      type="button"
+      className="cp-home-fab"
+      onClick={() => { window.location.href = '/' }}
+      title="Wróć do strony głównej Caffenacci"
+    >
+      <span className="cp-home-fab__icon" aria-hidden="true">☕</span>
+      <span className="cp-home-fab__label">Caffenacci</span>
+    </button>
+  )
+}
+
 export default function CafePage({ cafeId }: Props) {
   const [data, setData] = useState<PublicSiteData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -78,6 +99,11 @@ export default function CafePage({ cafeId }: Props) {
   const [auth, setAuth] = useState<ClientAuthState | null>(() => loadClientAuth())
   const [authModal, setAuthModal] = useState<null | 'login' | 'register'>(null)
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
+
+  // Iskry przy kliknięciu — wyłącznie dla motywu „magic”. Manipulujemy DOM
+  // bezpośrednio (bez React state) żeby nie odświeżać komponentu przy każdym
+  // kliknięciu — cząsteczki same się usuwają po zakończeniu animacji.
+  const sparkLayerRef = useRef<HTMLDivElement>(null)
 
   const fetchSite = useCallback(async () => {
     setLoading(true)
@@ -93,6 +119,33 @@ export default function CafePage({ cafeId }: Props) {
   }, [cafeId])
 
   useEffect(() => { fetchSite() }, [fetchSite])
+
+  // Magiczne iskry przy każdym kliknięciu na stronie kawiarni w motywie „magic”.
+  useEffect(() => {
+    if (data?.template !== 'magic') return
+    const layer = sparkLayerRef.current
+    if (!layer) return
+
+    function spawnSparks(e: MouseEvent) {
+      const count = 6 + Math.floor(Math.random() * 5)
+      for (let i = 0; i < count; i++) {
+        const spark = document.createElement('span')
+        spark.className = 'cp-spark'
+        const angle = Math.random() * Math.PI * 2
+        const dist = 35 + Math.random() * 70
+        spark.style.setProperty('--x', `${e.clientX}px`)
+        spark.style.setProperty('--y', `${e.clientY}px`)
+        spark.style.setProperty('--dx', `${Math.cos(angle) * dist}px`)
+        spark.style.setProperty('--dy', `${Math.sin(angle) * dist}px`)
+        spark.style.animationDelay = `${(Math.random() * 0.08).toFixed(2)}s`
+        layer!.appendChild(spark)
+        setTimeout(() => spark.remove(), 950)
+      }
+    }
+
+    window.addEventListener('click', spawnSparks)
+    return () => window.removeEventListener('click', spawnSparks)
+  }, [data?.template])
 
   function requireLogin(action: () => void) {
     if (auth) { action(); return }
@@ -130,6 +183,7 @@ export default function CafePage({ cafeId }: Props) {
     return (
       <div className="loading-state" style={{ minHeight: '100vh' }}>
         <p>Nie znaleziono takiej kawiarni.</p>
+        <HomeFab />
       </div>
     )
   }
@@ -343,6 +397,12 @@ export default function CafePage({ cafeId }: Props) {
           </div>
         </div>
       )}
+
+      {/* ── Warstwa magicznych iskier (tylko motyw magic, patrz CSS) ──────── */}
+      {data.template === 'magic' && <div ref={sparkLayerRef} className="cp-spark-layer" aria-hidden="true" />}
+
+      {/* ── Pływający przycisk powrotu na stronę główną ───────────────────── */}
+      <HomeFab />
     </div>
   )
 }

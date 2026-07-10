@@ -4,11 +4,17 @@ from typing import List, Optional
 from datetime import datetime
 
 # ── Dostępne szablony i palety kolorów ──────────────────────────────────────
-# Trzymane jako proste klucze (string) — wygląd (kolory, typografia) jest
-# renderowany po stronie frontendu na podstawie tego klucza. Backend tylko
+# Trzymane jako proste klucze (string) — wygląd (kolory, typografia, animacje)
+# jest renderowany po stronie frontendu na podstawie tego klucza. Backend tylko
 # waliduje, że klucz jest jednym z dozwolonych.
+#
+# classic    — elegancki, tradycyjny, przytulny klimat kawiarni
+# modern     — minimalistyczny, płaski, geometryczny
+# magic      — mroczny magiczny klimat, świecące akcenty, dym, gwiazdy
+# usa80s     — neonowy amerykański diner z lat 80.
+# expressive — odważne kształty i duże fonty w duchu Material 3 Expressive
 
-ALLOWED_TEMPLATES = {"classic", "modern"}
+ALLOWED_TEMPLATES = {"classic", "modern", "magic", "usa80s", "expressive"}
 
 ALLOWED_PALETTES = {
     "espresso-gold",
