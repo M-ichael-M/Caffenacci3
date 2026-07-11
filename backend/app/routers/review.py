@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -12,7 +14,7 @@ from app.models.cafe import Cafe
 from app.models.client import Client
 from app.models.review import Review
 from app.routers.client_auth import get_current_client
-from app.schemas.review import ReviewIn, ReviewOut, ReviewListOut, ReviewSummaryOut, ClientReviewIn
+from app.schemas.review import ReviewIn, ReviewOut, ReviewListOut, ReviewSummaryOut, ClientReviewIn, ReviewUpdateIn
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 bearer_scheme = HTTPBearer()
@@ -139,6 +141,68 @@ def create_review_as_client(
     db.refresh(review)
     return review
 
+# ══════════════════════════════════════════════════════════════════════════════
+# WŁASNA OPINIA — sprawdzenie / edycja / usunięcie przez zalogowanego klienta
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get(
+    "/client/{cafe_id}/mine",
+    response_model=Optional[ReviewOut],
+    summary="Pobierz własną opinię o kawiarni, jeśli istnieje",
+)
+def get_my_review(
+    cafe_id: str,
+    current_client: Client  = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    return (
+        db.query(Review)
+        .filter(Review.cafe_id == cafe_id, Review.client_id == current_client.id)
+        .first()
+    )
+
+
+@router.patch(
+    "/client/{review_id}",
+    response_model=ReviewOut,
+    summary="Edytuj własną opinię",
+)
+def update_my_review(
+    review_id: str,
+    payload:   ReviewUpdateIn,
+    current_client: Client  = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    review = db.query(Review).filter(Review.id == review_id).first()
+    if not review:
+        raise HTTPException(404, detail="Opinia nie istnieje.")
+    if review.client_id != current_client.id:
+        raise HTTPException(403, detail="Nie możesz edytować tej opinii.")
+
+    review.rating  = payload.rating
+    review.comment = payload.comment
+    db.commit()
+    db.refresh(review)
+    return review
+
+
+@router.delete(
+    "/client/{review_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Usuń własną opinię",
+)
+def delete_my_review(
+    review_id: str,
+    current_client: Client  = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    review = db.query(Review).filter(Review.id == review_id).first()
+    if not review:
+        raise HTTPException(404, detail="Opinia nie istnieje.")
+    if review.client_id != current_client.id:
+        raise HTTPException(403, detail="Nie możesz usunąć tej opinii.")
+    db.delete(review)
+    db.commit()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PUBLICZNA LISTA OPINII — bez logowania, do wygenerowanej strony kawiarni

@@ -39,3 +39,8 @@ class ReviewListOut(BaseModel):
 class ReviewSummaryOut(BaseModel):
     average_rating: float
     count:          int
+
+class ReviewUpdateIn(BaseModel):
+    """Edycja własnej opinii przez zalogowanego klienta."""
+    rating:  int = Field(..., ge=1, le=5)
+    comment: Optional[str] = Field(None, max_length=1000)
