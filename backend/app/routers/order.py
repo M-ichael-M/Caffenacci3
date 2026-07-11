@@ -18,6 +18,7 @@ from app.schemas.order import (
     PublicOrderIn, PublicOrderCancelIn, ClientOrderIn,
     OrderStatusUpdate, OrderOut, OrderListOut,
     MAX_ORDER_DAYS_AHEAD,
+    ClientOrderOut, ClientOrderListOut,   # ← nowe
 )
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -245,6 +246,38 @@ def cancel_order_public(
     db.refresh(order)
     return order
 
+# ══════════════════════════════════════════════════════════════════════════════
+# MOJE ZAMÓWIENIA — połączony widok klienta, wszystkie kawiarnie naraz
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get(
+    "/client/mine",
+    response_model=ClientOrderListOut,
+    summary="Pobierz wszystkie zamówienia zalogowanego klienta (wszystkie kawiarnie)",
+)
+def list_my_orders(
+    current_client: Client = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    rows = (
+        db.query(Order)
+        .options(selectinload(Order.items))
+        .filter(Order.client_id == current_client.id)
+        .order_by(Order.created_at.desc())
+        .all()
+    )
+
+    cafe_ids = {o.cafe_id for o in rows}
+    cafes = {c.id: c for c in db.query(Cafe).filter(Cafe.id.in_(cafe_ids)).all()} if cafe_ids else {}
+
+    result = [
+        ClientOrderOut(
+            **OrderOut.model_validate(o).model_dump(),
+            cafe_name=(cafes.get(o.cafe_id).cafe_name if cafes.get(o.cafe_id) else "Nieznana kawiarnia"),
+        )
+        for o in rows
+    ]
+    return ClientOrderListOut(orders=result)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # LISTA ZAMÓWIEŃ (właściciel) — chronologicznie wg daty i godziny

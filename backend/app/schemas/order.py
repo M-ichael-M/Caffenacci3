@@ -99,3 +99,12 @@ class OrderOut(BaseModel):
 
 class OrderListOut(BaseModel):
     orders: List[OrderOut]
+
+# ── "Moje zamówienia" — połączony widok klienta (wszystkie kawiarnie) ────
+
+class ClientOrderOut(OrderOut):
+    cafe_name: str
+
+
+class ClientOrderListOut(BaseModel):
+    orders: List[ClientOrderOut]

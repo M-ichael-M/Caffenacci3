@@ -44,3 +44,13 @@ class ReviewUpdateIn(BaseModel):
     """Edycja własnej opinii przez zalogowanego klienta."""
     rating:  int = Field(..., ge=1, le=5)
     comment: Optional[str] = Field(None, max_length=1000)
+
+# ── "Moje opinie" — połączony widok klienta (wszystkie kawiarnie) ────────
+
+class ClientReviewOut(ReviewOut):
+    cafe_id: str
+    cafe_name: str
+
+
+class ClientReviewListOut(BaseModel):
+    reviews: List[ClientReviewOut]

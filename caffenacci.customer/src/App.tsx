@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
-import AccountHome from './components/AccountHome'
+import AccountDashboard from './components/AccountDashboard'
 import HomePage from './components/HomePage'
 import TopBar from './components/TopBar'
 import CafePage from './components/CafePage/CafePage'
@@ -180,7 +180,7 @@ export default function App() {
       />
 
       {showAccount ? (
-        <AccountHome auth={auth as ClientAuthState} onLogout={handleLogout} />
+        <AccountDashboard auth={auth as ClientAuthState} />
       ) : (
         <>
           <HomePage />

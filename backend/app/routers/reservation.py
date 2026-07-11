@@ -20,6 +20,7 @@ from app.schemas.reservation import (
     ReservationIn, ReservationOut, ReservationListOut,
     PublicReservationIn, ClientReservationIn, ClientAdvancedReservationIn,
     ReservationStatusUpdate, ReservationInfoOut, OccupiedSlotOut,
+    ClientReservationOut, ClientReservationListOut,   # ← nowe
 )
 
 router = APIRouter(prefix="/reservations", tags=["reservations"])
@@ -483,6 +484,41 @@ def create_advanced_reservation_as_client(
 
     return _reservation_to_out(r)
 
+# ══════════════════════════════════════════════════════════════════════════════
+# MOJE REZERWACJE — połączony widok klienta, wszystkie kawiarnie naraz
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get(
+    "/client/mine",
+    response_model=ClientReservationListOut,
+    summary="Pobierz wszystkie rezerwacje zalogowanego klienta (wszystkie kawiarnie)",
+)
+def list_my_reservations(
+    current_client: Client = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    rows = (
+        db.query(Reservation)
+        .options(selectinload(Reservation.table))
+        .filter(Reservation.client_id == current_client.id)
+        .order_by(Reservation.date.desc(), Reservation.start_time.desc())
+        .all()
+    )
+
+    cafe_ids = {r.cafe_id for r in rows}
+    cafes = {c.id: c for c in db.query(Cafe).filter(Cafe.id.in_(cafe_ids)).all()} if cafe_ids else {}
+
+    result: list[ClientReservationOut] = []
+    for r in rows:
+        base = _reservation_to_out(r)
+        cafe = cafes.get(r.cafe_id)
+        result.append(ClientReservationOut(
+            **base.model_dump(),
+            cafe_name=cafe.cafe_name if cafe else "Nieznana kawiarnia",
+            is_advanced=r.table_id is not None,
+        ))
+
+    return ClientReservationListOut(reservations=result)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # LISTA REZERWACJI (właściciel)

@@ -14,8 +14,10 @@ from app.models.cafe import Cafe
 from app.models.client import Client
 from app.models.review import Review
 from app.routers.client_auth import get_current_client
-from app.schemas.review import ReviewIn, ReviewOut, ReviewListOut, ReviewSummaryOut, ClientReviewIn, ReviewUpdateIn
-
+from app.schemas.review import (
+    ReviewIn, ReviewOut, ReviewListOut, ReviewSummaryOut, ClientReviewIn, ReviewUpdateIn,
+    ClientReviewOut, ClientReviewListOut,   # ← nowe
+)
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 bearer_scheme = HTTPBearer()
 
@@ -255,3 +257,36 @@ def reviews_summary(
 ):
     avg, count = _aggregate(current_cafe.id, db)
     return ReviewSummaryOut(average_rating=avg, count=count)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MOJE OPINIE — połączony widok klienta, wszystkie kawiarnie naraz
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get(
+    "/client/mine",
+    response_model=ClientReviewListOut,
+    summary="Pobierz wszystkie opinie zalogowanego klienta (wszystkie kawiarnie)",
+)
+def list_my_reviews(
+    current_client: Client = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    rows = (
+        db.query(Review)
+        .filter(Review.client_id == current_client.id)
+        .order_by(Review.created_at.desc())
+        .all()
+    )
+
+    cafe_ids = {r.cafe_id for r in rows}
+    cafes = {c.id: c for c in db.query(Cafe).filter(Cafe.id.in_(cafe_ids)).all()} if cafe_ids else {}
+
+    result = [
+        ClientReviewOut(
+            **ReviewOut.model_validate(r).model_dump(),
+            cafe_id=r.cafe_id,
+            cafe_name=(cafes.get(r.cafe_id).cafe_name if cafes.get(r.cafe_id) else "Nieznana kawiarnia"),
+        )
+        for r in rows
+    ]
+    return ClientReviewListOut(reviews=result)

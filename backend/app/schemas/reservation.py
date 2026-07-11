@@ -177,3 +177,14 @@ class ReservationInfoOut(BaseModel):
     tables:                List[CafeTableOut]   = []
     hours:                 List[DayHoursOut]    = []
     occupied:              List[OccupiedSlotOut] = []
+
+
+# ── "Moje rezerwacje" — połączony widok klienta (wszystkie kawiarnie) ────
+
+class ClientReservationOut(ReservationOut):
+    cafe_name: str
+    is_advanced: bool  # True = zaawansowana (miała wybrany stolik, zawsze confirmed)
+
+
+class ClientReservationListOut(BaseModel):
+    reservations: List[ClientReservationOut]
