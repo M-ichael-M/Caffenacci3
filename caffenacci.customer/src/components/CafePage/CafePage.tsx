@@ -12,7 +12,6 @@ import RegisterForm from '../RegisterForm'
 import './cafePage.css'
 
 // ── Typy (odpowiadają backendowemu PublicSiteOut) ───────────────────────────
-
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
 interface HourException { date: string; is_closed: boolean; open_time: string | null; close_time: string | null }
 interface SocialLink { platform: string; url: string; label: string | null }
@@ -25,7 +24,7 @@ interface MenuSection { id: string; name: string; items: MenuItem[] }
 interface ReviewItem { id: string; nick: string; rating: number; comment: string | null; created_at: string }
 interface GalleryImageItem { url: string }
 
-// Szablon strony — musi odpowiadać ALLOWED_TEMPLATES w backend/app/schemas/site.py
+// Szablon strony
 type SiteTemplate = 'classic' | 'modern' | 'magic' | 'usa80s' | 'expressive'
 
 interface PublicSiteData {
@@ -53,7 +52,7 @@ interface PublicSiteData {
   reviews_average: number
   reviews_count: number
   reviews: ReviewItem[]
-  gallery_images: GalleryImageItem[]
+  gallery_images: GalleryImageItem[]   // ← dodane
 }
 
 interface Props { cafeId: string }
@@ -63,23 +62,54 @@ const DAYS = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobot
 function computeTodayStatus(data: PublicSiteData) {
   const now = new Date()
   const todayStr = now.toISOString().slice(0, 10)
-  const pyDow = (now.getDay() + 6) % 7 // JS: 0=niedziela → backend: 0=poniedziałek
+  const pyDow = (now.getDay() + 6) % 7
   const exception = data.hour_exceptions.find(e => e.date === todayStr)
   const dayPlan = data.weekly_hours.find(h => h.day_of_week === pyDow)
-  const openTime  = exception ? (exception.is_closed ? null : exception.open_time)  : (dayPlan?.open_time  ?? null)
+  const openTime = exception ? (exception.is_closed ? null : exception.open_time) : (dayPlan?.open_time ?? null)
   const closeTime = exception ? (exception.is_closed ? null : exception.close_time) : (dayPlan?.close_time ?? null)
+
   if (!openTime || !closeTime) return { open: false, label: 'Dziś zamknięte' }
+
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const [oh, om] = openTime.split(':').map(Number)
   const [ch, cm] = closeTime.split(':').map(Number)
   const isOpen = nowMin >= oh * 60 + om && nowMin < ch * 60 + cm
+
   return { open: isOpen, label: isOpen ? `Otwarte do ${closeTime}` : `Zamknięte · dziś ${openTime}–${closeTime}` }
 }
 
-// ── Pływający przycisk powrotu na stronę główną Caffenacci ─────────────────
-// Widoczny na każdym motywie strony kawiarni — pozwala gościowi w każdej
-// chwili wrócić do wyszukiwarki kawiarni na caffenacci.customer.
+// ── Pomocnicze funkcje do godzin z wyjątkami ─────────────────────────────
+function getCurrentWeekRange(): { start: string; end: string } {
+  const now = new Date()
+  const dow = (now.getDay() + 6) % 7
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow)
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6)
 
+  const toStr = (d: Date) => d.toISOString().slice(0, 10)
+  return { start: toStr(monday), end: toStr(sunday) }
+}
+
+function dateForDayOfWeek(mondayStr: string, dayOfWeek: number): string {
+  const [y, m, d] = mondayStr.split('-').map(Number)
+  const monday = new Date(y, m - 1, d)
+  const target = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOfWeek)
+  return target.toISOString().slice(0, 10)
+}
+
+function formatExceptionDateLabel(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' })
+}
+
+function formatExceptionSentence(e: HourException): string {
+  const label = formatExceptionDateLabel(e.date)
+  if (e.is_closed || !e.open_time || !e.close_time) {
+    return `${label} kawiarnia będzie nieczynna.`
+  }
+  return `${label} kawiarnia będzie pracować w godzinach ${e.open_time}–${e.close_time}.`
+}
+
+// ── Pływający przycisk powrotu ─────────────────────────────────────
 function HomeFab() {
   return (
     <button
@@ -98,14 +128,10 @@ export default function CafePage({ cafeId }: Props) {
   const [data, setData] = useState<PublicSiteData | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-
   const [auth, setAuth] = useState<ClientAuthState | null>(() => loadClientAuth())
   const [authModal, setAuthModal] = useState<null | 'login' | 'register'>(null)
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
 
-  // Iskry przy kliknięciu — wyłącznie dla motywu „magic”. Manipulujemy DOM
-  // bezpośrednio (bez React state) żeby nie odświeżać komponentu przy każdym
-  // kliknięciu — cząsteczki same się usuwają po zakończeniu animacji.
   const sparkLayerRef = useRef<HTMLDivElement>(null)
 
   const fetchSite = useCallback(async () => {
@@ -123,7 +149,7 @@ export default function CafePage({ cafeId }: Props) {
 
   useEffect(() => { fetchSite() }, [fetchSite])
 
-  // Magiczne iskry przy każdym kliknięciu na stronie kawiarni w motywie „magic”.
+  // Iskry – tylko motyw magic
   useEffect(() => {
     if (data?.template !== 'magic') return
     const layer = sparkLayerRef.current
@@ -193,25 +219,46 @@ export default function CafePage({ cafeId }: Props) {
 
   const paletteVars = getPaletteVars(data.palette)
   const status = computeTodayStatus(data)
-  const todayDow = (new Date().getDay() + 6) % 7
+  const todayIsoStr = new Date().toISOString().slice(0, 10)
 
-  const hasContact  = !!(data.contact_email || data.contact_phone)
+  // ── Godziny otwarcia z wyjątkami ────────────────────────────────
+  const { start: weekStart, end: weekEnd } = getCurrentWeekRange()
+  const weekHourRows = data.weekly_hours
+    .slice()
+    .sort((a, b) => a.day_of_week - b.day_of_week)
+    .map(h => {
+      const date = dateForDayOfWeek(weekStart, h.day_of_week)
+      const exception = data.hour_exceptions.find(e => e.date === date) ?? null
+      const open_time = exception ? (exception.is_closed ? null : exception.open_time) : h.open_time
+      const close_time = exception ? (exception.is_closed ? null : exception.close_time) : h.close_time
+      const is_closed = exception ? exception.is_closed : !(h.open_time && h.close_time)
+
+      return { day_of_week: h.day_of_week, date, exception, open_time, close_time, is_closed }
+    })
+
+  const upcomingExceptions = data.hour_exceptions
+    .filter(e => e.date > weekEnd)
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  // ── Flagi sekcji ───────────────────────────────────────────────
+  const hasContact = !!(data.contact_email || data.contact_phone)
   const hasLocation = data.latitude !== null && data.longitude !== null
-  const hasSocial   = data.social_links.length > 0
-  const hasTeam     = data.employees.length > 0
-  const hasGallery  = data.gallery_images.length > 0
+  const hasSocial = data.social_links.length > 0
+  const hasTeam = data.employees.length > 0
+  const hasGallery = data.gallery_images.length > 0
   const menuSections = data.menu_sections.filter(s => s.items.length > 0)
-  const hasMenu     = menuSections.length > 0
+  const hasMenu = menuSections.length > 0
 
   const gmapsUrl = hasLocation ? `https://www.google.com/maps?q=${data.latitude},${data.longitude}` : null
 
   return (
     <div className={`cafe-page cafe-page--${data.template}`} style={paletteVars as CSSProperties}>
-
-      {/* ── Sticky nav ─────────────────────────────────────────────────── */}
+      {/* Sticky nav */}
       <nav className="cp-nav">
         {hasGallery && (
-          <button className="cp-nav__link" onClick={() => document.getElementById('cp-gallery')?.scrollIntoView({ behavior: 'smooth' })}>Galeria</button>
+          <button className="cp-nav__link" onClick={() => document.getElementById('cp-gallery')?.scrollIntoView({ behavior: 'smooth' })}>
+            Galeria
+          </button>
         )}
         <button className="cp-nav__link" onClick={() => document.getElementById('cp-menu')?.scrollIntoView({ behavior: 'smooth' })}>Menu</button>
         {data.reservations_enabled && (
@@ -237,7 +284,7 @@ export default function CafePage({ cafeId }: Props) {
         </div>
       </nav>
 
-      {/* ── Hero ───────────────────────────────────────────────────────── */}
+      {/* Hero */}
       <header className="cp-hero">
         {data.logo_url ? (
           <img className="cp-hero__logo" src={`http://localhost:8000${data.logo_url}`} alt={data.cafe_name} />
@@ -252,15 +299,14 @@ export default function CafePage({ cafeId }: Props) {
       </header>
 
       <main className="cp-main">
-
-        {/* ── Opis ─────────────────────────────────────────────────────── */}
+        {/* Opis */}
         {data.description && (
           <section>
             <p style={{ fontSize: '1rem', lineHeight: 1.7, color: 'var(--text-body)', maxWidth: '70ch' }}>{data.description}</p>
           </section>
         )}
 
-        {/* ── Galeria zdjęć ────────────────────────────────────────────── */}
+        {/* Galeria */}
         {hasGallery && (
           <section id="cp-gallery">
             <h2 className="cp-section__title">Galeria</h2>
@@ -268,7 +314,7 @@ export default function CafePage({ cafeId }: Props) {
           </section>
         )}
 
-        {/* ── Menu + zamówienia ────────────────────────────────────────── */}
+        {/* Menu */}
         <section id="cp-menu">
           <h2 className="cp-section__title">Menu</h2>
           {hasMenu ? (
@@ -284,7 +330,7 @@ export default function CafePage({ cafeId }: Props) {
           )}
         </section>
 
-        {/* ── Rezerwacje ───────────────────────────────────────────────── */}
+        {/* Rezerwacje */}
         {data.reservations_enabled && (
           <section id="cp-reservations">
             <h2 className="cp-section__title">Rezerwacja stolika</h2>
@@ -298,20 +344,40 @@ export default function CafePage({ cafeId }: Props) {
           </section>
         )}
 
-        {/* ── Godziny otwarcia ─────────────────────────────────────────── */}
+        {/* Godziny otwarcia – pełna wersja z wyjątkami */}
         <section>
           <h2 className="cp-section__title">Godziny otwarcia</h2>
           <div style={{ maxWidth: 360 }}>
-            {data.weekly_hours.slice().sort((a, b) => a.day_of_week - b.day_of_week).map(h => (
-              <div key={h.day_of_week} className={`cp-hours-row${h.day_of_week === todayDow ? ' cp-hours-row--today' : ''}`}>
-                <span>{DAYS[h.day_of_week]}</span>
-                <span>{h.open_time && h.close_time ? `${h.open_time}–${h.close_time}` : 'Zamknięte'}</span>
+            {weekHourRows.map(row => (
+              <div
+                key={row.day_of_week}
+                className={`cp-hours-row${row.date === todayIsoStr ? ' cp-hours-row--today' : ''}${row.exception ? ' cp-hours-row--exception' : ''}`}
+              >
+                <span>
+                  {DAYS[row.day_of_week]}
+                  {row.exception && <span className="cp-hours-exception-badge">wyjątek</span>}
+                </span>
+                <span>
+                  {!row.is_closed && row.open_time && row.close_time 
+                    ? `${row.open_time}–${row.close_time}` 
+                    : 'Zamknięte'}
+                </span>
               </div>
             ))}
           </div>
+
+          {upcomingExceptions.length > 0 && (
+            <div className="cp-hours-upcoming">
+              {upcomingExceptions.map(e => (
+                <p key={e.date} className="cp-hours-upcoming__item">
+                  {formatExceptionSentence(e)}
+                </p>
+              ))}
+            </div>
+          )}
         </section>
 
-        {/* ── Kontakt / lokalizacja ────────────────────────────────────── */}
+        {/* Kontakt i lokalizacja */}
         {(hasContact || hasLocation) && (
           <section id="cp-info">
             <h2 className="cp-section__title">Kontakt i lokalizacja</h2>
@@ -345,7 +411,7 @@ export default function CafePage({ cafeId }: Props) {
           </section>
         )}
 
-        {/* ── Zespół ───────────────────────────────────────────────────── */}
+        {/* Zespół */}
         {hasTeam && (
           <section>
             <h2 className="cp-section__title">Nasz zespół</h2>
@@ -361,19 +427,21 @@ export default function CafePage({ cafeId }: Props) {
           </section>
         )}
 
-        {/* ── Social media ─────────────────────────────────────────────── */}
+        {/* Social media */}
         {hasSocial && (
           <section>
             <h2 className="cp-section__title">Znajdź nas</h2>
             <div className="cp-social-links">
               {data.social_links.map((s, i) => (
-                <a key={i} href={s.url} target="_blank" rel="noreferrer">{s.label || s.platform}</a>
+                <a key={i} href={s.url} target="_blank" rel="noreferrer">
+                  {s.label || s.platform}
+                </a>
               ))}
             </div>
           </section>
         )}
 
-        {/* ── Opinie ───────────────────────────────────────────────────── */}
+        {/* Opinie */}
         <section id="cp-reviews">
           <h2 className="cp-section__title">Opinie gości</h2>
           <ReviewsWidget
@@ -385,10 +453,9 @@ export default function CafePage({ cafeId }: Props) {
             authToken={auth?.token ?? null}
           />
         </section>
-
       </main>
 
-      {/* ── Modal logowania / rejestracji ────────────────────────────────── */}
+      {/* Modal logowania/rejestracji */}
       {authModal && (
         <div className="menu-editor-overlay" onClick={e => { if (e.target === e.currentTarget) { setAuthModal(null); setPendingAction(null) } }}>
           <div className="menu-editor" style={{ maxWidth: 460, height: 'auto', maxHeight: '90vh' }}>
@@ -413,10 +480,7 @@ export default function CafePage({ cafeId }: Props) {
         </div>
       )}
 
-      {/* ── Warstwa magicznych iskier (tylko motyw magic, patrz CSS) ──────── */}
       {data.template === 'magic' && <div ref={sparkLayerRef} className="cp-spark-layer" aria-hidden="true" />}
-
-      {/* ── Pływający przycisk powrotu na stronę główną ───────────────────── */}
       <HomeFab />
     </div>
   )

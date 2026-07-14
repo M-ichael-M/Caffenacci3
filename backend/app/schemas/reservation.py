@@ -169,6 +169,18 @@ class OccupiedSlotOut(BaseModel):
     guests:     int   # potrzebne do liczenia wolnych miejsc przy stołach komunalnych
 
 
+class ReservationHourExceptionOut(BaseModel):
+    """Wyjątek godzinowy zdefiniowany w profilu kawiarni (ten sam co na
+    publicznej wizytówce) — udostępniony tu, żeby formularz rezerwacji
+    zaawansowanej mógł uwzględnić dni wyjątkowo zamknięte/z innymi
+    godzinami zamiast polegać wyłącznie na cotygodniowym planie
+    z ustawień rezerwacji."""
+    date:       str
+    is_closed:  bool
+    open_time:  Optional[str]
+    close_time: Optional[str]
+
+
 class ReservationInfoOut(BaseModel):
     cafe_id:               str
     enabled:               bool
@@ -177,6 +189,7 @@ class ReservationInfoOut(BaseModel):
     tables:                List[CafeTableOut]   = []
     hours:                 List[DayHoursOut]    = []
     occupied:              List[OccupiedSlotOut] = []
+    hour_exceptions:       List[ReservationHourExceptionOut] = []
 
 
 # ── "Moje rezerwacje" — połączony widok klienta (wszystkie kawiarnie) ────

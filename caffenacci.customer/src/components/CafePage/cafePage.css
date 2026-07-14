@@ -13,7 +13,8 @@
    7. Motyw: magic
    8. Motyw: usa80s
    9. Motyw: expressive
-   10. Responsywność + prefers-reduced-motion
+   10. Galeria zdjęć
+   11. Responsywność + prefers-reduced-motion
    ════════════════════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Bungee&family=Fredoka:wght@400;500;600;700&display=swap');
@@ -203,8 +204,53 @@
   display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 1.5rem;
 }
 
-.cp-hours-row { display: flex; justify-content: space-between; font-size: 0.875rem; padding: 0.3rem 0; }
+.cp-hours-row { display: flex; justify-content: space-between; font-size: 0.875rem; padding: 0.3rem 0.5rem; border-radius: 6px; }
 .cp-hours-row--today { font-weight: 700; color: var(--gold); }
+
+/* Wiersz nadpisany wyjątkiem godzinowym z bieżącego tygodnia */
+.cp-hours-row--exception {
+  background: rgba(181, 114, 10, 0.1);
+  border: 1px solid rgba(181, 114, 10, 0.35);
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+}
+.cp-hours-exception-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  background: rgba(181, 114, 10, 0.16);
+  border-radius: 100px;
+  padding: 1px 8px;
+  vertical-align: middle;
+}
+
+/* Lista wyjątków zaplanowanych na dalszy czas */
+.cp-hours-upcoming {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.cp-hours-upcoming__item {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  padding-left: 1.125rem;
+  position: relative;
+}
+.cp-hours-upcoming__item::before {
+  content: '📌';
+  position: absolute;
+  left: 0;
+  top: 0.05em;
+  font-size: 0.7rem;
+}
 
 /* ── Social media ─────────────────────────────────── */
 
@@ -230,11 +276,9 @@
 
 /* ════════════════════════════════════════════════
    3. ELEMENTY WCZEŚNIEJ NIESTYLOWANE
-   (modal, formularze, puste stany, opinie, zamówienia)
    ════════════════════════════════════════════════ */
 
-/* ── Modal: WYŚRODKOWANY na ekranie (nie „pod” stroną) ─────────────── */
-
+/* Modal */
 .menu-editor-overlay {
   position: fixed;
   inset: 0;
@@ -242,11 +286,6 @@
   backdrop-filter: blur(4px);
   z-index: 300;
   display: flex;
-  /* Celowo BEZ align-items/justify-content: align-items:center na
-     przewijalnym kontenerze obcina górę wysokiej zawartości (nie da się
-     do niej doscrollować) — to była przyczyna „za małego” modala
-     podsumowania zamówienia. margin:auto na .menu-editor centruje bez
-     tego efektu i pozwala normalnie przewinąć całość. */
   width: 100%;
   min-height: 100%;
   padding: 2rem 1.5rem;
@@ -260,10 +299,6 @@
   max-height: min(92vh, 860px);
   background: var(--cream);
   border-radius: 16px;
-  /* Grid (nie flex!) z jawnym auto / 1fr / auto — środkowy wiersz
-     dostaje CAŁĄ pozostałą wysokość i sam się przewija. Przy flex +
-     wysokości "auto" (tylko max-height jako górny limit) środkowa
-     sekcja czasem dostawała tylko wysokość jednej linijki tekstu. */
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
@@ -361,8 +396,7 @@
   color: var(--text-dark);
 }
 
-/* ── Pola formularzy w stylu „me-*” (rezerwacje / opinie / zamówienia) ── */
-
+/* Form fields */
 .me-label {
   font-size: 0.6875rem;
   font-weight: 600;
@@ -391,10 +425,7 @@
 .me-input::placeholder { color: var(--text-muted); opacity: 0.55; }
 select.me-input { cursor: pointer; }
 
-/* ── Przyciski slotów godzinowych (wybór stolika — tryb zaawansowany) ──
-   Wcześniej kolory były wpisane inline w komponencie (m.in. var(--text-dark)
-   na przezroczystym tle), więc żaden motyw nie mógł ich sensownie
-   przestylować — na ciemnych motywach tekst był niewidoczny. */
+/* Slot buttons */
 .cp-slot-btn {
   appearance: none;
   border: 1.5px solid var(--border);
@@ -421,8 +452,7 @@ select.me-input { cursor: pointer; }
   opacity: 0.6;
 }
 
-/* ── Karta „pustego stanu” (np. rezerwacje wyłączone) ────────────────── */
-
+/* Empty state */
 .res-empty-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -438,8 +468,7 @@ select.me-input { cursor: pointer; }
 .res-empty-title { font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 600; color: var(--text-dark); }
 .res-empty-sub { font-size: 0.875rem; color: var(--text-muted); max-width: 40ch; line-height: 1.6; }
 
-/* ── Karta formularza otwartego inline (rezerwacja / opinia) ─────────── */
-
+/* Form row */
 .res-table-row {
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -447,8 +476,7 @@ select.me-input { cursor: pointer; }
   background: var(--surface);
 }
 
-/* ── Opinie ───────────────────────────────────────────────────────────── */
-
+/* Reviews */
 .rv-summary {
   display: flex;
   align-items: center;
@@ -501,8 +529,7 @@ select.me-input { cursor: pointer; }
 .rv-card__comment { font-size: 0.875rem; color: var(--text-body); line-height: 1.6; font-style: italic; }
 .rv-card__date { font-size: 0.75rem; color: var(--text-muted); }
 
-/* ── Pozycje w podsumowaniu zamówienia ────────────────────────────────── */
-
+/* Order items */
 .ord-item-row {
   display: flex;
   align-items: baseline;
@@ -516,7 +543,7 @@ select.me-input { cursor: pointer; }
 
 
 /* ════════════════════════════════════════════════
-   4. PŁYWAJĄCY PRZYCISK — POWRÓT DO CAFFENACCI
+   4. PŁYWAJĄCY PRZYCISK
    ════════════════════════════════════════════════ */
 
 .cp-home-fab {
@@ -548,8 +575,6 @@ select.me-input { cursor: pointer; }
 
 /* ════════════════════════════════════════════════
    5. MOTYW: CLASSIC
-   Eleganckie, tradycyjne, przytulne — serif, złote
-   zdobienia, symetryczne, spokojne dywidery.
    ════════════════════════════════════════════════ */
 
 .cafe-page--classic .cp-hero {
@@ -623,8 +648,6 @@ select.me-input { cursor: pointer; }
 
 /* ════════════════════════════════════════════════
    6. MOTYW: MODERN
-   Minimalistyczne — płaskie, geometryczne, dużo
-   światła, ostre krawędzie, wyrazista typografia sans.
    ════════════════════════════════════════════════ */
 
 .cafe-page--modern {
@@ -658,10 +681,6 @@ select.me-input { cursor: pointer; }
   letter-spacing: 0.1em; font-size: 0.8125rem; font-weight: 800;
   color: var(--text-dark);
   border-bottom: 3px solid var(--text-dark);
-  /* display:table (nie inline-block!) — kurczy się do szerokości tekstu
-     tak samo jak inline-block, ale jest blokiem, więc kolejny element
-     (np. przycisk „Zarezerwuj stolik”) zawsze wyląduje w nowej linii
-     zamiast wchodzić w tę samą linijkę co nagłówek. */
   display: table;
   padding-bottom: 0.5rem;
   margin-bottom: 1.5rem;
@@ -711,9 +730,6 @@ select.me-input { cursor: pointer; }
 
 /* ════════════════════════════════════════════════
    7. MOTYW: MAGIC
-   Mroczny, magiczny klimat — świecące złoto, dym,
-   migoczące gwiazdy, zaklęte karty niczym ze
-   spellbooka.
    ════════════════════════════════════════════════ */
 
 .cafe-page--magic {
@@ -792,16 +808,8 @@ select.me-input { cursor: pointer; }
   50%      { text-shadow: 0 0 18px rgba(181,114,10,0.9), 0 0 36px rgba(181,114,10,0.55); }
 }
 
-/* isolation:isolate sprawia, że ten element tworzy WŁASNY kontekst
-   warstwowania — dzięki temu z-index:-1 poniżej gwarantowanie ląduje
-   POD zwykłą (niepozycjonowaną) treścią strony, zamiast nad nią
-   (typowa pułapka: position:fixed + z-index:0 bez izolacji potrafi
-   wylądować NAD zwykłymi blokami, przez co „dym” był praktycznie
-   niewidoczny). */
 .cafe-page--magic { isolation: isolate; }
 
-/* Dym + gwiazdy unoszące się w tle CAŁEJ strony (nie tylko herosa) —
-   position:fixed pseudo-elementy pod resztą treści. */
 .cafe-page--magic::before {
   content: '';
   position: fixed;
@@ -835,10 +843,6 @@ select.me-input { cursor: pointer; }
 }
 @keyframes magic-twinkle-page { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.7; } }
 
-/* Różdżka zamiast zwykłego kursora (tylko na urządzeniach z myszką).
-   Ważne: musimy nadpisać * (przyciski/linki same ustawiają cursor:pointer,
-   który normalnie „wygrywa” z odziedziczonym kursorem rodzica) — stąd
-   !important, żeby różdżka została nawet nad klikalnymi elementami. */
 @media (pointer: fine) {
   .cafe-page--magic,
   .cafe-page--magic * {
@@ -848,9 +852,6 @@ select.me-input { cursor: pointer; }
   }
 }
 
-
-/* Warstwa iskier pojawiających się przy kliknięciu (elementy dopisywane
-   z JS w CafePage.tsx — patrz .cp-spark-layer / .cp-spark). */
 .cp-spark-layer {
   position: fixed;
   inset: 0;
@@ -883,7 +884,6 @@ select.me-input { cursor: pointer; }
 .cafe-page--magic .cp-section__title::before { content: '✦ '; }
 .cafe-page--magic .cp-section__title::after  { content: ' ✦'; }
 
-/* „Księga” menu — pergaminowy panel z grzbietem na środku. */
 .cafe-page--magic .cp-menu {
   position: relative;
   background:
@@ -906,7 +906,6 @@ select.me-input { cursor: pointer; }
   pointer-events: none;
 }
 
-/* Karty / panele ogólnie — teraz z kolorem tekstu i przestrzenią */
 .cafe-page--magic .info-card,
 .cafe-page--magic .res-empty-card,
 .cafe-page--magic .res-table-row,
@@ -919,8 +918,6 @@ select.me-input { cursor: pointer; }
   color: var(--parchment);
 }
 
-/* Pozycje menu jako osobne „karty księgi” z odpowiednim marginesem —
-   wcześniej stały zbyt blisko siebie i tekst dotykał krawędzi. */
 .cafe-page--magic .cp-menu-items { gap: 0.875rem; }
 .cafe-page--magic .cp-menu-item {
   background: rgba(240,228,204,0.04);
@@ -938,8 +935,6 @@ select.me-input { cursor: pointer; }
 .cafe-page--magic .cp-menu-section__name { border-bottom-color: rgba(181,114,10,0.3); }
 .cafe-page--magic .cp-muted-note { color: rgba(240,228,204,0.55); }
 
-/* Teksty, które zakładały jasne tło (nagłówki opinii, liczby, formularze,
-   pola „me-*”) — na ciemnym tle magic były praktycznie niewidoczne. */
 .cafe-page--magic .rv-summary__score,
 .cafe-page--magic .rv-card__nick,
 .cafe-page--magic .res-empty-title,
@@ -960,10 +955,6 @@ select.me-input { cursor: pointer; }
 .cafe-page--magic .field__input {
   color: var(--parchment);
   border-bottom-color: rgba(181,114,10,0.4);
-  /* color-scheme:dark każe przeglądarce narysować natywne kontrolki
-     (m.in. ikonkę kalendarza/zegara w <input type="date"/"time">) w
-     jasnym wariancie pasującym do ciemnego tła — bez tego były czarne
-     na czarnym i praktycznie niewidoczne. */
   color-scheme: dark;
 }
 .cafe-page--magic .me-input::placeholder,
@@ -972,9 +963,6 @@ select.me-input { cursor: pointer; }
 .cafe-page--magic .field__input:focus { border-bottom-color: var(--gold); }
 .cafe-page--magic .checkbox-field__input { border-color: rgba(181,114,10,0.5); }
 
-/* Godziny przy wyborze stolika (tryb zaawansowany) — domyślny stan
-   zakładał ciemny tekst na jasnym tle i był niewidoczny na ciemnym
-   motywie magic. */
 .cafe-page--magic .cp-slot-btn {
   color: var(--parchment);
   border-color: rgba(181,114,10,0.4);
@@ -995,8 +983,6 @@ select.me-input { cursor: pointer; }
   border-color: rgba(181,114,10,0.15);
 }
 
-/* Przyciski ze złotą poświatą i przebłyskiem światła na hover — jak
-   błysk różdżki. */
 .cafe-page--magic .btn--primary,
 .cafe-page--magic .cp-add-btn {
   position: relative;
@@ -1024,9 +1010,6 @@ select.me-input { cursor: pointer; }
   box-shadow: 0 0 16px rgba(181,114,10,0.5);
 }
 .cafe-page--magic .btn--primary:hover {
-  /* Redeklarujemy background na hover — bez tego bazowa reguła
-     .btn--primary:hover (ciemne tło) nakładała się na ciemny tekst
-     (var(--espresso)) i napis znikał. */
   background: linear-gradient(135deg, var(--gold-hover), var(--gold));
   color: var(--espresso);
   box-shadow: 0 0 30px rgba(181,114,10,0.75);
@@ -1056,8 +1039,6 @@ select.me-input { cursor: pointer; }
 
 /* ════════════════════════════════════════════════
    8. MOTYW: USA '80s
-   Neonowy amerykański diner — jaskrawe kontury,
-   siatka horyzontu synthwave, komiksowe cienie.
    ════════════════════════════════════════════════ */
 
 .cafe-page--usa80s {
@@ -1148,8 +1129,6 @@ select.me-input { cursor: pointer; }
   padding: 1.375rem 1.5rem;
 }
 
-/* Pozycje menu jako osobne, dobrze oddychające „kafle” zamiast wąskiej
-   listy — bez paddingu tekst dotykał wcześniej ramki. */
 .cafe-page--usa80s .cp-menu-items { gap: 1rem; }
 .cafe-page--usa80s .cp-menu-item {
   border: 3px solid var(--espresso);
@@ -1178,8 +1157,6 @@ select.me-input { cursor: pointer; }
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .cafe-page--usa80s .btn--primary:hover {
-  /* Bez jawnego background/color tutaj, bazowa reguła .btn--primary:hover
-     (ciemne tło) nadpisywała nasze jasne tło i ciemny napis znikał. */
   background: var(--gold-hover);
   color: var(--espresso);
   transform: translate(-2px, -2px);
@@ -1218,9 +1195,7 @@ select.me-input { cursor: pointer; }
 
 
 /* ════════════════════════════════════════════════
-   9. MOTYW: EXPRESSIVE (na wzór Material 3 Expressive)
-   Odważne kształty, duże fonty, fizyka sprężynowa,
-   ciekawość i ruch w każdej interakcji.
+   9. MOTYW: EXPRESSIVE
    ════════════════════════════════════════════════ */
 
 .cafe-page--expressive {
@@ -1306,8 +1281,6 @@ select.me-input { cursor: pointer; }
   box-shadow: 0 16px 40px rgba(17,10,4,0.16);
 }
 
-/* Menu było zbyt ciasne — pozycje nie miały paddingu poziomego (bazowy
-   styl zakładał listę bez ramek), a teraz mają zaokrąglone „bąble”. */
 .cafe-page--expressive .cp-menu-items { gap: 1rem; }
 .cafe-page--expressive .cp-menu-item {
   padding: 1.25rem 1.5rem;
@@ -1357,9 +1330,7 @@ select.me-input { cursor: pointer; }
 
 
 /* ════════════════════════════════════════════════
-   GALERIA ZDJĘĆ
-   Bazowy układ wspólny dla wszystkich motywów — każdy
-   motyw poniżej nadpisuje sposób prezentacji.
+   10. GALERIA ZDJĘĆ
    ════════════════════════════════════════════════ */
 
 .cp-gallery {
@@ -1400,8 +1371,7 @@ select.me-input { cursor: pointer; }
   box-shadow: 0 10px 26px rgba(17,10,4,0.14);
 }
 
-/* ── Motyw CLASSIC — przewijany pasek w stylu polaroidów ────────────── */
-
+/* Classic */
 .cafe-page--classic .cp-gallery__item {
   border-radius: 3px;
   border: 6px solid var(--surface);
@@ -1411,8 +1381,7 @@ select.me-input { cursor: pointer; }
 .cafe-page--classic .cp-gallery__item:nth-child(even) { transform: rotate(1.2deg); }
 .cafe-page--classic .cp-gallery__item:hover { transform: rotate(0deg) translateY(-4px) scale(1.03); }
 
-/* ── Motyw MODERN — siatka, zdjęcia obok siebie, ostre kąty ─────────── */
-
+/* Modern */
 .cafe-page--modern .cp-gallery__track {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -1429,8 +1398,7 @@ select.me-input { cursor: pointer; }
 }
 .cafe-page--modern .cp-gallery__item:hover { transform: none; box-shadow: none; }
 
-/* ── Motyw MAGIC — zdjęcia "unoszą się" poza treścią strony ─────────── */
-
+/* Magic */
 .cafe-page--magic .cp-gallery {
   position: relative;
   min-height: 460px;
@@ -1452,9 +1420,6 @@ select.me-input { cursor: pointer; }
   box-shadow: 0 0 24px rgba(181,114,10,0.3);
   animation: gallery-float 7s ease-in-out infinite;
 }
-/* Naprzemienne pozycje — nieparzyste "wylatują" poza lewą krawędź .cp-main
-   (max-width: 980px), parzyste poza prawą, dzięki jednostkom vw, więc
-   działa niezależnie od szerokości okna. */
 .cafe-page--magic .cp-gallery__item:nth-child(6n+1) { top: 0;    left: -8vw;  animation-delay: 0s; }
 .cafe-page--magic .cp-gallery__item:nth-child(6n+2) { top: 40px; left: auto; right: -9vw; animation-delay: 1.1s; }
 .cafe-page--magic .cp-gallery__item:nth-child(6n+3) { top: 220px; left: -5vw; animation-delay: 2.2s; }
@@ -1471,8 +1436,7 @@ select.me-input { cursor: pointer; }
   50%      { transform: translateY(-14px) rotate(2deg); }
 }
 
-/* ── Motyw USA80s — filmstrip z komiksowym cieniem ──────────────────── */
-
+/* USA80s */
 .cafe-page--usa80s .cp-gallery__item {
   border: 3px solid var(--espresso);
   border-radius: 2px;
@@ -1483,8 +1447,7 @@ select.me-input { cursor: pointer; }
   box-shadow: 8px 8px 0 var(--gold);
 }
 
-/* ── Motyw EXPRESSIVE — "blobowa" siatka ────────────────────────────── */
-
+/* Expressive */
 .cafe-page--expressive .cp-gallery__track {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -1507,8 +1470,7 @@ select.me-input { cursor: pointer; }
   transform: scale(1.06) rotate(-1deg);
 }
 
-/* ── Responsywność galerii ───────────────────────────────────────────── */
-
+/* Responsiveness for gallery */
 @media (max-width: 700px) {
   .cp-gallery__item { width: 200px; height: 150px; }
 
@@ -1528,8 +1490,9 @@ select.me-input { cursor: pointer; }
   }
 }
 
+
 /* ════════════════════════════════════════════════
-   10. RESPONSYWNOŚĆ + DOSTĘPNOŚĆ
+   11. RESPONSYWNOŚĆ + DOSTĘPNOŚĆ
    ════════════════════════════════════════════════ */
 
 @media (max-width: 700px) {

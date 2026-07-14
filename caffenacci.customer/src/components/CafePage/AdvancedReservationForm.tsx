@@ -25,6 +25,13 @@ interface OccupiedSlot {
   guests: number
 }
 
+interface HourExceptionInfo {
+  date: string
+  is_closed: boolean
+  open_time: string | null
+  close_time: string | null
+}
+
 interface ReservationInfo {
   cafe_id: string
   enabled: boolean
@@ -33,6 +40,7 @@ interface ReservationInfo {
   tables: TableInfo[]
   hours: DayHoursInfo[]
   occupied: OccupiedSlot[]
+  hour_exceptions: HourExceptionInfo[]
 }
 
 interface Props {
@@ -66,6 +74,24 @@ function dayOfWeekFromDate(dateStr: string): number {
   // JS getDay(): 0=niedziela ... backend: 0=poniedziałek
   const d = new Date(dateStr + 'T00:00:00')
   return (d.getDay() + 6) % 7
+}
+
+// Te same wyjątki godzinowe, co na wizytówce kawiarni (sekcja „Godziny
+// otwarcia”) — pokazujemy je też tutaj i uwzględniamy przy liczeniu
+// dostępnych slotów, żeby rezerwacja nigdy nie zaprzeczała temu, co widać
+// na stronie głównej kawiarni.
+
+function formatExceptionDateLabel(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' })
+}
+
+function formatExceptionSentence(e: HourExceptionInfo): string {
+  const label = formatExceptionDateLabel(e.date)
+  if (e.is_closed || !e.open_time || !e.close_time) {
+    return `${label} kawiarnia będzie nieczynna.`
+  }
+  return `${label} kawiarnia będzie pracować w godzinach ${e.open_time}–${e.close_time}.`
 }
 
 export default function AdvancedReservationForm({ cafeId, requireLogin, authToken }: Props) {
@@ -108,11 +134,26 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
 
   const selectedTable = info?.tables.find(t => t.id === tableId) ?? null
 
+  // Wyjątek godzinowy (ustawiony w profilu kawiarni) dla dokładnie wybranej
+  // daty — jeśli istnieje, nadpisuje plan tygodniowy z ustawień rezerwacji,
+  // tak samo jak dzieje się to na publicznej wizytówce kawiarni.
+  const dateException = useMemo(() => {
+    if (!info) return null
+    return info.hour_exceptions.find(e => e.date === date) ?? null
+  }, [info, date])
+
   const dayHours = useMemo(() => {
     if (!info) return null
+    if (dateException) {
+      return {
+        day_of_week: dayOfWeekFromDate(date),
+        open_time: dateException.is_closed ? null : dateException.open_time,
+        close_time: dateException.is_closed ? null : dateException.close_time,
+      }
+    }
     const dow = dayOfWeekFromDate(date)
     return info.hours.find(h => h.day_of_week === dow) ?? null
-  }, [info, date])
+  }, [info, date, dateException])
 
   // ── Sloty czasowe z dostępnością (odzwierciedla logikę backendu) ─────
 
@@ -236,6 +277,20 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
         </div>
       </div>
 
+      {info && info.hour_exceptions.filter(e => e.date >= todayStr()).length > 0 && (
+        <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          {info.hour_exceptions
+            .filter(e => e.date >= todayStr())
+            .sort((a, b) => a.date.localeCompare(b.date))
+            .slice(0, 5)
+            .map(e => (
+              <p key={e.date} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                📌 {formatExceptionSentence(e)}
+              </p>
+            ))}
+        </div>
+      )}
+
       <div style={{ marginTop: '1rem' }}>
         <label className="me-label">Godzina</label>
         {loadingInfo ? (
@@ -243,26 +298,37 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
         ) : !info || !info.tables.length ? (
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Brak skonfigurowanych stolików.</p>
         ) : !dayHours || !dayHours.open_time || !dayHours.close_time ? (
-          <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>W tym dniu kawiarnia jest zamknięta.</p>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>
+            {dateException?.is_closed
+              ? 'Tego dnia kawiarnia jest wyjątkowo zamknięta.'
+              : 'W tym dniu kawiarnia jest zamknięta.'}
+          </p>
         ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-            {slots.map(s => (
-              <button
-                key={s.time}
-                type="button"
-                title={s.reason}
-                disabled={!s.available}
-                onClick={() => setStartTime(s.time)}
-                className={
-                  'cp-slot-btn' +
-                  (startTime === s.time ? ' cp-slot-btn--selected' : '') +
-                  (!s.available ? ' cp-slot-btn--unavailable' : '')
-                }
-              >
-                {s.time}
-              </button>
-            ))}
-          </div>
+          <>
+            {dateException && !dateException.is_closed && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--gold)', fontWeight: 600, marginTop: '0.5rem', marginBottom: 0 }}>
+                ⓘ Tego dnia obowiązują wyjątkowe godziny: {dateException.open_time}–{dateException.close_time}
+              </p>
+            )}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+              {slots.map(s => (
+                <button
+                  key={s.time}
+                  type="button"
+                  title={s.reason}
+                  disabled={!s.available}
+                  onClick={() => setStartTime(s.time)}
+                  className={
+                    'cp-slot-btn' +
+                    (startTime === s.time ? ' cp-slot-btn--selected' : '') +
+                    (!s.available ? ' cp-slot-btn--unavailable' : '')
+                  }
+                >
+                  {s.time}
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

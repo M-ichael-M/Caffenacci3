@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.cafe import Cafe
+from app.models.cafe_profile import CafeProfile
 from app.models.client import Client
 from app.models.reservation import (
     ReservationSettings, DayHours, CafeTable, Reservation,
@@ -20,6 +21,7 @@ from app.schemas.reservation import (
     ReservationIn, ReservationOut, ReservationListOut,
     PublicReservationIn, ClientReservationIn, ClientAdvancedReservationIn,
     ReservationStatusUpdate, ReservationInfoOut, OccupiedSlotOut,
+    ReservationHourExceptionOut,
     ClientReservationOut, ClientReservationListOut,   # ← nowe
 )
 
@@ -62,6 +64,28 @@ def _get_or_create_settings(cafe_id: str, db: Session) -> ReservationSettings:
         db.commit()
         db.refresh(s)
     return s
+
+
+def _get_profile_hour_exceptions(cafe_id: str, db: Session) -> list[ReservationHourExceptionOut]:
+    """Wyjątki godzinowe z profilu kawiarni (te same, co na wizytówce
+    publicznej) — używane, żeby widget rezerwacji zaawansowanej nigdy nie
+    proponował terminu w dniu, w którym kawiarnia zadeklarowała się jako
+    wyjątkowo zamknięta / pracująca w innych godzinach."""
+    profile = (
+        db.query(CafeProfile)
+        .options(selectinload(CafeProfile.hour_exceptions))
+        .filter(CafeProfile.cafe_id == cafe_id)
+        .first()
+    )
+    if not profile:
+        return []
+    return [
+        ReservationHourExceptionOut(
+            date=e.date, is_closed=e.is_closed,
+            open_time=e.open_time, close_time=e.close_time,
+        )
+        for e in profile.hour_exceptions
+    ]
 
 
 def _reservation_to_out(r: Reservation) -> ReservationOut:
@@ -257,6 +281,8 @@ def get_reservation_info(
     if not cafe:
         raise HTTPException(404, detail="Kawiarnia nie istnieje.")
 
+    hour_exceptions = _get_profile_hour_exceptions(cafe_id, db)
+
     s = (
         db.query(ReservationSettings)
         .options(
@@ -270,6 +296,7 @@ def get_reservation_info(
         return ReservationInfoOut(
             cafe_id=cafe_id, enabled=False, mode="simple",
             slot_duration_minutes=60, tables=[], hours=[], occupied=[],
+            hour_exceptions=hour_exceptions,
         )
 
     occupied: list[OccupiedSlotOut] = []
@@ -302,6 +329,7 @@ def get_reservation_info(
         tables=s.tables,
         hours=s.hours,
         occupied=occupied,
+        hour_exceptions=hour_exceptions,
     )
 
 
