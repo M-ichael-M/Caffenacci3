@@ -59,9 +59,21 @@ interface Props { cafeId: string }
 
 const DAYS = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela']
 
+// Buduje string YYYY-MM-DD z lokalnej daty, bez przechodzenia przez UTC.
+// new Date().toISOString() zawsze konwertuje do UTC — w Polsce (UTC+1/+2)
+// lokalna północ danego dnia to jeszcze poprzedni dzień w UTC, więc
+// .toISOString().slice(0,10) potrafiło cofnąć datę o jeden dzień i psuć
+// wyliczanie "dzisiaj", zakresu tygodnia i dopasowania wyjątków godzinowych.
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 function computeTodayStatus(data: PublicSiteData) {
   const now = new Date()
-  const todayStr = now.toISOString().slice(0, 10)
+  const todayStr = toLocalDateStr(now)
   const pyDow = (now.getDay() + 6) % 7
   const exception = data.hour_exceptions.find(e => e.date === todayStr)
   const dayPlan = data.weekly_hours.find(h => h.day_of_week === pyDow)
@@ -85,15 +97,14 @@ function getCurrentWeekRange(): { start: string; end: string } {
   const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow)
   const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6)
 
-  const toStr = (d: Date) => d.toISOString().slice(0, 10)
-  return { start: toStr(monday), end: toStr(sunday) }
+  return { start: toLocalDateStr(monday), end: toLocalDateStr(sunday) }
 }
 
 function dateForDayOfWeek(mondayStr: string, dayOfWeek: number): string {
   const [y, m, d] = mondayStr.split('-').map(Number)
   const monday = new Date(y, m - 1, d)
   const target = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOfWeek)
-  return target.toISOString().slice(0, 10)
+  return toLocalDateStr(target)
 }
 
 function formatExceptionDateLabel(dateStr: string): string {
@@ -219,7 +230,7 @@ export default function CafePage({ cafeId }: Props) {
 
   const paletteVars = getPaletteVars(data.palette)
   const status = computeTodayStatus(data)
-  const todayIsoStr = new Date().toISOString().slice(0, 10)
+  const todayIsoStr = toLocalDateStr(new Date())
 
   // ── Godziny otwarcia z wyjątkami ────────────────────────────────
   const { start: weekStart, end: weekEnd } = getCurrentWeekRange()
@@ -255,19 +266,19 @@ export default function CafePage({ cafeId }: Props) {
     <div className={`cafe-page cafe-page--${data.template}`} style={paletteVars as CSSProperties}>
       {/* Sticky nav */}
       <nav className="cp-nav">
+        <button className="cp-nav__link" onClick={() => document.getElementById('cp-menu')?.scrollIntoView({ behavior: 'smooth' })}>Menu</button>
+        {data.reservations_enabled && (
+          <button className="cp-nav__link" onClick={() => document.getElementById('cp-reservations')?.scrollIntoView({ behavior: 'smooth' })}>Rezerwacje</button>
+        )}
         {hasGallery && (
           <button className="cp-nav__link" onClick={() => document.getElementById('cp-gallery')?.scrollIntoView({ behavior: 'smooth' })}>
             Galeria
           </button>
         )}
-        <button className="cp-nav__link" onClick={() => document.getElementById('cp-menu')?.scrollIntoView({ behavior: 'smooth' })}>Menu</button>
-        {data.reservations_enabled && (
-          <button className="cp-nav__link" onClick={() => document.getElementById('cp-reservations')?.scrollIntoView({ behavior: 'smooth' })}>Rezerwacje</button>
-        )}
-        <button className="cp-nav__link" onClick={() => document.getElementById('cp-reviews')?.scrollIntoView({ behavior: 'smooth' })}>Opinie</button>
         {(hasContact || hasLocation) && (
           <button className="cp-nav__link" onClick={() => document.getElementById('cp-info')?.scrollIntoView({ behavior: 'smooth' })}>Kontakt</button>
         )}
+        <button className="cp-nav__link" onClick={() => document.getElementById('cp-reviews')?.scrollIntoView({ behavior: 'smooth' })}>Opinie</button>
         <div style={{ flex: 1 }} />
         <div className="cp-account">
           {auth ? (
@@ -306,14 +317,6 @@ export default function CafePage({ cafeId }: Props) {
           </section>
         )}
 
-        {/* Galeria */}
-        {hasGallery && (
-          <section id="cp-gallery">
-            <h2 className="cp-section__title">Galeria</h2>
-            <Gallery images={data.gallery_images} />
-          </section>
-        )}
-
         {/* Menu */}
         <section id="cp-menu">
           <h2 className="cp-section__title">Menu</h2>
@@ -341,6 +344,14 @@ export default function CafePage({ cafeId }: Props) {
               requireLogin={requireLogin}
               authToken={auth?.token ?? null}
             />
+          </section>
+        )}
+
+        {/* Galeria */}
+        {hasGallery && (
+          <section id="cp-gallery">
+            <h2 className="cp-section__title">Galeria</h2>
+            <Gallery images={data.gallery_images} />
           </section>
         )}
 
