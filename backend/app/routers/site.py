@@ -16,6 +16,8 @@ from app.models.menu import MenuSection
 from app.models.order import OrderSettings
 from app.models.reservation import ReservationSettings
 from app.models.review import Review
+from app.models.gallery import CafeGalleryImage
+from app.schemas.gallery import PublicGalleryImageOut
 from app.schemas.site import (
     CafeSiteSettingsIn, CafeSiteSettingsOut, PublicSiteOut,
     ALLOWED_TEMPLATES, ALLOWED_PALETTES,
@@ -101,15 +103,6 @@ def save_settings(
 # ══════════════════════════════════════════════════════════════════════════════
 # PUBLICZNY BUNDLE — wszystko czego potrzebuje wygenerowana strona kawiarni
 # ══════════════════════════════════════════════════════════════════════════════
-#
-# Jeden request, który składa stronę z danych, które właściciel już
-# skonfigurował w innych częściach panelu:
-#   • profil (kontakt / opis / lokalizacja / social media / zespół) —
-#     wyłącznie pola oznaczone jako widoczne publicznie,
-#   • godziny otwarcia — zawsze publiczne (wymagane),
-#   • menu — zawsze publiczne, jeśli istnieje,
-#   • zamówienia / rezerwacje — pokazywane tylko jeśli właściciel je włączył,
-#   • opinie — zawsze widoczne (dodawanie wymaga zalogowania po stronie klienta).
 
 @router.get("/public/{cafe_id}", response_model=PublicSiteOut,
             summary="Pobierz w pełni złożoną, publiczną stronę kawiarni")
@@ -162,6 +155,19 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
     reviews_average = round(float(agg[0]), 2) if agg and agg[0] is not None else 0.0
     reviews_count = agg[1] if agg else 0
 
+    gallery_images: list[PublicGalleryImageOut] = []
+    if profile and profile.gallery_visible:
+        gallery_rows = (
+            db.query(CafeGalleryImage)
+            .filter(CafeGalleryImage.cafe_id == cafe_id)
+            .order_by(CafeGalleryImage.position)
+            .all()
+        )
+        gallery_images = [
+            PublicGalleryImageOut(url=f"/profile/gallery/{cafe_id}/{g.id}")
+            for g in gallery_rows
+        ]
+
     return PublicSiteOut(
         cafe_id=cafe.id,
         cafe_name=cafe.cafe_name,
@@ -198,4 +204,6 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
         reviews_average=reviews_average,
         reviews_count=reviews_count,
         reviews=reviews_rows,
+
+        gallery_images=gallery_images,
     )

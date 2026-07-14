@@ -69,6 +69,11 @@ class CafeProfile(Base):
     location_show_map = Column(Boolean, nullable=False, default=True)
     location_show_gmaps_link = Column(Boolean, nullable=False, default=True)
 
+    # ── Galeria zdjęć ────────────────────────────────────────────────────
+    # Same zdjęcia trzymane są w osobnej tabeli (CafeGalleryImage) — tu
+    # tylko globalny przełącznik widoczności galerii na wizytówce/stronie.
+    gallery_visible = Column(Boolean, nullable=False, default=False)
+
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=True, onupdate=datetime.utcnow)
 

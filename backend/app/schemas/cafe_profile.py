@@ -3,6 +3,8 @@ from pydantic import BaseModel, Field, EmailStr, field_validator
 from typing import List, Optional
 from datetime import datetime
 
+from app.schemas.gallery import GalleryImageOut, PublicGalleryImageOut
+
 
 # ── Stałe ──────────────────────────────────────────────────────────────────
 
@@ -90,7 +92,8 @@ class EmployeeOut(EmployeeIn):
 
 
 # ── Pełny profil — zapis (PUT) ────────────────────────────────────────────
-# Logo wgrywane jest osobnym endpointem (multipart), więc tu nie występuje.
+# Logo i zdjęcia galerii wgrywane są osobnymi endpointami (multipart),
+# więc tu nie występują — poza flagą widoczności galerii.
 
 class CafeProfileIn(BaseModel):
     # Dane z rejestracji — edytowalne tu
@@ -127,11 +130,11 @@ class CafeProfileIn(BaseModel):
     location_show_map: bool = True
     location_show_gmaps_link: bool = True
 
-    # Godziny — obowiązkowe (min. jeden dzień otwarty), zawsze publiczne
-    weekly_hours: List[WeeklyHoursIn] = Field(..., min_length=7, max_length=7)
-
-    social_links: List[SocialLinkIn] = []
-    employees: List[EmployeeIn] = []
+    # ── Galeria zdjęć ────────────────────────────────────────────────────
+    # Same zdjęcia zarządzane są osobnymi endpointami
+    # (POST/DELETE /profile/gallery) — tu tylko przełącznik widoczności.
+    # Backend odrzuci True, jeśli galeria jest pusta (patrz routers/cafe_profile.py).
+    gallery_visible: bool = False
 
     @field_validator("longitude")
     @classmethod
@@ -198,6 +201,9 @@ class CafeProfileOut(BaseModel):
     social_links:    List[SocialLinkOut]
     employees:       List[EmployeeOut]
 
+    gallery_visible: bool
+    gallery_images:  List[GalleryImageOut] = []
+
     profile_complete: bool   # True jeśli logo + godziny są uzupełnione (wymogi obowiązkowe)
 
     updated_at: Optional[datetime]
@@ -259,3 +265,6 @@ class PublicCafeProfileOut(BaseModel):
 
     social_links: List[PublicSocialLinkOut]
     employees:    List[PublicEmployeeOut]
+
+    # Pusta lista, jeśli galeria jest wyłączona lub bez zdjęć.
+    gallery_images: List[PublicGalleryImageOut] = []

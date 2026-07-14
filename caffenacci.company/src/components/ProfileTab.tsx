@@ -35,6 +35,12 @@ interface Employee {
   position:  number
 }
 
+interface GalleryImage {
+  id:       string
+  url:      string
+  position: number
+}
+
 interface CafeProfileData {
   id: string
   cafe_id: string
@@ -64,6 +70,8 @@ interface CafeProfileData {
   hour_exceptions: HourException[]
   social_links: SocialLink[]
   employees: Employee[]
+  gallery_visible: boolean
+  gallery_images: GalleryImage[]
   profile_complete: boolean
   updated_at: string | null
 }
@@ -83,6 +91,7 @@ const PLATFORM_OPTIONS = [
   { value: 'other',     label: 'Inny',      icon: '🔗' },
 ]
 const MAX_EXCEPTION_DAYS_AHEAD = 21
+const MAX_GALLERY_IMAGES = 10
 
 function uid() { return Math.random().toString(36).slice(2) }
 
@@ -210,6 +219,13 @@ export default function ProfileTab({ token }: Props) {
   const [locationShowMap, setLocationShowMap]             = useState(true)
   const [locationShowGmapsLink, setLocationShowGmapsLink] = useState(true)
 
+  // Galeria zdjęć
+  const [galleryVisible, setGalleryVisible]   = useState(false)
+  const [galleryImages, setGalleryImages]     = useState<GalleryImage[]>([])
+  const [galleryUploading, setGalleryUploading] = useState(false)
+  const [galleryError, setGalleryError]       = useState<string | null>(null)
+  const galleryFileInputRef = useRef<HTMLInputElement>(null)
+
   // ── Fetch ───────────────────────────────────────────────────────────────
 
   const fetchProfile = useCallback(async () => {
@@ -245,6 +261,8 @@ export default function ProfileTab({ token }: Props) {
         setLocationVisible(data.location_visible)
         setLocationShowMap(data.location_show_map)
         setLocationShowGmapsLink(data.location_show_gmaps_link)
+        setGalleryVisible(data.gallery_visible)
+        setGalleryImages(data.gallery_images ?? [])
       }
     } catch { /* ignore */ }
     finally { setLoading(false) }
@@ -295,6 +313,68 @@ export default function ProfileTab({ token }: Props) {
         setProfile(data)
       }
     } catch { /* ignore */ }
+  }
+
+  // ── Galeria — upload / usunięcie ─────────────────────────────────────────
+
+  const handleGallerySelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    setGalleryError(null)
+    setGalleryUploading(true)
+
+    const slotsLeft = MAX_GALLERY_IMAGES - galleryImages.length
+    const selected = Array.from(files)
+    const toUpload = selected.slice(0, Math.max(slotsLeft, 0))
+    if (toUpload.length < selected.length) {
+      setGalleryError(`Można dodać maksymalnie ${MAX_GALLERY_IMAGES} zdjęć — część wybranych plików nie została wgrana.`)
+    }
+
+    try {
+      for (const file of toUpload) {
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch('http://localhost:8000/profile/gallery', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        })
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.detail || 'Błąd wgrywania zdjęcia.')
+        }
+        const data: CafeProfileData = await res.json()
+        setGalleryImages(data.gallery_images)
+        setGalleryVisible(data.gallery_visible)
+        setProfile(data)
+      }
+    } catch (err: unknown) {
+      setGalleryError(err instanceof Error ? err.message : 'Wystąpił błąd. Spróbuj ponownie.')
+    } finally {
+      setGalleryUploading(false)
+      if (galleryFileInputRef.current) galleryFileInputRef.current.value = ''
+    }
+  }
+
+  const handleGalleryDelete = async (imageId: string) => {
+    if (!confirm('Czy na pewno chcesz usunąć to zdjęcie z galerii?')) return
+    setGalleryError(null)
+    try {
+      const res = await fetch(`http://localhost:8000/profile/gallery/${imageId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Błąd usuwania zdjęcia.')
+      }
+      const data: CafeProfileData = await res.json()
+      setGalleryImages(data.gallery_images)
+      setGalleryVisible(data.gallery_visible)
+      setProfile(data)
+    } catch (err: unknown) {
+      setGalleryError(err instanceof Error ? err.message : 'Błąd usuwania zdjęcia.')
+    }
   }
 
   // ── Weekly hours mutations ───────────────────────────────────────────────
@@ -407,6 +487,7 @@ export default function ProfileTab({ token }: Props) {
         location_visible: locationVisible,
         location_show_map: locationShowMap,
         location_show_gmaps_link: locationShowGmapsLink,
+        gallery_visible: galleryVisible,
         weekly_hours: weeklyHours,
         social_links: socialLinks
           .filter(s => s.url.trim())
@@ -433,6 +514,8 @@ export default function ProfileTab({ token }: Props) {
       setLocationVisible(data.location_visible)
       setLocationShowMap(data.location_show_map)
       setLocationShowGmapsLink(data.location_show_gmaps_link)
+      setGalleryVisible(data.gallery_visible)
+      setGalleryImages(data.gallery_images)
       setSaveMsg({ type: 'ok', text: 'Profil kawiarni został zapisany.' })
     } catch (err: unknown) {
       setSaveMsg({ type: 'err', text: err instanceof Error ? err.message : 'Błąd zapisu.' })
@@ -760,6 +843,73 @@ export default function ProfileTab({ token }: Props) {
             showGmapsLink={locationShowGmapsLink}
             onShowGmapsLinkChange={setLocationShowGmapsLink}
           />
+        </div>
+      </div>
+
+      {/* ── Galeria zdjęć (pełna szerokość) ─────────────────────────────── */}
+      <div className="info-card" style={{ gridColumn: '1 / -1' }}>
+        <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+              Nowe dane · opcjonalne
+            </div>
+            <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
+              Galeria zdjęć
+            </h2>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <VisibilityBadge visible={galleryVisible} />
+            <Toggle checked={galleryVisible} onChange={setGalleryVisible} disabled={galleryImages.length === 0} />
+          </div>
+        </div>
+        <div className="info-card__body">
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
+            Dodaj do {MAX_GALLERY_IMAGES} zdjęć swojej kawiarni. W zależności od wybranego szablonu strony
+            (zakładka „Strona WWW”) galeria pojawi się jako przewijany pasek, siatka zdjęć albo — w motywie
+            magicznym — unoszące się fotografie wychodzące poza treść strony.
+          </p>
+
+          {galleryError && <div className="form-error" style={{ marginBottom: '0.75rem' }}>{galleryError}</div>}
+
+          <div className="pf-gallery-grid">
+            {galleryImages.map((img, idx) => (
+              <div key={img.id} className="pf-gallery-item">
+                <img src={`http://localhost:8000${img.url}`} alt={`Zdjęcie ${idx + 1} z galerii`} />
+                <div className="pf-gallery-item__actions">
+                  <button
+                    type="button"
+                    className="pf-gallery-item__btn pf-gallery-item__btn--danger"
+                    title="Usuń zdjęcie"
+                    onClick={() => handleGalleryDelete(img.id)}
+                  >✕</button>
+                </div>
+              </div>
+            ))}
+
+            {galleryImages.length < MAX_GALLERY_IMAGES && (
+              <button
+                type="button"
+                className="pf-gallery-add-btn"
+                onClick={() => galleryFileInputRef.current?.click()}
+                disabled={galleryUploading}
+              >
+                {galleryUploading ? 'Wgrywanie…' : '+ Dodaj zdjęcie'}
+              </button>
+            )}
+          </div>
+
+          <input
+            ref={galleryFileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleGallerySelect}
+          />
+
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.75rem' }}>
+            {galleryImages.length}/{MAX_GALLERY_IMAGES} zdjęć · max 10 MB na zdjęcie (PNG, JPEG, WEBP)
+          </span>
         </div>
       </div>
 

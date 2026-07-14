@@ -3,6 +3,8 @@ from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from datetime import datetime
 
+from app.schemas.gallery import PublicGalleryImageOut
+
 # ── Dostępne szablony i palety kolorów ──────────────────────────────────────
 # Trzymane jako proste klucze (string) — wygląd (kolory, typografia, animacje)
 # jest renderowany po stronie frontendu na podstawie tego klucza. Backend tylko
@@ -151,3 +153,6 @@ class PublicSiteOut(BaseModel):
     reviews_average: float
     reviews_count:   int
     reviews:         List[SiteReviewOut]
+
+    # Pusta lista, jeśli właściciel wyłączył galerię lub nie dodał zdjęć.
+    gallery_images: List[PublicGalleryImageOut] = []

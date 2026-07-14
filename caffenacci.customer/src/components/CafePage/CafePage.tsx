@@ -6,6 +6,7 @@ import { getPaletteVars } from './palettes'
 import MenuOrdering from './MenuOrdering'
 import ReservationWidget from './ReservationWidget'
 import ReviewsWidget from './ReviewsWidget'
+import Gallery from './Gallery'
 import LoginForm from '../LoginForm'
 import RegisterForm from '../RegisterForm'
 import './cafePage.css'
@@ -22,6 +23,7 @@ interface MenuItem {
 }
 interface MenuSection { id: string; name: string; items: MenuItem[] }
 interface ReviewItem { id: string; nick: string; rating: number; comment: string | null; created_at: string }
+interface GalleryImageItem { url: string }
 
 // Szablon strony — musi odpowiadać ALLOWED_TEMPLATES w backend/app/schemas/site.py
 type SiteTemplate = 'classic' | 'modern' | 'magic' | 'usa80s' | 'expressive'
@@ -51,6 +53,7 @@ interface PublicSiteData {
   reviews_average: number
   reviews_count: number
   reviews: ReviewItem[]
+  gallery_images: GalleryImageItem[]
 }
 
 interface Props { cafeId: string }
@@ -196,6 +199,7 @@ export default function CafePage({ cafeId }: Props) {
   const hasLocation = data.latitude !== null && data.longitude !== null
   const hasSocial   = data.social_links.length > 0
   const hasTeam     = data.employees.length > 0
+  const hasGallery  = data.gallery_images.length > 0
   const menuSections = data.menu_sections.filter(s => s.items.length > 0)
   const hasMenu     = menuSections.length > 0
 
@@ -206,6 +210,9 @@ export default function CafePage({ cafeId }: Props) {
 
       {/* ── Sticky nav ─────────────────────────────────────────────────── */}
       <nav className="cp-nav">
+        {hasGallery && (
+          <button className="cp-nav__link" onClick={() => document.getElementById('cp-gallery')?.scrollIntoView({ behavior: 'smooth' })}>Galeria</button>
+        )}
         <button className="cp-nav__link" onClick={() => document.getElementById('cp-menu')?.scrollIntoView({ behavior: 'smooth' })}>Menu</button>
         {data.reservations_enabled && (
           <button className="cp-nav__link" onClick={() => document.getElementById('cp-reservations')?.scrollIntoView({ behavior: 'smooth' })}>Rezerwacje</button>
@@ -250,6 +257,14 @@ export default function CafePage({ cafeId }: Props) {
         {data.description && (
           <section>
             <p style={{ fontSize: '1rem', lineHeight: 1.7, color: 'var(--text-body)', maxWidth: '70ch' }}>{data.description}</p>
+          </section>
+        )}
+
+        {/* ── Galeria zdjęć ────────────────────────────────────────────── */}
+        {hasGallery && (
+          <section id="cp-gallery">
+            <h2 className="cp-section__title">Galeria</h2>
+            <Gallery images={data.gallery_images} />
           </section>
         )}
 

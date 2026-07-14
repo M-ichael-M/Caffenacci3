@@ -10,6 +10,7 @@ from app.models import review       # noqa: F401  ← rejestruje model opinii
 from app.models import order        # noqa: F401  ← rejestruje modele zamówień
 from app.models import client       # noqa: F401  ← rejestruje model konta klienta
 from app.models import site         # noqa: F401  ← rejestruje model strony (szablon/paleta)
+from app.models import gallery      # noqa: F401  ← rejestruje model galerii zdjęć
 from app.routers import auth, me
 from app.routers import menu as menu_router
 from app.routers import reservation as reservation_router
