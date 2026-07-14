@@ -20,6 +20,7 @@ from app.schemas.order import (
     MAX_ORDER_DAYS_AHEAD,
     ClientOrderOut, ClientOrderListOut,   # ← nowe
 )
+from app.models.cafe_profile import CafeProfile
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 bearer_scheme = HTTPBearer()
@@ -66,6 +67,97 @@ def _validate_order_date(date_str: str) -> None:
             detail=f"Zamówienia można składać maksymalnie {MAX_ORDER_DAYS_AHEAD} dni do przodu.",
         )
 
+def _validate_order_date(date_str: str) -> None:
+    y, mo, d = date_str.split("-")
+    target = date_cls(int(y), int(mo), int(d))
+    today = date_cls.today()
+    if target < today:
+        raise HTTPException(400, detail="Nie można zamawiać na przeszłą datę.")
+    if target > today + timedelta(days=MAX_ORDER_DAYS_AHEAD):
+        raise HTTPException(
+            400,
+            detail=f"Zamówienia można składać maksymalnie {MAX_ORDER_DAYS_AHEAD} dni do przodu.",
+        )
+
+
+# ── Walidacja godzin pracy kawiarni (z uwzględnieniem wyjątków) ─────────────
+# Zamówienie można złożyć tylko na godzinę mieszczącą się w oknie pracy
+# kawiarni pomniejszonym o 15-minutowy bufor z obu stron: pierwsze możliwe
+# zamówienie to 15 min po otwarciu, ostatnie — 15 min przed zamknięciem.
+# Wyjątek godzinowy z profilu kawiarni (ten sam, co na wizytówce) ma zawsze
+# pierwszeństwo przed planem tygodniowym.
+
+ORDER_TIME_BUFFER_MINUTES = 15
+
+
+def _to_minutes(t: str) -> int:
+    h, m = t.split(":")
+    return int(h) * 60 + int(m)
+
+
+def _from_minutes(m: int) -> str:
+    hh = str((m // 60) % 24).zfill(2)
+    mm = str(m % 60).zfill(2)
+    return f"{hh}:{mm}"
+
+
+def _day_of_week(date_str: str) -> int:
+    y, mo, d = date_str.split("-")
+    return date_cls(int(y), int(mo), int(d)).weekday()
+
+
+def _get_effective_hours(cafe_id: str, date_str: str, db: Session) -> tuple[str | None, str | None]:
+    """Zwraca (open_time, close_time) obowiązujące w danym dniu. Wyjątek
+    z profilu kawiarni ma pierwszeństwo przed planem tygodniowym.
+    (None, None) oznacza, że kawiarnia jest tego dnia zamknięta."""
+    profile = (
+        db.query(CafeProfile)
+        .options(
+            selectinload(CafeProfile.weekly_hours),
+            selectinload(CafeProfile.hour_exceptions),
+        )
+        .filter(CafeProfile.cafe_id == cafe_id)
+        .first()
+    )
+    if not profile:
+        return None, None
+
+    exception = next((e for e in profile.hour_exceptions if e.date == date_str), None)
+    if exception:
+        if exception.is_closed:
+            return None, None
+        return exception.open_time, exception.close_time
+
+    dow = _day_of_week(date_str)
+    day_plan = next((h for h in profile.weekly_hours if h.day_of_week == dow), None)
+    if not day_plan:
+        return None, None
+    return day_plan.open_time, day_plan.close_time
+
+
+def _validate_order_time(cafe_id: str, date_str: str, start_time: str, db: Session) -> None:
+    open_time, close_time = _get_effective_hours(cafe_id, date_str, db)
+    if not open_time or not close_time:
+        raise HTTPException(400, detail="Kawiarnia jest zamknięta w wybranym dniu.")
+
+    open_m  = _to_minutes(open_time)  + ORDER_TIME_BUFFER_MINUTES
+    close_m = _to_minutes(close_time) - ORDER_TIME_BUFFER_MINUTES
+
+    if close_m <= open_m:
+        raise HTTPException(
+            400,
+            detail="Kawiarnia jest czynna zbyt krótko w tym dniu, aby przyjąć zamówienie.",
+        )
+
+    requested = _to_minutes(start_time)
+    if requested < open_m or requested > close_m:
+        raise HTTPException(
+            400,
+            detail=(
+                f"Zamówienia na ten dzień przyjmujemy od {_from_minutes(open_m)} "
+                f"do {_from_minutes(close_m)} (kawiarnia czynna {open_time}–{close_time})."
+            ),
+        )
 
 def _resolve_item(cafe_id: str, item_in, db: Session) -> tuple[str, float]:
     """Jeśli klient podał menu_item_id, nadpisz nazwę/cenę aktualnymi danymi
@@ -135,6 +227,7 @@ def create_public_order(
         raise HTTPException(400, detail="Ta kawiarnia nie przyjmuje zamówień online.")
 
     _validate_order_date(payload.date)
+    _validate_order_time(cafe_id, payload.date, payload.start_time, db)
 
     order = Order(
         cafe_id     = cafe_id,
@@ -190,6 +283,7 @@ def create_order_as_client(
         raise HTTPException(400, detail="Ta kawiarnia nie przyjmuje zamówień online.")
 
     _validate_order_date(payload.date)
+    _validate_order_time(cafe_id, payload.date, payload.start_time, db)
 
     order = Order(
         cafe_id     = cafe_id,

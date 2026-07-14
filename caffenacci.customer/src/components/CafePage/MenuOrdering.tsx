@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+
+interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
+interface HourException { date: string; is_closed: boolean; open_time: string | null; close_time: string | null }
 
 interface MenuItem {
   id: string
@@ -27,6 +30,40 @@ interface Props {
   ordersEnabled: boolean
   requireLogin: (action: () => void) => void
   authToken: string | null
+  weeklyHours: WeeklyHours[]
+  hourExceptions: HourException[]
+}
+
+const ORDER_BUFFER_MINUTES = 15
+
+function dayOfWeekFromDate(dateStr: string): number {
+  const d = new Date(dateStr + 'T00:00:00')
+  return (d.getDay() + 6) % 7
+}
+
+function toMinutes(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+function fromMinutes(m: number): string {
+  const hh = String(Math.floor(m / 60) % 24).padStart(2, '0')
+  const mm = String(m % 60).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
+function getEffectiveHours(dateStr: string, weeklyHours: WeeklyHours[], hourExceptions: HourException[]) {
+  const exception = hourExceptions.find(e => e.date === dateStr)
+  if (exception) {
+    return {
+      open: exception.is_closed ? null : exception.open_time,
+      close: exception.is_closed ? null : exception.close_time,
+      isException: true,
+    }
+  }
+  const dow = dayOfWeekFromDate(dateStr)
+  const plan = weeklyHours.find(h => h.day_of_week === dow)
+  return { open: plan?.open_time ?? null, close: plan?.close_time ?? null, isException: false }
 }
 
 function money(n: number) {
@@ -37,7 +74,7 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireLogin, authToken }: Props) {
+export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireLogin, authToken, weeklyHours, hourExceptions }: Props) {
   const [cart, setCart] = useState<Record<string, CartLine>>({})
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [date, setDate] = useState(todayStr())
@@ -45,6 +82,23 @@ export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireL
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  const effectiveHours = useMemo(
+    () => getEffectiveHours(date, weeklyHours, hourExceptions),
+    [date, weeklyHours, hourExceptions]
+  )
+
+  const orderWindow = useMemo(() => {
+    if (!effectiveHours.open || !effectiveHours.close) return null
+    const openM = toMinutes(effectiveHours.open) + ORDER_BUFFER_MINUTES
+    const closeM = toMinutes(effectiveHours.close) - ORDER_BUFFER_MINUTES
+    if (closeM <= openM) return null
+    return { min: fromMinutes(openM), max: fromMinutes(closeM) }
+  }, [effectiveHours])
+
+  const isTimeValid = orderWindow
+    ? toMinutes(time) >= toMinutes(orderWindow.min) && toMinutes(time) <= toMinutes(orderWindow.max)
+    : false
 
   const addToCart = (item: MenuItem) => {
     if (item.is_unavailable || !ordersEnabled) return
@@ -82,6 +136,14 @@ export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireL
 
   const handleSubmitOrder = async () => {
     if (lines.length === 0 || !authToken) return
+    if (!orderWindow) {
+      setError('Kawiarnia jest zamknięta w wybranym dniu — wybierz inną datę.')
+      return
+    }
+    if (!isTimeValid) {
+      setError(`Wybierz godzinę pomiędzy ${orderWindow.min} a ${orderWindow.max}.`)
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -204,8 +266,25 @@ export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireL
                 </div>
                 <div className="field" style={{ flex: 1 }}>
                   <label className="me-label">Godzina</label>
-                  <input type="time" className="me-input" value={time} onChange={e => setTime(e.target.value)} />
+                  <input
+                    type="time"
+                    className="me-input"
+                    value={time}
+                    min={orderWindow?.min}
+                    max={orderWindow?.max}
+                    onChange={e => setTime(e.target.value)}
+                  />
                 </div>
+                {orderWindow ? (
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                    Zamówienia na ten dzień przyjmujemy od {orderWindow.min} do {orderWindow.max}
+                    {effectiveHours.isException ? ' (dzień wyjątkowy w godzinach pracy)' : ''}.
+                  </p>
+                ) : (
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>
+                    Kawiarnia jest zamknięta w wybranym dniu — wybierz inną datę.
+                  </p>
+                )}
               </div>
 
               <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
@@ -219,7 +298,7 @@ export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireL
               <div className="me-footer-actions">
                 <button type="button" className="btn btn--outline-dark" onClick={() => setCheckoutOpen(false)}>Anuluj</button>
                 <button type="button" className="btn btn--primary" style={{ width: 'auto', minWidth: 160 }}
-                  onClick={handleSubmitOrder} disabled={submitting}>
+                  onClick={handleSubmitOrder} disabled={submitting || !orderWindow || !isTimeValid}>
                   {submitting ? 'Składanie…' : 'Złóż zamówienie'}
                 </button>
               </div>

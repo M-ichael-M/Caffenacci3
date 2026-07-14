@@ -327,6 +327,8 @@ export default function CafePage({ cafeId }: Props) {
               ordersEnabled={data.orders_enabled}
               requireLogin={requireLogin}
               authToken={auth?.token ?? null}
+              weeklyHours={data.weekly_hours}
+              hourExceptions={data.hour_exceptions}
             />
           ) : (
             <p className="cp-muted-note">Menu nie zostało jeszcze opublikowane.</p>
