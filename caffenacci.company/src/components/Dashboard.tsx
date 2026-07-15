@@ -5,6 +5,7 @@ import ProfileTab from './ProfileTab'
 import ReviewsTab from './ReviewsTab'
 import OrdersTab from './OrdersTab'
 import WebsiteTab from './WebsiteTab'
+import LoyaltyTab from './LoyaltyTab'
 
 interface AuthState {
   token: string
@@ -56,13 +57,14 @@ interface Props {
   onLogout: () => void
 }
 
-type TabId = 'overview' | 'menu' | 'orders' | 'reservations' | 'profile' | 'reviews' | 'website'
+type TabId = 'overview' | 'menu' | 'orders' | 'reservations' | 'loyalty' | 'profile' | 'reviews' | 'website'
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'overview',      label: 'Przegląd',   icon: '🏠' },
   { id: 'menu',         label: 'Menu',        icon: '📋' },
   { id: 'orders',       label: 'Zamówienia',  icon: '🛒' },
   { id: 'reservations', label: 'Rezerwacje',  icon: '📅' },
+  { id: 'loyalty',      label: 'Lojalność',   icon: '🎁' },
   { id: 'reviews',      label: 'Opinie',      icon: '⭐' },
   { id: 'profile',      label: 'Profil',      icon: '⚙' },
   { id: 'website',      label: 'Strona WWW',  icon: '🌐' },
@@ -310,6 +312,13 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                       <button
                         className="btn btn--outline-dark"
                         style={{ width: '100%', padding: '0.75rem' }}
+                        onClick={() => setActiveTab('loyalty')}
+                      >
+                        🎁 Program lojalnościowy
+                      </button>
+                      <button
+                        className="btn btn--outline-dark"
+                        style={{ width: '100%', padding: '0.75rem' }}
                         onClick={() => setActiveTab('profile')}
                       >
                         ⚙ Uzupełnij profil kawiarni
@@ -416,6 +425,13 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
           {activeTab === 'orders' && (
             <div className="dashboard-content">
               <OrdersTab token={auth.token} cafeId={cafeId} />
+            </div>
+          )}
+
+          {/* LOJALNOŚĆ */}
+          {activeTab === 'loyalty' && (
+            <div className="dashboard-content">
+              <LoyaltyTab token={auth.token} />
             </div>
           )}
 

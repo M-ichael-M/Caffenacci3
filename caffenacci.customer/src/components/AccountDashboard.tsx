@@ -3,18 +3,21 @@ import type { ClientAuthState } from '../authStorage'
 import MyReviewsTab from './account/MyReviewsTab'
 import MyOrdersTab from './account/MyOrdersTab'
 import MyReservationsTab from './account/MyReservationsTab'
+import MyLoyaltyTab from './account/MyLoyaltyTab'
+import LoyaltyCodeButton from './LoyaltyCodeButton'
 
 interface Props {
   auth: ClientAuthState
 }
 
-type TabId = 'overview' | 'reservations' | 'orders' | 'reviews'
+type TabId = 'overview' | 'reservations' | 'orders' | 'reviews' | 'loyalty'
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: 'overview',     label: 'Przegląd',   icon: '🏠' },
-  { id: 'reservations', label: 'Rezerwacje', icon: '📅' },
-  { id: 'orders',       label: 'Zamówienia', icon: '🛒' },
-  { id: 'reviews',      label: 'Opinie',     icon: '⭐' },
+  { id: 'overview',     label: 'Przegląd',     icon: '🏠' },
+  { id: 'reservations', label: 'Rezerwacje',   icon: '📅' },
+  { id: 'orders',       label: 'Zamówienia',   icon: '🛒' },
+  { id: 'loyalty',      label: 'Moje kawiarnie', icon: '🎁' },
+  { id: 'reviews',      label: 'Opinie',       icon: '⭐' },
 ]
 
 export default function AccountDashboard({ auth }: Props) {
@@ -67,6 +70,27 @@ export default function AccountDashboard({ auth }: Props) {
                 </div>
               </div>
 
+              {/* Program lojalnościowy — kod QR + szybki dostęp do "Moich kawiarni" */}
+              <div className="info-card">
+                <div className="info-card__header">
+                  <span className="info-card__icon">🎁</span>
+                  <h2 className="info-card__title">Program lojalnościowy</h2>
+                </div>
+                <div className="info-card__body" style={{ gap: '0.625rem' }}>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
+                    Ten sam kod działa we wszystkich kawiarniach Caffenacci — każda prowadzi własny, niezależny program.
+                  </p>
+                  <LoyaltyCodeButton token={auth.token} />
+                  <button
+                    className="btn btn--outline-dark"
+                    style={{ width: '100%', padding: '0.75rem' }}
+                    onClick={() => setActiveTab('loyalty')}
+                  >
+                    🏠 Zobacz moje kawiarnie
+                  </button>
+                </div>
+              </div>
+
               <div className="info-card">
                 <div className="info-card__header">
                   <span className="info-card__icon">📌</span>
@@ -97,6 +121,12 @@ export default function AccountDashboard({ auth }: Props) {
         {activeTab === 'orders' && (
           <div className="dashboard-content">
             <MyOrdersTab token={auth.token} />
+          </div>
+        )}
+
+        {activeTab === 'loyalty' && (
+          <div className="dashboard-content">
+            <MyLoyaltyTab token={auth.token} />
           </div>
         )}
 

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import random
+import string
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -17,6 +20,22 @@ from app.schemas.client import (
 
 router = APIRouter(prefix="/client-auth", tags=["client-auth"])
 bearer_scheme = HTTPBearer()
+
+
+# ── Kod lojalnościowy ─────────────────────────────────────────────────────
+# 8 znaków, litery (wielkie) + cyfry. Niezależny od `id` klienta — to on
+# jest pokazywany klientowi (w formie kodu QR) i wpisywany przez obsługę
+# kawiarni przy kasie w systemie lojalnościowym.
+
+LOYALTY_CODE_ALPHABET = string.ascii_uppercase + string.digits
+
+
+def _generate_loyalty_code(db: Session) -> str:
+    while True:
+        code = "".join(random.choices(LOYALTY_CODE_ALPHABET, k=8))
+        exists = db.query(Client).filter(Client.loyalty_code == code).first()
+        if not exists:
+            return code
 
 
 # ── Auth helper (do wykorzystania w przyszłych publicznych/klienckich endpointach:
@@ -87,6 +106,7 @@ def register(payload: ClientRegisterIn, db: Session = Depends(get_db)):
         password_hash=hash_password(payload.password),
         accepted_terms=payload.accept_terms,
         accepted_privacy=payload.accept_privacy,
+        loyalty_code=_generate_loyalty_code(db),
     )
 
     db.add(client)

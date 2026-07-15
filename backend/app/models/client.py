@@ -29,4 +29,10 @@ class Client(Base):
     accepted_terms   = Column(Boolean, nullable=False, default=False)
     accepted_privacy = Column(Boolean, nullable=False, default=False)
 
+    # Unikalny 8-znakowy kod (litery + cyfry), całkowicie niezależny od `id`.
+    # Generowany raz przy rejestracji — służy jako identyfikator klienta
+    # w systemach lojalnościowych poszczególnych kawiarni (kod QR / wpisywany
+    # ręcznie przy kasie). Nigdy nie ujawnia się poprzez niego `id` klienta.
+    loyalty_code = Column(String(8), nullable=False, unique=True, index=True)
+
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
