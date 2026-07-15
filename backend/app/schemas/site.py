@@ -116,6 +116,12 @@ class SiteReviewOut(BaseModel):
     created_at: datetime
     model_config = {"from_attributes": True}
 
+class SiteLoyaltyRewardOut(BaseModel):
+    id: str
+    name: str
+    cost_points: int
+    model_config = {"from_attributes": True}
+
 
 class PublicSiteOut(BaseModel):
     cafe_id:   str
@@ -153,6 +159,13 @@ class PublicSiteOut(BaseModel):
     reviews_average: float
     reviews_count:   int
     reviews:         List[SiteReviewOut]
+
+    loyalty_enabled: bool = False
+    loyalty_mode: str = "points"
+    loyalty_stamps_max: int = 10
+    loyalty_stamps_earn_desc: Optional[str] = None
+    loyalty_stamps_reward_desc: Optional[str] = None
+    loyalty_rewards: List[SiteLoyaltyRewardOut] = []
 
     # Pusta lista, jeśli właściciel wyłączył galerię lub nie dodał zdjęć.
     gallery_images: List[PublicGalleryImageOut] = []

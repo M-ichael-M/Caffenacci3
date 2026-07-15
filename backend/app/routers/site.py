@@ -22,6 +22,7 @@ from app.schemas.site import (
     CafeSiteSettingsIn, CafeSiteSettingsOut, PublicSiteOut,
     ALLOWED_TEMPLATES, ALLOWED_PALETTES,
 )
+from app.models.loyalty import LoyaltySettings
 
 router = APIRouter(prefix="/site", tags=["site"])
 bearer_scheme = HTTPBearer()
@@ -141,6 +142,13 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
     order_settings = db.query(OrderSettings).filter(OrderSettings.cafe_id == cafe_id).first()
     res_settings   = db.query(ReservationSettings).filter(ReservationSettings.cafe_id == cafe_id).first()
 
+    loyalty_settings = (
+        db.query(LoyaltySettings)
+        .options(selectinload(LoyaltySettings.rewards))
+        .filter(LoyaltySettings.cafe_id == cafe_id)
+        .first()
+    )
+
     reviews_rows = (
         db.query(Review)
         .filter(Review.cafe_id == cafe_id)
@@ -204,6 +212,13 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
         reviews_average=reviews_average,
         reviews_count=reviews_count,
         reviews=reviews_rows,
+
+        loyalty_enabled=bool(loyalty_settings and loyalty_settings.enabled),
+        loyalty_mode=(loyalty_settings.mode if loyalty_settings else "points"),
+        loyalty_stamps_max=(loyalty_settings.stamps_max if loyalty_settings else 10),
+        loyalty_stamps_earn_desc=(loyalty_settings.stamps_earn_desc if loyalty_settings else None),
+        loyalty_stamps_reward_desc=(loyalty_settings.stamps_reward_desc if loyalty_settings else None),
+        loyalty_rewards=(loyalty_settings.rewards if loyalty_settings and loyalty_settings.enabled else []),
 
         gallery_images=gallery_images,
     )

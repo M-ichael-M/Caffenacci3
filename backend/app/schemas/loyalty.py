@@ -95,3 +95,7 @@ class ClientCafeLoyaltyOut(BaseModel):
 
 class ClientCafeLoyaltyListOut(BaseModel):
     cafes: List[ClientCafeLoyaltyOut]
+
+class ClientLoyaltyBalanceOut(BaseModel):
+    points: int = 0
+    stamps: int = 0

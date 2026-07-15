@@ -20,6 +20,7 @@ from app.schemas.loyalty import (
     LoyaltyLookupOut, LoyaltyEarnIn, LoyaltyRedeemIn, LoyaltyStampActionIn,
     LoyaltyBalanceOut, ClientLoyaltyCodeOut,
     ClientCafeLoyaltyOut, ClientCafeLoyaltyListOut,
+    ClientLoyaltyBalanceOut,
 )
 
 router = APIRouter(prefix="/loyalty", tags=["loyalty"])
@@ -318,6 +319,29 @@ def reset_stamps(
 def get_my_code(current_client: Client = Depends(get_current_client)):
     return ClientLoyaltyCodeOut(loyalty_code=current_client.loyalty_code)
 
+# ══════════════════════════════════════════════════════════════════════════════
+# KLIENT — własne saldo w konkretnej kawiarni (do wygenerowanej strony kawiarni)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get(
+    "/client/{cafe_id}/mine",
+    response_model=ClientLoyaltyBalanceOut,
+    summary="Pobierz własny stan punktowy / pieczątek w konkretnej kawiarni",
+)
+def get_my_loyalty_in_cafe(
+    cafe_id: str,
+    current_client: Client  = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    cl = (
+        db.query(ClientLoyalty)
+        .filter(ClientLoyalty.cafe_id == cafe_id, ClientLoyalty.client_id == current_client.id)
+        .first()
+    )
+    return ClientLoyaltyBalanceOut(
+        points=cl.points if cl else 0,
+        stamps=cl.stamps if cl else 0,
+    )
 
 # ══════════════════════════════════════════════════════════════════════════════
 # KLIENT — "Moje kawiarnie"

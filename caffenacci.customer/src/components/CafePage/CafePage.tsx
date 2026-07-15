@@ -10,6 +10,7 @@ import Gallery from './Gallery'
 import LoginForm from '../LoginForm'
 import RegisterForm from '../RegisterForm'
 import './cafePage.css'
+import LoyaltyWidget from './LoyaltyWidget'
 
 // ── Typy (odpowiadają backendowemu PublicSiteOut) ───────────────────────────
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
@@ -52,7 +53,13 @@ interface PublicSiteData {
   reviews_average: number
   reviews_count: number
   reviews: ReviewItem[]
-  gallery_images: GalleryImageItem[]   // ← dodane
+  loyalty_enabled: boolean
+  loyalty_mode: string
+  loyalty_stamps_max: number
+  loyalty_stamps_earn_desc: string | null
+  loyalty_stamps_reward_desc: string | null
+  loyalty_rewards: { id: string; name: string; cost_points: number }[]
+  gallery_images: GalleryImageItem[]
 }
 
 interface Props { cafeId: string }
@@ -270,6 +277,9 @@ export default function CafePage({ cafeId }: Props) {
         {data.reservations_enabled && (
           <button className="cp-nav__link" onClick={() => document.getElementById('cp-reservations')?.scrollIntoView({ behavior: 'smooth' })}>Rezerwacje</button>
         )}
+        {data.loyalty_enabled && (
+          <button className="cp-nav__link" onClick={() => document.getElementById('cp-loyalty')?.scrollIntoView({ behavior: 'smooth' })}>Lojalność</button>
+        )}
         {hasGallery && (
           <button className="cp-nav__link" onClick={() => document.getElementById('cp-gallery')?.scrollIntoView({ behavior: 'smooth' })}>
             Galeria
@@ -343,6 +353,23 @@ export default function CafePage({ cafeId }: Props) {
               cafeId={data.cafe_id}
               enabled={data.reservations_enabled}
               mode={data.reservations_mode}
+              requireLogin={requireLogin}
+              authToken={auth?.token ?? null}
+            />
+          </section>
+        )}
+
+        {/* Program lojalności */}
+        {data.loyalty_enabled && (
+          <section id="cp-loyalty">
+            <h2 className="cp-section__title">Program lojalności</h2>
+            <LoyaltyWidget
+              cafeId={data.cafe_id}
+              mode={data.loyalty_mode as 'points' | 'stamps'}
+              stampsMax={data.loyalty_stamps_max}
+              stampsEarnDesc={data.loyalty_stamps_earn_desc}
+              stampsRewardDesc={data.loyalty_stamps_reward_desc}
+              rewards={data.loyalty_rewards}
               requireLogin={requireLogin}
               authToken={auth?.token ?? null}
             />
