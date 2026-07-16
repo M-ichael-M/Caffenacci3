@@ -17,9 +17,11 @@ from app.models.order import OrderSettings
 from app.models.reservation import ReservationSettings
 from app.models.review import Review
 from app.models.gallery import CafeGalleryImage
+from app.models.news import NewsSettings, NewsPost
 from app.schemas.gallery import PublicGalleryImageOut
 from app.schemas.site import (
     CafeSiteSettingsIn, CafeSiteSettingsOut, PublicSiteOut,
+    SiteNewsPostOut,
     ALLOWED_TEMPLATES, ALLOWED_PALETTES,
 )
 from app.models.loyalty import LoyaltySettings
@@ -176,6 +178,27 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
             for g in gallery_rows
         ]
 
+    news_settings = db.query(NewsSettings).filter(NewsSettings.cafe_id == cafe_id).first()
+    news_posts_out: list[SiteNewsPostOut] = []
+    if news_settings and news_settings.enabled:
+        news_rows = (
+            db.query(NewsPost)
+            .filter(NewsPost.cafe_id == cafe_id)
+            .order_by(NewsPost.created_at.desc())
+            .limit(3)
+            .all()
+        )
+        news_posts_out = [
+            SiteNewsPostOut(
+                id=p.id,
+                title=p.title,
+                content=p.content,
+                image_url=(f"/news/image/{cafe_id}/{p.id}" if p.image_path else None),
+                created_at=p.created_at,
+            )
+            for p in news_rows
+        ]
+
     return PublicSiteOut(
         cafe_id=cafe.id,
         cafe_name=cafe.cafe_name,
@@ -221,4 +244,6 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
         loyalty_rewards=(loyalty_settings.rewards if loyalty_settings and loyalty_settings.enabled else []),
 
         gallery_images=gallery_images,
+        news_enabled=bool(news_settings and news_settings.enabled),
+        news_posts=news_posts_out,
     )

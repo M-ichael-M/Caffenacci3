@@ -122,6 +122,13 @@ class SiteLoyaltyRewardOut(BaseModel):
     cost_points: int
     model_config = {"from_attributes": True}
 
+class SiteNewsPostOut(BaseModel):
+    id: str
+    title: str
+    content: str
+    image_url: Optional[str] = None
+    created_at: datetime
+
 
 class PublicSiteOut(BaseModel):
     cafe_id:   str
@@ -167,5 +174,9 @@ class PublicSiteOut(BaseModel):
     loyalty_stamps_reward_desc: Optional[str] = None
     loyalty_rewards: List[SiteLoyaltyRewardOut] = []
 
+
     # Pusta lista, jeśli właściciel wyłączył galerię lub nie dodał zdjęć.
     gallery_images: List[PublicGalleryImageOut] = []
+    news_enabled: bool = False
+    news_posts: List[SiteNewsPostOut] = []
+

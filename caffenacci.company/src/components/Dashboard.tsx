@@ -6,6 +6,7 @@ import ReviewsTab from './ReviewsTab'
 import OrdersTab from './OrdersTab'
 import WebsiteTab from './WebsiteTab'
 import LoyaltyTab from './LoyaltyTab'
+import NewsTab from './NewsTab'
 
 interface AuthState {
   token: string
@@ -57,7 +58,7 @@ interface Props {
   onLogout: () => void
 }
 
-type TabId = 'overview' | 'menu' | 'orders' | 'reservations' | 'loyalty' | 'profile' | 'reviews' | 'website'
+type TabId = 'overview' | 'menu' | 'orders' | 'reservations' | 'loyalty' | 'profile' | 'reviews' | 'news' | 'website' 
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'overview',      label: 'Przegląd',   icon: '🏠' },
@@ -66,8 +67,10 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'reservations', label: 'Rezerwacje',  icon: '📅' },
   { id: 'loyalty',      label: 'Lojalność',   icon: '🎁' },
   { id: 'reviews',      label: 'Opinie',      icon: '⭐' },
+  { id: 'news', label: 'Aktualności', icon: '📰' },
   { id: 'profile',      label: 'Profil',      icon: '⚙' },
   { id: 'website',      label: 'Strona WWW',  icon: '🌐' },
+  
 ]
 
 export default function Dashboard({ auth, profile, loadingProfile, onLogout }: Props) {
@@ -432,6 +435,12 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
           {activeTab === 'loyalty' && (
             <div className="dashboard-content">
               <LoyaltyTab token={auth.token} />
+            </div>
+          )}
+          
+          {activeTab === 'news' && (
+            <div className="dashboard-content">
+              <NewsTab token={auth.token} />
             </div>
           )}
 

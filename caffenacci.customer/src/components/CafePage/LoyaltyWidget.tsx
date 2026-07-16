@@ -99,8 +99,8 @@ export default function LoyaltyWidget({
               className="res-table-row"
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
-              <span style={{ fontSize: '0.9375rem', color: 'var(--text-dark)', fontWeight: 600 }}>{r.name}</span>
-              <span style={{ fontSize: '0.875rem', color: 'var(--gold)', fontWeight: 700 }}>{r.cost_points} pkt.</span>
+              <span className="lw-reward-name">{r.name}</span>
+              <span className="lw-reward-cost">{r.cost_points} pkt.</span>
             </div>
           ))}
         </div>
@@ -116,26 +116,20 @@ export default function LoyaltyWidget({
           mode === 'points' ? (
             <div className="res-table-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
               <div>
-                <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                  Twój stan
-                </div>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.75rem', fontWeight: 600, color: 'var(--text-dark)' }}>
-                  {balance.points} pkt.
-                </div>
+                <div className="lw-label">Twój stan</div>
+                <div className="lw-value">{balance.points} pkt.</div>
               </div>
               {nextReward && (
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                <span className="lw-hint">
                   Do nagrody „{nextReward.name}" brakuje {nextReward.cost_points - balance.points} pkt.
                 </span>
               )}
             </div>
           ) : (
             <div className="res-table-row">
-              <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.625rem' }}>
-                Twoja karta pieczątek
-              </div>
+              <div className="lw-label" style={{ marginBottom: '0.625rem' }}>Twoja karta pieczątek</div>
               <StampsTrack stamps={balance.stamps} max={stampsMax} />
-              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.625rem' }}>
+              <div className="lw-hint" style={{ marginTop: '0.625rem' }}>
                 {balance.stamps} / {stampsMax} pieczątek
                 {balance.stamps >= stampsMax && ' · nagroda gotowa do odebrania! 🎉'}
               </div>

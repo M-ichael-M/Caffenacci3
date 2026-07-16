@@ -12,6 +12,7 @@ from app.models import client       # noqa: F401  ← rejestruje model konta kli
 from app.models import site         # noqa: F401  ← rejestruje model strony (szablon/paleta)
 from app.models import gallery      # noqa: F401  ← rejestruje model galerii zdjęć
 from app.models import loyalty      # noqa: F401  ← rejestruje modele programu lojalnościowego
+from app.models import news         # noqa: F401  ← rejestruje modele aktualności
 from app.routers import auth, me
 from app.routers import menu as menu_router
 from app.routers import reservation as reservation_router
@@ -22,6 +23,7 @@ from app.routers import client_auth as client_auth_router
 from app.routers import cafe_search as cafe_search_router
 from app.routers import site as site_router
 from app.routers import loyalty as loyalty_router
+from app.routers import news as news_router
 
 
 Base.metadata.create_all(bind=engine)
@@ -55,6 +57,8 @@ app.include_router(client_auth_router.router)
 app.include_router(cafe_search_router.router)
 app.include_router(site_router.router)
 app.include_router(loyalty_router.router)
+app.include_router(news_router.router)
+
 
 @app.get("/", tags=["health"])
 def root():

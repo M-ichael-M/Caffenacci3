@@ -11,6 +11,7 @@ import LoginForm from '../LoginForm'
 import RegisterForm from '../RegisterForm'
 import './cafePage.css'
 import LoyaltyWidget from './LoyaltyWidget'
+import NewsWidget from './NewsWidget'
 
 // ── Typy (odpowiadają backendowemu PublicSiteOut) ───────────────────────────
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
@@ -24,6 +25,7 @@ interface MenuItem {
 interface MenuSection { id: string; name: string; items: MenuItem[] }
 interface ReviewItem { id: string; nick: string; rating: number; comment: string | null; created_at: string }
 interface GalleryImageItem { url: string }
+interface NewsPostItem { id: string; title: string; content: string; image_url: string | null; created_at: string }
 
 // Szablon strony
 type SiteTemplate = 'classic' | 'modern' | 'magic' | 'usa80s' | 'expressive'
@@ -60,6 +62,8 @@ interface PublicSiteData {
   loyalty_stamps_reward_desc: string | null
   loyalty_rewards: { id: string; name: string; cost_points: number }[]
   gallery_images: GalleryImageItem[]
+  news_enabled: boolean
+  news_posts: NewsPostItem[]
 }
 
 interface Props { cafeId: string }
@@ -324,6 +328,13 @@ export default function CafePage({ cafeId }: Props) {
         {data.description && (
           <section>
             <p style={{ fontSize: '1rem', lineHeight: 1.7, color: 'var(--text-body)', maxWidth: '70ch' }}>{data.description}</p>
+          </section>
+        )}
+
+        {data.news_enabled && data.news_posts.length > 0 && (
+          <section id="cp-news">
+            <h2 className="cp-section__title">Aktualności</h2>
+            <NewsWidget posts={data.news_posts} />
           </section>
         )}
 
