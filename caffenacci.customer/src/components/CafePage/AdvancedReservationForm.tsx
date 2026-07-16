@@ -49,6 +49,17 @@ interface Props {
   authToken: string | null
 }
 
+// Grupa identycznych stolików (ten sam typ, liczba miejsc i etykieta) —
+// dla klienta liczy się tylko "jaki to rodzaj stolika", a nie który
+// dokładnie egzemplarz. System sam przydziela wolny stolik z grupy.
+interface TableGroup {
+  key: string
+  table_type: TableTypeEnum
+  seats: number
+  label: string | null
+  tables: TableInfo[]
+}
+
 const TABLE_TYPE_LABELS: Record<TableTypeEnum, string> = {
   standard: 'Zwykły stolik',
   communal: 'Stół komunalny',
@@ -76,11 +87,6 @@ function dayOfWeekFromDate(dateStr: string): number {
   return (d.getDay() + 6) % 7
 }
 
-// Te same wyjątki godzinowe, co na wizytówce kawiarni (sekcja „Godziny
-// otwarcia”) — pokazujemy je też tutaj i uwzględniamy przy liczeniu
-// dostępnych slotów, żeby rezerwacja nigdy nie zaprzeczała temu, co widać
-// na stronie głównej kawiarni.
-
 function formatExceptionDateLabel(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
   return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' })
@@ -94,13 +100,63 @@ function formatExceptionSentence(e: HourExceptionInfo): string {
   return `${label} kawiarnia będzie pracować w godzinach ${e.open_time}–${e.close_time}.`
 }
 
+// Grupuje surową listę stolików wg (typ, miejsca, etykieta) — kolejność
+// wewnątrz grupy jest stabilna (wg id), żeby przydział "pierwszego wolnego"
+// stolika był deterministyczny i powtarzalny.
+function groupTables(tables: TableInfo[]): TableGroup[] {
+  const map = new Map<string, TableGroup>()
+  for (const t of tables) {
+    const key = `${t.table_type}-${t.seats}-${t.label ?? ''}`
+    if (!map.has(key)) {
+      map.set(key, { key, table_type: t.table_type, seats: t.seats, label: t.label, tables: [] })
+    }
+    map.get(key)!.tables.push(t)
+  }
+  for (const g of map.values()) {
+    g.tables.sort((a, b) => a.id.localeCompare(b.id))
+  }
+  return Array.from(map.values())
+}
+
+// Zwraca id stolików z danej grupy, które są faktycznie wolne (albo mają
+// wystarczająco miejsc — dla stołów komunalnych) o wskazanej godzinie,
+// w kolejności, w jakiej należy próbować je przydzielić klientowi.
+function availableTableIdsInGroup(
+  group: TableGroup,
+  occupied: OccupiedSlot[],
+  slotDurationMinutes: number,
+  startTime: string,
+  guests: number,
+): string[] {
+  const slotStart = toMinutes(startTime)
+  const slotEnd = slotStart + slotDurationMinutes
+  const result: string[] = []
+
+  for (const table of group.tables) {
+    const overlapping = occupied.filter(o =>
+      o.table_id === table.id &&
+      slotStart < toMinutes(o.end_time) &&
+      slotEnd > toMinutes(o.start_time)
+    )
+
+    if (table.table_type === 'communal') {
+      const takenSeats = overlapping.reduce((sum, o) => sum + o.guests, 0)
+      if (takenSeats + guests <= table.seats) result.push(table.id)
+    } else if (overlapping.length === 0) {
+      result.push(table.id)
+    }
+  }
+
+  return result
+}
+
 export default function AdvancedReservationForm({ cafeId, requireLogin, authToken }: Props) {
   const [open, setOpen] = useState(false)
   const [info, setInfo] = useState<ReservationInfo | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(false)
 
   const [date, setDate] = useState(todayStr())
-  const [tableId, setTableId] = useState('')
+  const [groupKey, setGroupKey] = useState('')
   const [guests, setGuests] = useState(2)
   const [startTime, setStartTime] = useState<string | null>(null)
   const [phone, setPhone] = useState('')
@@ -126,13 +182,20 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
     if (open) fetchInfo(date)
   }, [open, date, fetchInfo])
 
-  useEffect(() => {
-    if (info && info.tables.length > 0 && !tableId) {
-      setTableId(info.tables[0].id)
-    }
-  }, [info, tableId])
+  // Stoliki tego samego rodzaju (typ + miejsca + etykieta) są dla klienta
+  // jedną pozycją do wyboru — system sam przydzieli konkretny wolny egzemplarz.
+  const groups = useMemo<TableGroup[]>(() => {
+    if (!info) return []
+    return groupTables(info.tables)
+  }, [info])
 
-  const selectedTable = info?.tables.find(t => t.id === tableId) ?? null
+  useEffect(() => {
+    if (groups.length > 0 && !groups.some(g => g.key === groupKey)) {
+      setGroupKey(groups[0].key)
+    }
+  }, [groups, groupKey])
+
+  const selectedGroup = groups.find(g => g.key === groupKey) ?? null
 
   // Wyjątek godzinowy (ustawiony w profilu kawiarni) dla dokładnie wybranej
   // daty — jeśli istnieje, nadpisuje plan tygodniowy z ustawień rezerwacji,
@@ -155,86 +218,111 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
     return info.hours.find(h => h.day_of_week === dow) ?? null
   }, [info, date, dateException])
 
-  // ── Sloty czasowe z dostępnością (odzwierciedla logikę backendu) ─────
+  // ── Sloty czasowe z dostępnością — łączona (dowolny wolny stolik z grupy) ─
 
   const slots = useMemo(() => {
-    if (!info || !dayHours || !dayHours.open_time || !dayHours.close_time || !selectedTable) return []
+    if (!info || !dayHours || !dayHours.open_time || !dayHours.close_time || !selectedGroup) return []
 
     const openM  = toMinutes(dayHours.open_time)
     const closeM = toMinutes(dayHours.close_time)
     const duration = info.slot_duration_minutes
 
+    // Dla dzisiejszej daty ukrywamy godziny, które już minęły lub trwają —
+    // rezerwacja musi dotyczyć przyszłego momentu.
+    const isToday = date === todayStr()
+    const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes()
+
     const result: { time: string; available: boolean; reason?: string }[] = []
 
     for (let m = openM; m < closeM; m += duration) {
-      const slotStart = m
-      const slotEnd = m + duration
+      if (isToday && m <= nowMinutes) continue
+
       const time = fromMinutes(m)
 
-      const overlapping = info.occupied.filter(o =>
-        o.table_id === selectedTable.id &&
-        slotStart < toMinutes(o.end_time) &&
-        slotEnd > toMinutes(o.start_time)
-      )
-
-      let available = true
-      let reason: string | undefined
-
-      if (guests > selectedTable.seats) {
-        available = false
-        reason = `Stolik ma tylko ${selectedTable.seats} miejsc`
-      } else if (selectedTable.table_type === 'communal') {
-        const takenSeats = overlapping.reduce((sum, o) => sum + o.guests, 0)
-        if (takenSeats + guests > selectedTable.seats) {
-          available = false
-          reason = `Za mało wolnych miejsc (zajęte: ${takenSeats}/${selectedTable.seats})`
-        }
-      } else if (overlapping.length > 0) {
-        available = false
-        reason = 'Stolik zajęty w tym terminie'
+      if (guests > selectedGroup.seats) {
+        result.push({ time, available: false, reason: `Stolik ma tylko ${selectedGroup.seats} miejsc` })
+        continue
       }
+
+      const candidates = availableTableIdsInGroup(selectedGroup, info.occupied, duration, time, guests)
+      const available = candidates.length > 0
+      const reason = available
+        ? undefined
+        : selectedGroup.table_type === 'communal'
+          ? 'Za mało wolnych miejsc przy stołach tego typu'
+          : 'Wszystkie stoliki tego typu są zajęte w tym terminie'
 
       result.push({ time, available, reason })
     }
 
     return result
-  }, [info, dayHours, selectedTable, guests])
+  }, [info, dayHours, selectedGroup, guests, date])
 
-  useEffect(() => { setStartTime(null) }, [tableId, date, guests])
+  useEffect(() => { setStartTime(null) }, [groupKey, date, guests])
 
   // ── Submit ────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
-    if (!authToken || !tableId || !startTime) return
+    if (!authToken || !selectedGroup || !startTime || !info) return
+
     setSubmitting(true)
     setError(null)
-    try {
-      const res = await fetch(`http://localhost:8000/reservations/client/${cafeId}/advanced`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({
-          table_id: tableId,
-          date,
-          start_time: startTime,
-          guests,
-          guest_phone: phone.trim() || null,
-          guest_email: email.trim() || null,
-          comment: comment.trim() || null,
-        }),
-      })
-      if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd rezerwacji.')
-      }
-      setSuccess(true)
-      setStartTime(null)
-      fetchInfo(date) // odśwież zajętość
-      setTimeout(() => { setSuccess(false); setOpen(false) }, 3500)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Błąd rezerwacji.')
-    } finally {
+
+    // Wolne stoliki z grupy w kolejności, w jakiej próbujemy je zarezerwować.
+    const candidates = availableTableIdsInGroup(
+      selectedGroup, info.occupied, info.slot_duration_minutes, startTime, guests,
+    )
+
+    if (candidates.length === 0) {
+      setError('Ten termin nie jest już dostępny — wybierz inną godzinę.')
       setSubmitting(false)
+      fetchInfo(date)
+      return
     }
+
+    let lastErrorMessage = 'Błąd rezerwacji.'
+
+    for (const candidateTableId of candidates) {
+      try {
+        const res = await fetch(`http://localhost:8000/reservations/client/${cafeId}/advanced`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            table_id: candidateTableId,
+            date,
+            start_time: startTime,
+            guests,
+            guest_phone: phone.trim() || null,
+            guest_email: email.trim() || null,
+            comment: comment.trim() || null,
+          }),
+        })
+
+        if (res.ok) {
+          setSuccess(true)
+          setStartTime(null)
+          fetchInfo(date) // odśwież zajętość
+          setTimeout(() => { setSuccess(false); setOpen(false) }, 3500)
+          setSubmitting(false)
+          return
+        }
+
+        const e = await res.json()
+        lastErrorMessage = e.detail || 'Błąd rezerwacji.'
+
+        // Ktoś zdążył zająć akurat ten stolik w międzyczasie — spróbuj
+        // kolejnego wolnego egzemplarza z tej samej grupy zanim się poddamy.
+        const isConflict = res.status === 400 && /zajęt/i.test(lastErrorMessage)
+        if (!isConflict) break
+      } catch {
+        lastErrorMessage = 'Błąd rezerwacji.'
+        break
+      }
+    }
+
+    setError(lastErrorMessage)
+    fetchInfo(date)
+    setSubmitting(false)
   }
 
   if (!open) {
@@ -258,21 +346,21 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
           <label className="me-label">Stolik</label>
           <select
             className="me-input" style={{ cursor: 'pointer' }}
-            value={tableId}
-            onChange={e => setTableId(e.target.value)}
-            disabled={!info || info.tables.length === 0}
+            value={groupKey}
+            onChange={e => setGroupKey(e.target.value)}
+            disabled={!info || groups.length === 0}
           >
-            {(info?.tables ?? []).map(t => (
-              <option key={t.id} value={t.id}>
-                {TABLE_TYPE_LABELS[t.table_type]} · {t.seats} os.{t.label ? ` (${t.label})` : ''}
+            {groups.map(g => (
+              <option key={g.key} value={g.key}>
+                {TABLE_TYPE_LABELS[g.table_type]} · {g.seats} os.{g.label ? ` (${g.label})` : ''}
               </option>
             ))}
           </select>
         </div>
 
         <div className="field" style={{ flex: '1 1 90px' }}>
-          <label className="me-label">Goście {selectedTable ? `(maks. ${selectedTable.seats})` : ''}</label>
-          <input type="number" min={1} max={selectedTable?.seats ?? 50} className="me-input"
+          <label className="me-label">Goście {selectedGroup ? `(maks. ${selectedGroup.seats})` : ''}</label>
+          <input type="number" min={1} max={selectedGroup?.seats ?? 50} className="me-input"
             value={guests} onChange={e => setGuests(Number(e.target.value))} />
         </div>
       </div>
@@ -295,7 +383,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
         <label className="me-label">Godzina</label>
         {loadingInfo ? (
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Sprawdzanie dostępności…</p>
-        ) : !info || !info.tables.length ? (
+        ) : !info || groups.length === 0 ? (
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Brak skonfigurowanych stolików.</p>
         ) : !dayHours || !dayHours.open_time || !dayHours.close_time ? (
           <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>
@@ -360,7 +448,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
         <button
           type="button" className="btn btn--primary" style={{ width: 'auto' }}
           onClick={handleSubmit}
-          disabled={submitting || !tableId || !startTime}
+          disabled={submitting || !selectedGroup || !startTime}
         >
           {submitting ? 'Rezerwowanie…' : 'Zarezerwuj stolik'}
         </button>

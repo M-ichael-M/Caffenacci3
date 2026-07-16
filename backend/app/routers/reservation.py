@@ -129,6 +129,27 @@ def _day_of_week(date_str: str) -> int:
     return date_cls(int(y), int(mo), int(d)).weekday()
 
 
+def _validate_not_in_past(date_str: str, start_time: str) -> None:
+    """Blokuje rezerwację w przeszłości oraz na dzisiejszą datę, jeśli podana
+    godzina rozpoczęcia już nadeszła lub minęła — rezerwacja musi dotyczyć
+    momentu w przyszłości."""
+    y, mo, d = date_str.split("-")
+    target_date = date_cls(int(y), int(mo), int(d))
+    now = datetime.now()
+
+    if target_date < now.date():
+        raise HTTPException(400, detail="Nie można rezerwować w przeszłości.")
+
+    if target_date == now.date():
+        start_minutes = _to_minutes(start_time)
+        now_minutes = now.hour * 60 + now.minute
+        if start_minutes <= now_minutes:
+            raise HTTPException(
+                400,
+                detail="Nie można rezerwować na bieżącą ani wcześniejszą godzinę — wybierz późniejszy termin.",
+            )
+
+
 def _validate_slot(
     table: CafeTable,
     settings: ReservationSettings,
@@ -366,9 +387,7 @@ def create_public_reservation(
             detail="Ta kawiarnia korzysta z zaawansowanego systemu rezerwacji — wymagany jest wybór stolika przez zalogowanego klienta.",
         )
 
-    y, mo, d = payload.date.split("-")
-    if date_cls(int(y), int(mo), int(d)) < date_cls.today():
-        raise HTTPException(400, detail="Nie można rezerwować w przeszłości.")
+    _validate_not_in_past(payload.date, payload.start_time)
 
     r = Reservation(
         table_id         = None,        # brak przydziału stolika w trybie simple
@@ -421,9 +440,7 @@ def create_reservation_as_client(
             detail="Ta kawiarnia korzysta z zaawansowanego systemu rezerwacji. Użyj POST /reservations/client/{cafe_id}/advanced.",
         )
 
-    y, mo, d = payload.date.split("-")
-    if date_cls(int(y), int(mo), int(d)) < date_cls.today():
-        raise HTTPException(400, detail="Nie można rezerwować w przeszłości.")
+    _validate_not_in_past(payload.date, payload.start_time)
 
     r = Reservation(
         table_id         = None,
@@ -486,9 +503,7 @@ def create_advanced_reservation_as_client(
     if not table:
         raise HTTPException(404, detail="Wybrany stolik nie istnieje.")
 
-    y, mo, d = payload.date.split("-")
-    if date_cls(int(y), int(mo), int(d)) < date_cls.today():
-        raise HTTPException(400, detail="Nie można rezerwować w przeszłości.")
+    _validate_not_in_past(payload.date, payload.start_time)
 
     _validate_slot(table, s, payload.date, payload.start_time, payload.guests, db)
 
