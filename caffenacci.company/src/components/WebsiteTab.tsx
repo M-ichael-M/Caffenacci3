@@ -1,4 +1,22 @@
 import { useState, useEffect, useCallback } from 'react'
+import { 
+  Palette, 
+  SwatchBook, 
+  Link as LinkIcon, 
+  ExternalLink, 
+  Settings, 
+  Check,
+  Coffee,
+  LayoutDashboard,
+  Sparkles,
+  Clock,
+  Flame,
+  Crown,
+  Factory,
+  GlassWater,
+  Rocket,
+  Grid3X3
+} from 'lucide-react'
 import { PALETTES } from '../palettes'
 
 interface Props {
@@ -18,6 +36,19 @@ type SiteTemplate =
   | 'glass'
   | 'futuristic'
   | 'tiles'
+
+const TEMPLATE_ICONS: Record<SiteTemplate, React.ReactNode> = {
+  classic: <Coffee size={20} />,
+  modern: <LayoutDashboard size={20} />,
+  magic: <Sparkles size={20} />,
+  usa80s: <Clock size={20} />,
+  expressive: <Flame size={20} />,
+  premium: <Crown size={20} />,
+  industrial: <Factory size={20} />,
+  glass: <GlassWater size={20} />,
+  futuristic: <Rocket size={20} />,
+  tiles: <Grid3X3 size={20} />,
+}
 
 const TEMPLATES: { key: SiteTemplate; label: string; desc: string }[] = [
   {
@@ -129,8 +160,19 @@ export default function WebsiteTab({ token, cafeId }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div>
-        <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.25rem' }}>
-          Zarządzanie
+        <div style={{ 
+          fontSize: '0.6875rem', 
+          fontWeight: 600, 
+          letterSpacing: '0.14em', 
+          textTransform: 'uppercase', 
+          color: 'var(--gold)', 
+          marginBottom: '0.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          <Settings size={18} />
+          ZARZĄDZANIE
         </div>
         <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
           Strona internetowa kawiarni
@@ -140,9 +182,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
       <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '70ch' }}>
         Wybierz wygląd swojej publicznej strony. Wszystkie funkcje, które włączyłeś — menu z zamówieniami,
         rezerwacje, opinie, dane kontaktowe, lokalizacja, zespół, social media — pojawią się na niej automatycznie
-        i będą w pełni działać dla zalogowanych gości. Sekcje, których nie skonfigurowałeś lub nie włączyłeś,
-        po prostu się nie pojawią. Każdy szablon wygląda kompletnie inaczej, ale korzysta z tej samej wybranej
-        przez Ciebie palety kolorów poniżej.
+        i będą w pełni działać dla zalogowanych gości.
       </p>
 
       {saveMsg && (
@@ -151,22 +191,44 @@ export default function WebsiteTab({ token, cafeId }: Props) {
 
       {/* Link publiczny */}
       <div style={{
-        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
-        padding: '0.875rem 1.125rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
+        background: 'var(--surface)', 
+        border: '1px solid var(--border)', 
+        borderRadius: 8,
+        padding: '0.875rem 1.125rem', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '0.75rem', 
+        flexWrap: 'wrap',
       }}>
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>🔗 Twoja strona:</span>
-        <code style={{ fontSize: '0.8rem', color: 'var(--gold)', background: 'rgba(181,114,10,0.08)', borderRadius: 4, padding: '2px 8px', wordBreak: 'break-all' }}>
+        <LinkIcon size={18} style={{ color: 'var(--text-muted)' }} />
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Twoja strona:</span>
+        <code style={{ 
+          fontSize: '0.8rem', 
+          color: 'var(--gold)', 
+          background: 'rgba(181,114,10,0.08)', 
+          borderRadius: 4, 
+          padding: '2px 8px', 
+          wordBreak: 'break-all' 
+        }}>
           {publicUrl}
         </code>
-        <a href={publicUrl} target="_blank" rel="noreferrer" className="link" style={{ fontSize: '0.8125rem' }}>
-          Otwórz podgląd ↗
+        <a 
+          href={publicUrl} 
+          target="_blank" 
+          rel="noreferrer" 
+          className="link" 
+          style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+        >
+          Otwórz podgląd <ExternalLink size={15} />
         </a>
       </div>
 
       {/* Wybór szablonu */}
       <div className="info-card">
         <div className="info-card__header">
-          <span className="info-card__icon">🎨</span>
+          <span className="info-card__icon">
+            <Palette size={22} />
+          </span>
           <h2 className="info-card__title">Szablon</h2>
         </div>
         <div className="info-card__body">
@@ -177,17 +239,40 @@ export default function WebsiteTab({ token, cafeId }: Props) {
                 type="button"
                 onClick={() => setTemplate(t.key)}
                 style={{
-                  flex: '1 1 220px', textAlign: 'left', cursor: 'pointer',
+                  flex: '1 1 240px', 
+                  textAlign: 'left', 
+                  cursor: 'pointer',
                   border: `2px solid ${template === t.key ? 'var(--gold)' : 'var(--border)'}`,
-                  borderRadius: 8, padding: '1rem 1.125rem',
+                  borderRadius: 8, 
+                  padding: '1.25rem 1.125rem',
                   background: template === t.key ? 'rgba(181,114,10,0.06)' : 'var(--cream)',
                   fontFamily: 'inherit',
+                  position: 'relative',
+                  transition: 'all 0.2s ease',
                 }}
               >
-                <div style={{ fontWeight: 700, color: 'var(--text-dark)', marginBottom: '0.375rem' }}>
-                  {t.label} {template === t.key && '✓'}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.75rem',
+                  marginBottom: '0.75rem'
+                }}>
+                  <div style={{ 
+                    color: template === t.key ? 'var(--gold)' : 'var(--text-muted)',
+                    transition: 'color 0.2s ease'
+                  }}>
+                    {TEMPLATE_ICONS[t.key]}
+                  </div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-dark)', fontSize: '1.05rem' }}>
+                    {t.label}
+                  </div>
+                  {template === t.key && (
+                    <Check size={18} strokeWidth={3} style={{ color: 'var(--gold)', marginLeft: 'auto' }} />
+                  )}
                 </div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{t.desc}</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  {t.desc}
+                </div>
               </button>
             ))}
           </div>
@@ -197,7 +282,9 @@ export default function WebsiteTab({ token, cafeId }: Props) {
       {/* Wybór palety kolorów */}
       <div className="info-card">
         <div className="info-card__header">
-          <span className="info-card__icon">🌈</span>
+          <span className="info-card__icon">
+            <SwatchBook size={22} />
+          </span>
           <h2 className="info-card__title">Paleta kolorów</h2>
         </div>
         <div className="info-card__body">
@@ -213,9 +300,17 @@ export default function WebsiteTab({ token, cafeId }: Props) {
                 onClick={() => setPalette(p.key)}
                 title={p.label}
                 style={{
-                  cursor: 'pointer', border: `2px solid ${palette === p.key ? 'var(--gold)' : 'var(--border)'}`,
-                  borderRadius: 10, padding: '0.75rem', background: 'var(--cream)', width: 140,
-                  fontFamily: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                  cursor: 'pointer', 
+                  border: `2px solid ${palette === p.key ? 'var(--gold)' : 'var(--border)'}`,
+                  borderRadius: 10, 
+                  padding: '0.75rem', 
+                  background: 'var(--cream)', 
+                  width: 140,
+                  fontFamily: 'inherit', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  gap: '0.5rem',
                 }}
               >
                 <div style={{ display: 'flex', gap: '4px' }}>
@@ -223,8 +318,17 @@ export default function WebsiteTab({ token, cafeId }: Props) {
                     <span key={i} style={{ width: 20, height: 20, borderRadius: '50%', background: c, border: '1px solid rgba(0,0,0,0.1)' }} />
                   ))}
                 </div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-dark)', textAlign: 'center' }}>
-                  {p.label} {palette === p.key && '✓'}
+                <span style={{ 
+                  fontSize: '0.75rem', 
+                  fontWeight: 600, 
+                  color: 'var(--text-dark)', 
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem'
+                }}>
+                  {p.label} 
+                  {palette === p.key && <Check size={16} strokeWidth={3} style={{ color: 'var(--gold)' }} />}
                 </span>
               </button>
             ))}
@@ -233,8 +337,20 @@ export default function WebsiteTab({ token, cafeId }: Props) {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button type="button" className="btn btn--primary" style={{ width: 'auto', minWidth: 200 }} onClick={handleSave} disabled={saving}>
-          {saving ? 'Zapisywanie…' : 'Zapisz i opublikuj'}
+        <button 
+          type="button" 
+          className="btn btn--primary" 
+          style={{ width: 'auto', minWidth: 200, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }} 
+          onClick={handleSave} 
+          disabled={saving}
+        >
+          {saving ? (
+            <>Zapisywanie…</>
+          ) : (
+            <>
+              Zapisz i opublikuj <Check size={18} />
+            </>
+          )}
         </button>
       </div>
     </div>
