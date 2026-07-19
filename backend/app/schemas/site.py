@@ -10,13 +10,29 @@ from app.schemas.gallery import PublicGalleryImageOut
 # jest renderowany po stronie frontendu na podstawie tego klucza. Backend tylko
 # waliduje, że klucz jest jednym z dozwolonych.
 #
-# classic    — elegancki, tradycyjny, przytulny klimat kawiarni
-# modern     — minimalistyczny, płaski, geometryczny
-# magic      — mroczny magiczny klimat, świecące akcenty, dym, gwiazdy
-# usa80s     — neonowy amerykański diner z lat 80.
-# expressive — odważne kształty i duże fonty w duchu Material 3 Expressive
+# classic     — elegancki, tradycyjny, przytulny klimat kawiarni
+# modern      — minimalistyczny, płaski, geometryczny
+# magic       — mroczny magiczny klimat, świecące akcenty, dym, gwiazdy
+# usa80s      — neonowy amerykański diner z lat 80.
+# expressive  — odważne kształty i duże fonty w duchu Material 3 Expressive
+# premium     — luksusowy styl: hojne odstępy, duża typografia, subtelne animacje
+# industrial  — surowy, techniczny charakter: ostre krawędzie, grube obramowania
+# glass       — glassmorphism: półprzezroczyste, rozmyte karty
+# futuristic  — świecące obramowania, dynamiczne przejścia, klimat miasta przyszłości
+# tiles       — wszystko w kartach, asymetryczna siatka w stylu Pinterest / Bento
 
-ALLOWED_TEMPLATES = {"classic", "modern", "magic", "usa80s", "expressive"}
+ALLOWED_TEMPLATES = {
+    "classic",
+    "modern",
+    "magic",
+    "usa80s",
+    "expressive",
+    "premium",
+    "industrial",
+    "glass",
+    "futuristic",
+    "tiles",
+}
 
 ALLOWED_PALETTES = {
     "espresso-gold",
@@ -179,4 +195,3 @@ class PublicSiteOut(BaseModel):
     gallery_images: List[PublicGalleryImageOut] = []
     news_enabled: bool = False
     news_posts: List[SiteNewsPostOut] = []
-

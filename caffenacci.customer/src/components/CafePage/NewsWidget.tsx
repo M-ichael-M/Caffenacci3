@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { NewspaperIcon } from './icons'
 
 interface NewsPostItem {
   id: string
@@ -38,7 +39,7 @@ export default function NewsWidget({ posts }: Props) {
             {post.image_url ? (
               <img className="cp-news-card__image" src={`http://localhost:8000${post.image_url}`} alt={post.title} loading="lazy" />
             ) : (
-              <div className="cp-news-card__image-fallback">📰</div>
+              <div className="cp-news-card__image-fallback"><NewspaperIcon size={30} /></div>
             )}
             <div className="cp-news-card__body">
               <span className="cp-news-card__badge">Aktualność</span>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { CreditCardIcon } from './icons'
 
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
 interface HourException { date: string; is_closed: boolean; open_time: string | null; close_time: string | null }
@@ -287,8 +288,8 @@ export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireL
                 )}
               </div>
 
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
-                💳 Płatność na miejscu — przy odbiorze zamówienia.
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <CreditCardIcon size={15} className="cp-inline-icon" /> Płatność na miejscu — przy odbiorze zamówienia.
               </p>
 
               {error && <div className="form-error" style={{ marginTop: '0.75rem' }}>{error}</div>}

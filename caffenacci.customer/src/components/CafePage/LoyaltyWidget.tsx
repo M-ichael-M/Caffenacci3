@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { CoinIcon, StampIcon, GiftIcon, CoffeeIcon } from './icons'
 
 interface RewardItem {
   id: string
@@ -33,9 +34,9 @@ function StampsTrack({ stamps, max }: { stamps: number; max: number }) {
           border: `2px solid ${i < stamps ? 'var(--gold)' : 'var(--border)'}`,
           background: i < stamps ? 'var(--gold)' : 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '0.8125rem', color: i < stamps ? '#fff' : 'var(--text-muted)', flexShrink: 0,
+          color: i < stamps ? '#fff' : 'var(--text-muted)', flexShrink: 0,
         }}>
-          {i < stamps ? '☕' : ''}
+          {i < stamps ? <CoffeeIcon size={14} /> : null}
         </div>
       ))}
     </div>
@@ -73,18 +74,25 @@ export default function LoyaltyWidget({
 
       {/* Jak to działa */}
       {mode === 'points' ? (
-        <p className="cp-muted-note" style={{ fontStyle: 'normal' }}>
-          🪙 Zbieraj punkty za każdy zakup w naszej kawiarni — 3 punkty za każde wydane 10 groszy.
-          Wymieniaj je na nagrody wskazane poniżej.
+        <p className="cp-muted-note" style={{ fontStyle: 'normal', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+          <CoinIcon size={16} className="cp-inline-icon" />
+          <span>
+            Zbieraj punkty za każdy zakup w naszej kawiarni — 3 punkty za każde wydane 10 groszy.
+            Wymieniaj je na nagrody wskazane poniżej.
+          </span>
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {stampsEarnDesc && (
-            <p className="cp-muted-note" style={{ fontStyle: 'normal' }}>🔖 Pieczątkę otrzymujesz {stampsEarnDesc}.</p>
+            <p className="cp-muted-note" style={{ fontStyle: 'normal', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+              <StampIcon size={16} className="cp-inline-icon" />
+              <span>Pieczątkę otrzymujesz {stampsEarnDesc}.</span>
+            </p>
           )}
           {stampsRewardDesc && (
-            <p className="cp-muted-note" style={{ fontStyle: 'normal' }}>
-              🎁 Po zebraniu {stampsMax} pieczątek otrzymujesz: {stampsRewardDesc}.
+            <p className="cp-muted-note" style={{ fontStyle: 'normal', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+              <GiftIcon size={16} className="cp-inline-icon" />
+              <span>Po zebraniu {stampsMax} pieczątek otrzymujesz: {stampsRewardDesc}.</span>
             </p>
           )}
         </div>
@@ -131,7 +139,7 @@ export default function LoyaltyWidget({
               <StampsTrack stamps={balance.stamps} max={stampsMax} />
               <div className="lw-hint" style={{ marginTop: '0.625rem' }}>
                 {balance.stamps} / {stampsMax} pieczątek
-                {balance.stamps >= stampsMax && ' · nagroda gotowa do odebrania! 🎉'}
+                {balance.stamps >= stampsMax && ' · nagroda gotowa do odebrania!'}
               </div>
             </div>
           )

@@ -12,6 +12,7 @@ import RegisterForm from '../RegisterForm'
 import './cafePage.css'
 import LoyaltyWidget from './LoyaltyWidget'
 import NewsWidget from './NewsWidget'
+import { CoffeeIcon, PhoneIcon, MailIcon } from './icons'
 
 // ── Typy (odpowiadają backendowemu PublicSiteOut) ───────────────────────────
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
@@ -27,8 +28,18 @@ interface ReviewItem { id: string; nick: string; rating: number; comment: string
 interface GalleryImageItem { url: string }
 interface NewsPostItem { id: string; title: string; content: string; image_url: string | null; created_at: string }
 
-// Szablon strony
-type SiteTemplate = 'classic' | 'modern' | 'magic' | 'usa80s' | 'expressive'
+// Szablon strony — musi odpowiadać ALLOWED_TEMPLATES w backend/app/schemas/site.py
+type SiteTemplate =
+  | 'classic'
+  | 'modern'
+  | 'magic'
+  | 'usa80s'
+  | 'expressive'
+  | 'premium'
+  | 'industrial'
+  | 'glass'
+  | 'futuristic'
+  | 'tiles'
 
 interface PublicSiteData {
   cafe_id: string
@@ -140,7 +151,7 @@ function HomeFab() {
       onClick={() => { window.location.href = '/' }}
       title="Wróć do strony głównej Caffenacci"
     >
-      <span className="cp-home-fab__icon" aria-hidden="true">☕</span>
+      <span className="cp-home-fab__icon" aria-hidden="true"><CoffeeIcon size={16} /></span>
       <span className="cp-home-fab__label">Caffenacci</span>
     </button>
   )
@@ -314,7 +325,7 @@ export default function CafePage({ cafeId }: Props) {
         {data.logo_url ? (
           <img className="cp-hero__logo" src={`http://localhost:8000${data.logo_url}`} alt={data.cafe_name} />
         ) : (
-          <div className="cp-hero__logo">☕</div>
+          <div className="cp-hero__logo"><CoffeeIcon size={40} /></div>
         )}
         <div>
           <h1 className="cp-hero__name">{data.cafe_name}</h1>
@@ -435,8 +446,16 @@ export default function CafePage({ cafeId }: Props) {
             <div className="cp-info-grid">
               {hasContact && (
                 <div>
-                  {data.contact_phone && <div style={{ marginBottom: '0.375rem' }}>📞 {data.contact_phone}</div>}
-                  {data.contact_email && <div>✉️ {data.contact_email}</div>}
+                  {data.contact_phone && (
+                    <div style={{ marginBottom: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <PhoneIcon size={15} className="cp-inline-icon" /> {data.contact_phone}
+                    </div>
+                  )}
+                  {data.contact_email && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <MailIcon size={15} className="cp-inline-icon" /> {data.contact_email}
+                    </div>
+                  )}
                 </div>
               )}
               {hasLocation && (

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CalendarIcon } from './icons'
 
 interface Props {
   cafeId: string
@@ -53,9 +54,13 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken 
   return (
     <div>
       {!open ? (
-        <button type="button" className="btn btn--primary" style={{ width: 'auto' }}
-          onClick={() => requireLogin(() => setOpen(true))}>
-          📅 Zarezerwuj stolik
+        <button
+          type="button"
+          className="btn btn--primary"
+          style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+          onClick={() => requireLogin(() => setOpen(true))}
+        >
+          <CalendarIcon size={16} /> Zarezerwuj stolik
         </button>
       ) : (
         <div className="res-table-row" style={{ marginTop: '1rem', maxWidth: 560 }}>

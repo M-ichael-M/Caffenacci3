@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { CalendarIcon } from './icons'
 
 // ── Typy ─────────────────────────────────────────────────────────────────
 
@@ -327,9 +328,13 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
 
   if (!open) {
     return (
-      <button type="button" className="btn btn--primary" style={{ width: 'auto' }}
-        onClick={() => requireLogin(() => setOpen(true))}>
-        📅 Zarezerwuj stolik
+      <button
+        type="button"
+        className="btn btn--primary"
+        style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+        onClick={() => requireLogin(() => setOpen(true))}
+      >
+        <CalendarIcon size={16} /> Zarezerwuj stolik
       </button>
     )
   }
@@ -373,7 +378,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
             .slice(0, 5)
             .map(e => (
               <p key={e.date} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-                📌 {formatExceptionSentence(e)}
+                {formatExceptionSentence(e)}
               </p>
             ))}
         </div>
@@ -395,7 +400,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
           <>
             {dateException && !dateException.is_closed && (
               <p style={{ fontSize: '0.75rem', color: 'var(--gold)', fontWeight: 600, marginTop: '0.5rem', marginBottom: 0 }}>
-                ⓘ Tego dnia obowiązują wyjątkowe godziny: {dateException.open_time}–{dateException.close_time}
+                Tego dnia obowiązują wyjątkowe godziny: {dateException.open_time}–{dateException.close_time}
               </p>
             )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>

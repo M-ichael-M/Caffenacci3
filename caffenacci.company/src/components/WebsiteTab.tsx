@@ -7,7 +7,17 @@ interface Props {
 }
 
 // Musi odpowiadać ALLOWED_TEMPLATES w backend/app/schemas/site.py
-type SiteTemplate = 'classic' | 'modern' | 'magic' | 'usa80s' | 'expressive'
+type SiteTemplate =
+  | 'classic'
+  | 'modern'
+  | 'magic'
+  | 'usa80s'
+  | 'expressive'
+  | 'premium'
+  | 'industrial'
+  | 'glass'
+  | 'futuristic'
+  | 'tiles'
 
 const TEMPLATES: { key: SiteTemplate; label: string; desc: string }[] = [
   {
@@ -34,6 +44,31 @@ const TEMPLATES: { key: SiteTemplate; label: string; desc: string }[] = [
     key: 'expressive',
     label: 'Ekspresyjny',
     desc: 'Odważne, „żywe” kształty, duże fonty i sprężyste animacje — w duchu Material 3 Expressive od Google.',
+  },
+  {
+    key: 'premium',
+    label: 'Premium',
+    desc: 'Luksusowy, wytworny styl — hojne, eleganckie odstępy, większa typografia i subtelne, powolne animacje dla ekskluzywnego, spokojnego wrażenia.',
+  },
+  {
+    key: 'industrial',
+    label: 'Industrialny',
+    desc: 'Surowy, techniczny charakter — ostre krawędzie, grube obramowania, geometryczne akcenty i monospace’owe detale w klimacie fabrycznego loftu.',
+  },
+  {
+    key: 'glass',
+    label: 'Glass',
+    desc: 'Nowoczesny glassmorphism — półprzezroczyste, rozmyte karty unoszące się nad miękkimi, kolorowymi plamami światła w tle.',
+  },
+  {
+    key: 'futuristic',
+    label: 'Futurystyczny',
+    desc: 'Świecące obramowania, dynamiczne przejścia i neonowa poświata — klimat metropolii rodem z miasta przyszłości.',
+  },
+  {
+    key: 'tiles',
+    label: 'Kafelkowy',
+    desc: 'Wszystko w kartach — asymetryczna siatka w stylu Pinterest / Bento, świetna do wizualnie bogatej, zróżnicowanej oferty.',
   },
 ]
 

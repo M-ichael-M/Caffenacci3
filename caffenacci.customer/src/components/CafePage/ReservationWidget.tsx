@@ -1,5 +1,6 @@
 import SimpleReservationForm from './SimpleReservationForm'
 import AdvancedReservationForm from './AdvancedReservationForm'
+import { CalendarIcon } from './icons'
 
 interface Props {
   cafeId: string
@@ -13,7 +14,7 @@ export default function ReservationWidget({ cafeId, enabled, mode, requireLogin,
   if (!enabled) {
     return (
       <div className="res-empty-card">
-        <div className="res-empty-icon">📅</div>
+        <div className="res-empty-icon"><CalendarIcon size={34} /></div>
         <div className="res-empty-title">Rezerwacje online niedostępne</div>
         <div className="res-empty-sub">Ta kawiarnia nie przyjmuje obecnie rezerwacji online.</div>
       </div>
