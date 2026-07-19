@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Newspaper, X } from 'lucide-react'
 
 interface NewsPostOut {
   id: string
@@ -65,7 +66,9 @@ function NewsCard({ post, onDelete, deleting }: {
       {post.image_url ? (
         <img src={`${API}${post.image_url}`} alt={post.title} className="nw-card__image" />
       ) : (
-        <div className="nw-card__image nw-card__image--fallback">📰</div>
+        <div className="nw-card__image nw-card__image--fallback">
+          <Newspaper size={42} strokeWidth={1.5} />
+        </div>
       )}
       <div className="nw-card__body">
         <div className="nw-card__date">{formatDate(post.created_at)}</div>
@@ -79,7 +82,9 @@ function NewsCard({ post, onDelete, deleting }: {
         disabled={deleting}
         title="Usuń aktualność"
         style={{ position: 'absolute', top: '0.625rem', right: '0.625rem', background: 'rgba(255,255,255,0.92)' }}
-      >✕</button>
+      >
+        <X size={18} />
+      </button>
     </div>
   )
 }
@@ -147,7 +152,9 @@ function AddNewsPanel({ token, onClose, onAdded }: {
             <div className="me-eyebrow">Aktualności</div>
             <h2 className="me-title">Nowa aktualność</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij">✕</button>
+          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij">
+            <X size={24} />
+          </button>
         </div>
 
         <div className="me-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -187,7 +194,9 @@ function AddNewsPanel({ token, onClose, onAdded }: {
                   className="me-remove-btn me-remove-item"
                   onClick={clearFile}
                   style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(255,255,255,0.92)' }}
-                >✕</button>
+                >
+                  <X size={18} />
+                </button>
               </div>
             ) : (
               <button
@@ -344,7 +353,9 @@ export default function NewsTab({ token }: Props) {
 
         {posts.length === 0 ? (
           <div className="res-empty-card">
-            <div className="res-empty-icon">📰</div>
+            <div className="res-empty-icon">
+              <Newspaper size={48} strokeWidth={1.4} />
+            </div>
             <div className="res-empty-title">Brak aktualności</div>
             <div className="res-empty-sub">
               Dodaj pierwszą aktualność, aby poinformować gości o nowościach, wydarzeniach lub zmianach.

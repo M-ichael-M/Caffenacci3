@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Gift, Receipt, Coins, Bookmark, X } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -346,10 +347,12 @@ export default function LoyaltyTab({ token }: Props) {
             <div className="res-settings-block__title">Rodzaj programu</div>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button type="button" className={`res-mode-btn${mode === 'points' ? ' res-mode-btn--active' : ''}`} onClick={() => setMode('points')}>
-                🪙 Punkty za zakupy
+                <Coins size={18} style={{ marginRight: '0.5rem' }} />
+                Punkty za zakupy
               </button>
               <button type="button" className={`res-mode-btn${mode === 'stamps' ? ' res-mode-btn--active' : ''}`} onClick={() => setMode('stamps')}>
-                🔖 Pieczątki cyfrowe
+                <Bookmark size={18} style={{ marginRight: '0.5rem' }} />
+                Pieczątki cyfrowe
               </button>
             </div>
           </div>
@@ -358,7 +361,9 @@ export default function LoyaltyTab({ token }: Props) {
           {mode === 'points' && (
             <div className="info-card">
               <div className="info-card__header">
-                <span className="info-card__icon">🎁</span>
+                <span className="info-card__icon">
+                  <Gift size={22} />
+                </span>
                 <h2 className="info-card__title">Nagrody za punkty</h2>
               </div>
               <div className="info-card__body">
@@ -385,7 +390,9 @@ export default function LoyaltyTab({ token }: Props) {
                             placeholder="100" />
                         </div>
                         <button type="button" className="me-remove-btn me-remove-item"
-                          onClick={() => removeReward(r._uid)} title="Usuń nagrodę">✕</button>
+                          onClick={() => removeReward(r._uid)} title="Usuń nagrodę">
+                          <X size={18} />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -401,7 +408,9 @@ export default function LoyaltyTab({ token }: Props) {
           {mode === 'stamps' && (
             <div className="info-card">
               <div className="info-card__header">
-                <span className="info-card__icon">🔖</span>
+                <span className="info-card__icon">
+                  <Bookmark size={22} />
+                </span>
                 <h2 className="info-card__title">Ustawienia pieczątek</h2>
               </div>
               <div className="info-card__body">
@@ -436,7 +445,9 @@ export default function LoyaltyTab({ token }: Props) {
           {/* ── Kasa ─────────────────────────────────────────────────────── */}
           <div className="info-card">
             <div className="info-card__header">
-              <span className="info-card__icon">🧾</span>
+              <span className="info-card__icon">
+                <Receipt size={22} />
+              </span>
               <h2 className="info-card__title">Kasa — obsługa klienta</h2>
             </div>
             <div className="info-card__body">

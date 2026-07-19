@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { ShoppingCart, ClipboardList, Check, X, RefreshCw, Link } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -181,7 +182,8 @@ function PendingOrderCard({ o, onDecide, saving }: {
           className="btn btn--primary"
           style={{ width: 'auto', padding: '0.5rem 1.125rem', fontSize: '0.8125rem', marginTop: 0 }}
         >
-          ✓ Zrealizowano
+          <Check size={18} style={{ marginRight: '0.375rem' }} />
+          Zrealizowano
         </button>
       </div>
     </div>
@@ -201,7 +203,11 @@ function HistoryOrderCard({ o }: { o: OrderOut }) {
       opacity: isCompleted ? 1 : 0.7,
     }}>
       <div style={{ fontSize: '1.25rem', flexShrink: 0, paddingTop: '0.125rem' }}>
-        {isCompleted ? '✅' : '❌'}
+        {isCompleted ? (
+          <Check size={28} color="var(--success)" />
+        ) : (
+          <X size={28} color="var(--error)" />
+        )}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.375rem' }}>
@@ -335,7 +341,8 @@ export default function OrdersTab({ token, cafeId }: Props) {
           </h2>
         </div>
         <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem' }} onClick={fetchOrders}>
-          ↻ Odśwież
+          <RefreshCw size={18} style={{ marginRight: '0.5rem' }} />
+          Odśwież
         </button>
       </div>
 
@@ -364,7 +371,8 @@ export default function OrdersTab({ token, cafeId }: Props) {
         padding: '0.875rem 1.125rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
       }}>
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          🔗 Link do zamówień dla klientów:
+          <Link size={18} style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
+          Link do zamówień dla klientów:
         </span>
         <code style={{
           fontSize: '0.8rem', color: 'var(--gold)', background: 'rgba(181,114,10,0.08)',
@@ -401,7 +409,9 @@ export default function OrdersTab({ token, cafeId }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
               {pending.length === 0 ? (
                 <div className="res-empty-card">
-                  <div className="res-empty-icon">🛒</div>
+                  <div className="res-empty-icon">
+                    <ShoppingCart size={48} strokeWidth={1.4} />
+                  </div>
                   <div className="res-empty-title">Brak nowych zamówień</div>
                   <div className="res-empty-sub">
                     Gdy klient złoży zamówienie, pojawi się ono tutaj chronologicznie.
@@ -428,7 +438,9 @@ export default function OrdersTab({ token, cafeId }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
               {history.length === 0 ? (
                 <div className="res-empty-card">
-                  <div className="res-empty-icon">📋</div>
+                  <div className="res-empty-icon">
+                    <ClipboardList size={48} strokeWidth={1.4} />
+                  </div>
                   <div className="res-empty-title">Brak historii zamówień</div>
                   <div className="res-empty-sub">Tu pojawią się zrealizowane i anulowane zamówienia.</div>
                 </div>

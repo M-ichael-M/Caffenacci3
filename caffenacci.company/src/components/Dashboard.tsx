@@ -7,6 +7,22 @@ import OrdersTab from './OrdersTab'
 import WebsiteTab from './WebsiteTab'
 import LoyaltyTab from './LoyaltyTab'
 import NewsTab from './NewsTab'
+import {
+  Home,
+  ClipboardList,
+  ShoppingCart,
+  CalendarDays,
+  Gift,
+  Star,
+  Newspaper,
+  Settings,
+  Globe,
+  Coffee,
+  User,
+  MapPin,
+  Zap,
+  Pencil,
+} from 'lucide-react'
 
 interface AuthState {
   token: string
@@ -60,17 +76,18 @@ interface Props {
 
 type TabId = 'overview' | 'menu' | 'orders' | 'reservations' | 'loyalty' | 'profile' | 'reviews' | 'news' | 'website' 
 
-const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: 'overview',      label: 'Przegląd',   icon: '🏠' },
-  { id: 'menu',         label: 'Menu',        icon: '📋' },
-  { id: 'orders',       label: 'Zamówienia',  icon: '🛒' },
-  { id: 'reservations', label: 'Rezerwacje',  icon: '📅' },
-  { id: 'loyalty',      label: 'Lojalność',   icon: '🎁' },
-  { id: 'reviews',      label: 'Opinie',      icon: '⭐' },
-  { id: 'news', label: 'Aktualności', icon: '📰' },
-  { id: 'profile',      label: 'Profil',      icon: '⚙' },
-  { id: 'website',      label: 'Strona WWW',  icon: '🌐' },
-  
+type TabIcon = React.ComponentType<{ size?: number; strokeWidth?: number }>
+
+const TABS: { id: TabId; label: string; icon: TabIcon }[] = [
+  { id: 'overview',      label: 'Przegląd',      icon: Home },
+  { id: 'menu',          label: 'Menu',          icon: ClipboardList },
+  { id: 'orders',        label: 'Zamówienia',    icon: ShoppingCart },
+  { id: 'reservations',  label: 'Rezerwacje',   icon: CalendarDays },
+  { id: 'loyalty',       label: 'Lojalność',     icon: Gift },
+  { id: 'reviews',       label: 'Opinie',        icon: Star },
+  { id: 'news',          label: 'Aktualności',   icon: Newspaper },
+  { id: 'profile',       label: 'Profil',        icon: Settings },
+  { id: 'website',       label: 'Strona WWW',    icon: Globe },
 ]
 
 export default function Dashboard({ auth, profile, loadingProfile, onLogout }: Props) {
@@ -153,8 +170,10 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
               className={`dashboard-tab${activeTab === tab.id ? ' dashboard-tab--active' : ''}`}
               onClick={() => setActiveTab(tab.id)}
             >
-              <span className="dashboard-tab__icon">{tab.icon}</span>
-              <span className="dashboard-tab__label">{tab.label}</span>
+            <span className="dashboard-tab__icon">
+              <tab.icon size={18} strokeWidth={1.8} />
+            </span>              
+            <span className="dashboard-tab__label">{tab.label}</span>
             </button>
           ))}
         </nav>
@@ -182,7 +201,9 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                   {/* Kawiarnia */}
                   <div className="info-card">
                     <div className="info-card__header">
-                      <span className="info-card__icon">☕</span>
+                      <span className="info-card__icon">
+                        <Coffee size={22} />
+                      </span>
                       <h2 className="info-card__title">Kawiarnia</h2>
                     </div>
                     <div className="info-card__body">
@@ -200,7 +221,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                   {/* Właściciel */}
                   <div className="info-card">
                     <div className="info-card__header">
-                      <span className="info-card__icon">👤</span>
+                      <span className="info-card__icon"><User size={22} /></span>
                       <h2 className="info-card__title">Właściciel</h2>
                     </div>
                     <div className="info-card__body">
@@ -227,7 +248,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                   {p && p.street && (
                     <div className="info-card">
                       <div className="info-card__header">
-                        <span className="info-card__icon">📍</span>
+                        <span className="info-card__icon"><MapPin size={22} /></span>
                         <h2 className="info-card__title">Adres</h2>
                       </div>
                       <div className="info-card__body">
@@ -250,7 +271,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                   {/* Opinie */}
                   <div className="info-card">
                     <div className="info-card__header">
-                      <span className="info-card__icon">⭐</span>
+                      <span className="info-card__icon"><Star size={22} /></span>
                       <h2 className="info-card__title">Opinie</h2>
                     </div>
                     <div className="info-card__body">
@@ -294,7 +315,9 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                   {/* Szybkie akcje */}
                   <div className="info-card">
                     <div className="info-card__header">
-                      <span className="info-card__icon">⚡</span>
+                      <span className="info-card__icon">
+                        <Zap size={22} />
+                      </span>
                       <h2 className="info-card__title">Szybkie akcje</h2>
                     </div>
                     <div className="info-card__body" style={{ gap: '0.625rem' }}>
@@ -303,35 +326,40 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                         style={{ width: '100%', padding: '0.75rem' }}
                         onClick={() => setActiveTab('menu')}
                       >
-                        📋 {hasMenu ? 'Edytuj menu' : 'Utwórz menu'}
+                        <ClipboardList size={18} style={{ marginRight: '0.5rem' }} />
+                        {hasMenu ? 'Edytuj menu' : 'Utwórz menu'}
                       </button>
                       <button
                         className="btn btn--outline-dark"
                         style={{ width: '100%', padding: '0.75rem' }}
                         onClick={() => setActiveTab('reservations')}
                       >
-                        📅 Zarządzaj rezerwacjami
+                        <CalendarDays size={18} style={{ marginRight: '0.5rem' }} />
+                        Zarządzaj rezerwacjami
                       </button>
                       <button
                         className="btn btn--outline-dark"
                         style={{ width: '100%', padding: '0.75rem' }}
                         onClick={() => setActiveTab('loyalty')}
                       >
-                        🎁 Program lojalnościowy
+                        <Gift size={18} style={{ marginRight: '0.5rem' }} />
+                        Program lojalnościowy
                       </button>
                       <button
                         className="btn btn--outline-dark"
                         style={{ width: '100%', padding: '0.75rem' }}
                         onClick={() => setActiveTab('profile')}
                       >
-                        ⚙ Uzupełnij profil kawiarni
+                        <Settings size={18} style={{ marginRight: '0.5rem' }} />
+                        Uzupełnij profil kawiarni
                       </button>
                       <button
                         className="btn btn--outline-dark"
                         style={{ width: '100%', padding: '0.75rem' }}
                         onClick={() => setActiveTab('website')}
                       >
-                        🌐 Skonfiguruj stronę WWW
+                        <Globe size={18} style={{ marginRight: '0.5rem' }} />
+                        Skonfiguruj stronę WWW
                       </button>
                     </div>
                   </div>
@@ -353,14 +381,26 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                   style={{ width: 'auto', padding: '0.75rem 1.5rem' }}
                   onClick={() => setShowMenuEditor(true)}
                 >
-                  {hasMenu ? '✏️ Edytuj menu' : '☕ Utwórz menu'}
+                  {hasMenu ? (
+                    <>
+                      <Pencil size={18} style={{ marginRight: '0.5rem' }} />
+                      Edytuj menu
+                    </>
+                  ) : (
+                    <>
+                      <Coffee size={18} style={{ marginRight: '0.5rem' }} />
+                      Utwórz menu
+                    </>
+                  )}
                 </button>
               </div>
 
               <div className="menu-preview-card">
                 <div className="menu-preview-card__header">
                   <div className="menu-preview-card__title-wrap">
-                    <span className="info-card__icon">📋</span>
+                    <span className="info-card__icon">
+                      <ClipboardList size={22} />
+                    </span>
                     <h2 className="info-card__title">Podgląd menu</h2>
                   </div>
                   <button
