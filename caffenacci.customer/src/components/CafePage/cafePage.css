@@ -26,6 +26,7 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Bungee&family=Fredoka:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Space+Mono:wght@400;700&family=Outfit:wght@400;500;600;700&family=Orbitron:wght@500;700;800&display=swap');
 
 
 /* ════════════════════════════════════════════════
@@ -1802,16 +1803,12 @@ select.me-input { cursor: pointer; }
    13. IKONY POMOCNICZE (zamiast emoji)
    ════════════════════════════════════════════════ */
 
-/* Małe ikony liniowe wplecione w tekst (np. "Płatność na miejscu",
-   opisy programu lojalnościowego) — dziedziczą kolor z otoczenia, ale
-   domyślnie akcentowane złotem, żeby nie ginęły w treści. */
 .cp-inline-icon {
   flex-shrink: 0;
   color: var(--gold);
   margin-top: 0.15em;
 }
 
-/* Ikona w logo hero / pustym stanie kart — powiększona, wyśrodkowana */
 .cp-hero__logo svg,
 .res-empty-icon svg {
   display: block;
@@ -1870,8 +1867,11 @@ select.me-input { cursor: pointer; }
   animation: premium-fade-in 1s cubic-bezier(0.16,1,0.3,1);
 }
 .cafe-page--premium .cp-hero__name {
-  font-size: 3rem;
-  letter-spacing: 0.01em;
+  font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 3.375rem;
+  letter-spacing: 0.015em;
   margin: 1.5rem 0 0.75rem;
   animation: premium-fade-in 1.1s cubic-bezier(0.16,1,0.3,1);
 }
@@ -1903,9 +1903,10 @@ select.me-input { cursor: pointer; }
 }
 
 .cafe-page--premium .cp-section__title {
-  font-size: 1.75rem;
+  font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+  font-size: 2rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
   margin-bottom: 2rem;
   padding-bottom: 1rem;
   position: relative;
@@ -1931,8 +1932,9 @@ select.me-input { cursor: pointer; }
   font-weight: 500;
 }
 .cafe-page--premium .cp-menu-item__price {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.0625rem;
+  font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+  font-size: 1.1875rem;
+  font-weight: 600;
   color: var(--gold);
 }
 .cafe-page--premium .cp-add-btn {
@@ -1965,6 +1967,15 @@ select.me-input { cursor: pointer; }
 .cafe-page--premium .rv-card,
 .cafe-page--premium .res-table-row { padding: 1.75rem 2rem; }
 
+.cafe-page--premium .rv-summary__score,
+.cafe-page--premium .lw-value,
+.cafe-page--premium .res-empty-title,
+.cafe-page--premium .form-title,
+.cafe-page--premium .me-title {
+  font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+}
+.cafe-page--premium .me-title { font-size: 1.75rem; font-weight: 600; }
+
 .cafe-page--premium .btn--primary {
   border-radius: 1px;
   background: var(--espresso);
@@ -1987,6 +1998,7 @@ select.me-input { cursor: pointer; }
 .cafe-page--premium .cp-gallery__item:hover { transform: translateY(-6px); box-shadow: 0 24px 48px rgba(17,10,4,0.14); }
 
 .cafe-page--premium .cp-news-card { border-radius: 2px; }
+.cafe-page--premium .cp-news-card__title { font-family: 'Cormorant Garamond', 'Playfair Display', serif; font-size: 1.25rem; }
 
 .cafe-page--premium .menu-editor { border-radius: 2px; }
 .cafe-page--premium .me-header { padding: 2.25rem 2.5rem 1.75rem; }
@@ -2017,14 +2029,14 @@ select.me-input { cursor: pointer; }
 }
 .cafe-page--industrial .cp-nav__link {
   color: rgba(240,228,204,0.7);
-  font-family: 'SFMono-Regular', 'Consolas', monospace;
+  font-family: 'Space Mono', 'SFMono-Regular', 'Consolas', monospace;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border-radius: 0;
 }
 .cafe-page--industrial .cp-nav__link:hover { color: var(--espresso); background: var(--gold); }
-.cafe-page--industrial .cp-account span { color: var(--parchment); font-family: 'SFMono-Regular', monospace; font-size: 0.75rem; }
+.cafe-page--industrial .cp-account span { color: var(--parchment); font-family: 'Space Mono', monospace; font-size: 0.75rem; }
 
 .cafe-page--industrial .cp-hero {
   background:
@@ -2050,31 +2062,31 @@ select.me-input { cursor: pointer; }
   box-shadow: 6px 6px 0 rgba(0,0,0,0.35);
 }
 .cafe-page--industrial .cp-hero__name {
-  font-family: 'SFMono-Regular', 'Consolas', monospace;
+  font-family: 'Space Mono', 'SFMono-Regular', 'Consolas', monospace;
   font-style: normal;
   text-transform: uppercase;
   font-weight: 700;
   letter-spacing: 0.02em;
-  font-size: 2rem;
+  font-size: 1.875rem;
 }
 .cafe-page--industrial .cp-hero__address {
-  font-family: 'SFMono-Regular', monospace;
+  font-family: 'Space Mono', monospace;
   font-size: 0.8125rem;
   color: rgba(240,228,204,0.55);
 }
 .cafe-page--industrial .cp-hero__status {
   border-radius: 0;
   border: 2px solid var(--gold);
-  font-family: 'SFMono-Regular', monospace;
+  font-family: 'Space Mono', monospace;
   text-transform: uppercase;
   font-weight: 700;
 }
 
 .cafe-page--industrial .cp-section__title {
-  font-family: 'SFMono-Regular', 'Consolas', monospace;
+  font-family: 'Space Mono', 'SFMono-Regular', 'Consolas', monospace;
   text-transform: uppercase;
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: 1.0625rem;
   letter-spacing: 0.02em;
   border-left: 6px solid var(--gold);
   padding-left: 0.875rem;
@@ -2095,7 +2107,7 @@ select.me-input { cursor: pointer; }
 .cafe-page--industrial .cp-menu-item { padding: 1.125rem 1.375rem; margin-bottom: 0; }
 .cafe-page--industrial .cp-menu-item__name { font-weight: 700; }
 .cafe-page--industrial .cp-menu-item__price {
-  font-family: 'SFMono-Regular', monospace;
+  font-family: 'Space Mono', monospace;
   background: var(--text-dark);
   color: var(--gold);
   padding: 2px 8px;
@@ -2103,11 +2115,18 @@ select.me-input { cursor: pointer; }
   margin-top: 0.375rem;
 }
 
+.cafe-page--industrial .rv-summary__score,
+.cafe-page--industrial .lw-value,
+.cafe-page--industrial .me-title {
+  font-family: 'Space Mono', monospace;
+}
+.cafe-page--industrial .me-title { text-transform: uppercase; font-size: 1.25rem; }
+
 .cafe-page--industrial .btn--primary {
   border-radius: 0;
   background: var(--text-dark);
   border: 2px solid var(--text-dark);
-  font-family: 'SFMono-Regular', monospace;
+  font-family: 'Space Mono', monospace;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   position: relative;
@@ -2123,22 +2142,21 @@ select.me-input { cursor: pointer; }
   z-index: -1;
 }
 .cafe-page--industrial .btn--primary:hover::before { transform: translateX(0); }
-.cafe-page--industrial .btn--outline-dark { border-radius: 0; border: 2px solid var(--text-dark); font-family: 'SFMono-Regular', monospace; text-transform: uppercase; }
+.cafe-page--industrial .btn--outline-dark { border-radius: 0; border: 2px solid var(--text-dark); font-family: 'Space Mono', monospace; text-transform: uppercase; }
 
-.cafe-page--industrial .menu-badge { border-radius: 0; font-family: 'SFMono-Regular', monospace; }
-.cafe-page--industrial .cp-social-links a { border-radius: 0; border: 2px solid var(--text-dark); font-family: 'SFMono-Regular', monospace; text-transform: uppercase; }
+.cafe-page--industrial .menu-badge { border-radius: 0; font-family: 'Space Mono', monospace; }
+.cafe-page--industrial .cp-social-links a { border-radius: 0; border: 2px solid var(--text-dark); font-family: 'Space Mono', monospace; text-transform: uppercase; }
 
 .cafe-page--industrial .cp-gallery__item { border-radius: 0; border: 3px solid var(--text-dark); }
 .cafe-page--industrial .cp-gallery__item:hover { transform: none; box-shadow: 6px 6px 0 var(--gold); }
 
 .cafe-page--industrial .menu-editor { border-radius: 0; border-left: 6px solid var(--gold); }
-.cafe-page--industrial .me-title { font-family: 'SFMono-Regular', monospace; text-transform: uppercase; }
 
 .cafe-page--industrial .cp-home-fab {
   border-radius: 0;
   background: var(--text-dark);
   border: 2px solid var(--gold);
-  font-family: 'SFMono-Regular', monospace;
+  font-family: 'Space Mono', monospace;
   text-transform: uppercase;
 }
 .cafe-page--industrial .cp-home-fab::before {
@@ -2158,7 +2176,7 @@ select.me-input { cursor: pointer; }
    ════════════════════════════════════════════════ */
 
 .cafe-page--glass {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
   background: linear-gradient(160deg, #eef2ff 0%, var(--cream) 45%, #fdf2f8 100%);
   position: relative;
   isolation: isolate;
@@ -2182,6 +2200,11 @@ select.me-input { cursor: pointer; }
   100% { transform: translate(3%, -3%) scale(1.08); }
 }
 
+.cafe-page--glass .cp-section__title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
 .cafe-page--glass .cp-nav {
   background: rgba(255,255,255,0.5);
   backdrop-filter: blur(18px) saturate(160%);
@@ -2190,7 +2213,7 @@ select.me-input { cursor: pointer; }
   border-top: none;
   box-shadow: 0 8px 32px rgba(31,38,135,0.08);
 }
-.cafe-page--glass .cp-nav__link { border-radius: 100px; }
+.cafe-page--glass .cp-nav__link { border-radius: 100px; font-weight: 500; }
 .cafe-page--glass .cp-nav__link:hover { background: rgba(255,255,255,0.6); }
 
 .cafe-page--glass .cp-hero {
@@ -2203,7 +2226,7 @@ select.me-input { cursor: pointer; }
   box-shadow: 0 20px 60px rgba(31,38,135,0.14);
   color: var(--text-dark);
 }
-.cafe-page--glass .cp-hero__name { color: var(--text-dark); }
+.cafe-page--glass .cp-hero__name { color: var(--text-dark); font-weight: 600; }
 .cafe-page--glass .cp-hero__address { color: var(--text-muted); }
 .cafe-page--glass .cp-hero__logo {
   background: rgba(255,255,255,0.55);
@@ -2220,6 +2243,7 @@ select.me-input { cursor: pointer; }
 .cafe-page--glass .cp-hero__status--open { color: var(--success); }
 .cafe-page--glass .cp-hero__status--closed { color: var(--error); }
 
+/* ── Karty ogólne: info / rezerwacje / opinie / zespół / puste stany ── */
 .cafe-page--glass .info-card,
 .cafe-page--glass .res-table-row,
 .cafe-page--glass .rv-card,
@@ -2227,7 +2251,9 @@ select.me-input { cursor: pointer; }
 .cafe-page--glass .res-empty-card,
 .cafe-page--glass .cp-menu-item,
 .cafe-page--glass .cp-news-card,
-.cafe-page--glass .menu-editor {
+.cafe-page--glass .rv-summary,
+.cafe-page--glass .cp-cart-bar,
+.cafe-page--glass .cp-hours-row--exception {
   background: rgba(255,255,255,0.46) !important;
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
@@ -2247,6 +2273,120 @@ select.me-input { cursor: pointer; }
 .cafe-page--glass .cp-menu-items { gap: 0.875rem; }
 .cafe-page--glass .cp-menu-item { padding: 1.125rem 1.375rem; margin-bottom: 0; }
 
+/* ── Pasek koszyka (sticky) — szkło zamiast espresso ── */
+.cafe-page--glass .cp-cart-bar {
+  background: rgba(255,255,255,0.6) !important;
+  border-radius: 100px !important;
+  color: var(--text-dark);
+  padding: 0.75rem 0.75rem 0.75rem 1.375rem;
+}
+.cafe-page--glass .cp-cart-bar .btn--primary { margin-top: 0; }
+
+/* ── Modal zamówienia / rezerwacji / logowania — jedna spójna tafla szkła ──
+   Header/body/footer muszą wyglądać jak WARSTWY TEGO SAMEGO szkła, a nie
+   trzy różne odcienie — stąd ta sama przezroczystość i blur wszędzie,
+   rozdzielone tylko cienką linią zamiast zmianą tła. */
+/* Overlay pod modalem: w bazowym CSS jest espresso 60% — na tym ciemnym
+   tle każde szkło "widzi" ciemność przez siebie i wychodzi szare zamiast
+   jasnego, mlecznego liquid glass. W Glass rozjaśniamy overlay, żeby modal
+   miał jasne, kolorowe tło do prześwitywania — tak jak w iOS/macOS. */
+.cafe-page--glass .menu-editor-overlay {
+  background: rgba(220, 225, 245, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.cafe-page--glass .menu-editor {
+  background: rgba(255,255,255,0.72) !important;
+  backdrop-filter: blur(34px) saturate(200%);
+  -webkit-backdrop-filter: blur(34px) saturate(200%);
+  border: 1px solid rgba(255,255,255,0.85);
+  box-shadow:
+    0 30px 80px rgba(31,38,135,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    inset 0 0 60px rgba(255,255,255,0.4) !important;
+  position: relative;
+}
+/* Delikatna kolorowa poświata na krawędziach — typowy akcent liquid glass */
+.cafe-page--glass .menu-editor::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(181,114,10,0.12), transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(120,180,255,0.12), transparent 45%);
+  pointer-events: none;
+  z-index: 0;
+}
+.cafe-page--glass .me-header,
+.cafe-page--glass .me-body,
+.cafe-page--glass .me-footer { position: relative; z-index: 1; }
+.cafe-page--glass .me-header {
+  background: rgba(255,255,255,0.25);
+  border-bottom: 1px solid rgba(255,255,255,0.4);
+}
+.cafe-page--glass .me-eyebrow { color: var(--gold); }
+.cafe-page--glass .me-title { color: var(--text-dark); }
+.cafe-page--glass .me-close {
+  background: rgba(255,255,255,0.3);
+  border: 1px solid rgba(17,10,4,0.15);
+  color: var(--text-muted);
+}
+.cafe-page--glass .me-close:hover { border-color: rgba(17,10,4,0.3); color: var(--text-dark); background: rgba(255,255,255,0.5); }
+.cafe-page--glass .me-footer {
+  background: rgba(255,255,255,0.12);
+  border-top: 1px solid rgba(255,255,255,0.4);
+}
+.cafe-page--glass .me-body { background: transparent; }
+.cafe-page--glass .me-label { color: var(--text-muted); }
+.cafe-page--glass .me-input {
+  color: var(--text-dark);
+  border-bottom: 1.5px solid rgba(255,255,255,0.6);
+  background: transparent;
+}
+.cafe-page--glass .me-input::placeholder { color: var(--text-muted); opacity: 0.55; }
+.cafe-page--glass .me-input:focus { border-bottom-color: var(--gold); }
+.cafe-page--glass select.me-input { background: rgba(255,255,255,0.3); border-radius: 8px; padding: 0.5rem 0.625rem; border-bottom: 1px solid rgba(255,255,255,0.6); }
+.cafe-page--glass .ord-item-row { color: var(--text-body); }
+.cafe-page--glass .ord-item-row__qty { color: var(--gold); }
+.cafe-page--glass .ord-item-row__price { color: var(--text-muted); }
+
+/* ── Podsumowanie opinii — pasek z rv-summary, teraz szklany (patrz wyżej) ── */
+.cafe-page--glass .rv-summary { padding: 1.5rem 1.75rem; }
+
+/* ── Godziny otwarcia ── */
+.cafe-page--glass .cp-hours-row {
+  border-radius: 12px;
+  padding: 0.5rem 0.875rem;
+}
+.cafe-page--glass .cp-hours-row--today {
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.55);
+}
+.cafe-page--glass .cp-hours-row--exception {
+  border-radius: 12px !important;
+  padding: 0.5rem 0.875rem !important;
+}
+.cafe-page--glass .cp-hours-upcoming {
+  border-top: 1px solid rgba(255,255,255,0.5);
+}
+
+/* ── Kontakt i lokalizacja — szklane ramki ── */
+.cafe-page--glass .cp-info-grid > div {
+  background: rgba(255,255,255,0.42);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.6);
+  border-radius: 18px;
+  padding: 1.375rem 1.5rem;
+  box-shadow: 0 8px 28px rgba(31,38,135,0.09);
+}
+.cafe-page--glass .cp-info-grid iframe {
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.6) !important;
+}
+
 .cafe-page--glass .btn--primary {
   border-radius: 100px;
   background: rgba(255,255,255,0.55);
@@ -2259,7 +2399,6 @@ select.me-input { cursor: pointer; }
 .cafe-page--glass .btn--outline-dark { border-radius: 100px; background: rgba(255,255,255,0.3); backdrop-filter: blur(8px); }
 .cafe-page--glass .cp-add-btn { border-radius: 100px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); }
 .cafe-page--glass .cp-qty-stepper { border-radius: 100px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-color: rgba(255,255,255,0.6); }
-.cafe-page--glass .cp-cart-bar { background: rgba(17,10,4,0.55); backdrop-filter: blur(16px); }
 
 .cafe-page--glass .menu-badge { backdrop-filter: blur(6px); }
 .cafe-page--glass .cp-social-links a {
@@ -2268,10 +2407,107 @@ select.me-input { cursor: pointer; }
   border: 1px solid rgba(255,255,255,0.6);
 }
 
+/* ── Przycisk "Dodaj do zamówienia" i stepper — pełne liquid glass ── */
+.cafe-page--glass .cp-add-btn {
+  border-radius: 100px;
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.65);
+  color: var(--text-dark);
+  box-shadow: 0 4px 16px rgba(31,38,135,0.1);
+}
+.cafe-page--glass .cp-add-btn:hover {
+  background: rgba(255,255,255,0.6);
+  color: var(--text-dark);
+  box-shadow: 0 6px 20px rgba(31,38,135,0.16);
+}
+.cafe-page--glass .cp-qty-stepper {
+  border-radius: 100px;
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.65);
+}
+.cafe-page--glass .cp-qty-stepper button {
+  background: rgba(255,255,255,0.5);
+  color: var(--text-dark);
+}
+
+/* ── Formularz logowania / rejestracji wewnątrz modala — liquid glass ──
+   LoginForm/RegisterForm/AccountHome używają klas z index.css (.form-*,
+   .field__*, .checkbox-field__*), zaprojektowanych dla jasnego tła poza
+   motywami kawiarni. Wewnątrz .cafe-page--glass trzeba je nadpisać, inaczej
+   modal wygląda jak zwykły biały formularz zamiast reszty stylu. ── */
+.cafe-page--glass .form-title,
+.cafe-page--glass .rv-summary__score,
+.cafe-page--glass .res-empty-title {
+  color: var(--text-dark);
+  font-weight: 600;
+}
+.cafe-page--glass .form-subtitle,
+.cafe-page--glass .form-note,
+.cafe-page--glass .field__label,
+.cafe-page--glass .form-section__label,
+.cafe-page--glass .form-switch,
+.cafe-page--glass .checkbox-field__label,
+.cafe-page--glass .field__hint {
+  color: var(--text-muted);
+}
+.cafe-page--glass .form-section + .form-section {
+  border-top-color: rgba(255,255,255,0.5);
+}
+.cafe-page--glass .field__input {
+  color: var(--text-dark);
+  border-bottom: 1.5px solid rgba(255,255,255,0.6);
+  background: transparent;
+}
+.cafe-page--glass .field__input::placeholder { color: var(--text-muted); opacity: 0.6; }
+.cafe-page--glass .field__input:focus { border-bottom-color: var(--gold); }
+.cafe-page--glass .field__input--error { border-bottom-color: var(--error) !important; }
+.cafe-page--glass .checkbox-field__input {
+  border: 1.5px solid rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.3);
+}
+.cafe-page--glass .checkbox-field__input:checked {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.cafe-page--glass .checkbox-field__input:checked::after { border-color: #fff; }
+.cafe-page--glass .link,
+.cafe-page--glass .link-btn { color: var(--gold); }
+.cafe-page--glass .link:hover,
+.cafe-page--glass .link-btn:hover { color: var(--gold-hover); }
+.cafe-page--glass .form-error {
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(184,50,50,0.35);
+}
+.cafe-page--glass .form-success {
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(46,125,50,0.3);
+}
+/* Formularz logowania nie ma własnej karty — modal (.menu-editor) już
+   dostaje pełne szkło wyżej, więc treść formularza dziedziczy tło. */
+.cafe-page--glass .form-wrapper { color: var(--text-dark); }
+
+/* ── Galeria — szklane ramki wokół zdjęć ── */
 .cafe-page--glass .cp-gallery__item {
   background: rgba(255,255,255,0.35);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.55);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.6);
+  border-radius: 16px;
+  padding: 6px;
+  box-shadow: 0 8px 26px rgba(31,38,135,0.1);
+}
+.cafe-page--glass .cp-gallery__item img {
+  border-radius: 11px;
+}
+.cafe-page--glass .cp-gallery__item:hover {
+  background: rgba(255,255,255,0.5);
+  box-shadow: 0 14px 36px rgba(31,38,135,0.18);
 }
 
 .cafe-page--glass .cp-home-fab {
@@ -2286,11 +2522,15 @@ select.me-input { cursor: pointer; }
 
 /* ════════════════════════════════════════════════
    17. MOTYW: FUTURYSTYCZNY
+   Panel sterowania z roku 2100 — HUD / cyberpunk / hologramy.
+   Paleta pozostaje z wybranego zestawu (--gold / --espresso),
+   ale całość zbudowana jest jak interfejs statku kosmicznego:
+   cienkie linie, narożniki-uchwyty, skanowanie, dane numeryczne.
    ════════════════════════════════════════════════ */
 
 .cafe-page--futuristic {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: #05060a;
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  background: #050608;
   color: var(--parchment);
   position: relative;
   isolation: isolate;
@@ -2299,84 +2539,198 @@ select.me-input { cursor: pointer; }
 .cafe-page--futuristic .info-row__value,
 .cafe-page--futuristic .cp-hours-row { color: var(--parchment); }
 
+/* Tło: siatka HUD + delikatny skan poziomy */
 .cafe-page--futuristic::before {
   content: '';
-  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  background-color: #050608;
   background-image:
-    linear-gradient(rgba(181,114,10,0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(181,114,10,0.08) 1px, transparent 1px);
-  background-size: 42px 42px;
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+    linear-gradient(rgba(181,114,10,0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(181,114,10,0.09) 1px, transparent 1px);
+  background-size: 38px 38px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 70% at 50% 0%, black 35%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 70% at 50% 0%, black 35%, transparent 100%);
+}
+.cafe-page--futuristic::after {
+  content: '';
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(181,114,10,0.025) 0px,
+    rgba(181,114,10,0.025) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0.6;
 }
 
+/* ── Typografia HUD: nagłówki Orbitron, dane/etykiety Space Mono ── */
+.cafe-page--futuristic .cp-hero__name,
+.cafe-page--futuristic .cp-section__title,
+.cafe-page--futuristic .me-title,
+.cafe-page--futuristic .rv-summary__score,
+.cafe-page--futuristic .lw-value {
+  font-family: 'Orbitron', 'Outfit', sans-serif;
+}
+.cafe-page--futuristic .cp-hero__address,
+.cafe-page--futuristic .cp-account span,
+.cafe-page--futuristic .me-label,
+.cafe-page--futuristic .field__label,
+.cafe-page--futuristic .lw-label,
+.cafe-page--futuristic .cp-menu-item__price,
+.cafe-page--futuristic .cp-hero__status,
+.cafe-page--futuristic .status-badge,
+.cafe-page--futuristic .cp-news-card__date {
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Nav: bezramkowy pasek z linią-skanerem na dole ── */
 .cafe-page--futuristic .cp-nav {
-  background: rgba(5,6,10,0.75);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid transparent;
-  border-image: linear-gradient(90deg, transparent, var(--gold), transparent) 1;
-  box-shadow: 0 1px 18px rgba(181,114,10,0.25);
-}
-.cafe-page--futuristic .cp-nav__link { color: rgba(240,228,204,0.6); }
-.cafe-page--futuristic .cp-nav__link:hover { color: var(--gold); background: rgba(181,114,10,0.08); text-shadow: 0 0 8px rgba(181,114,10,0.6); }
-.cafe-page--futuristic .cp-account span { color: rgba(240,228,204,0.7); }
-
-.cafe-page--futuristic .cp-hero {
-  background: radial-gradient(ellipse at 50% -10%, rgba(181,114,10,0.25), transparent 60%), #05060a;
-  border-bottom: 1px solid rgba(181,114,10,0.4);
+  background: rgba(5,6,8,0.82);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(181,114,10,0.28);
+  position: sticky;
+  padding: 0.75rem 1.75rem;
   overflow: hidden;
 }
+.cafe-page--futuristic .cp-nav::after {
+  content: '';
+  position: absolute; left: 0; width: 40%; bottom: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  animation: fut-scanline 5s linear infinite;
+  opacity: 0.8;
+  pointer-events: none;
+}
+@keyframes fut-scanline {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+.cafe-page--futuristic .cp-nav__link {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(240,228,204,0.55);
+  border-radius: 2px;
+}
+.cafe-page--futuristic .cp-nav__link:hover {
+  color: var(--gold);
+  background: rgba(181,114,10,0.1);
+  text-shadow: 0 0 8px rgba(181,114,10,0.6);
+}
+.cafe-page--futuristic .cp-account span { color: rgba(240,228,204,0.6); font-size: 0.75rem; }
+
+/* ── Hero: panel HUD z narożnikami-uchwytami i danymi statusu ── */
+.cafe-page--futuristic .cp-hero {
+  background: radial-gradient(ellipse at 50% -20%, rgba(181,114,10,0.16), transparent 60%), #050608;
+  border-bottom: 1px solid rgba(181,114,10,0.3);
+  padding: 4rem 2rem 3rem;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 2.25rem;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.cafe-page--futuristic .cp-hero::before,
 .cafe-page--futuristic .cp-hero::after {
   content: '';
-  position: absolute; left: 0; right: 0; top: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  animation: futuristic-scan 4s linear infinite;
-  opacity: 0.7;
-}
-@keyframes futuristic-scan {
-  0%   { top: 0%; }
-  100% { top: 100%; }
-}
-.cafe-page--futuristic .cp-hero__logo {
+  position: absolute;
+  width: 26px; height: 26px;
   border: 2px solid var(--gold);
-  box-shadow: 0 0 16px rgba(181,114,10,0.7), inset 0 0 14px rgba(181,114,10,0.35);
-  animation: futuristic-pulse 2.6s ease-in-out infinite;
+  opacity: 0.75;
+  z-index: 2;
 }
-@keyframes futuristic-pulse {
-  0%, 100% { box-shadow: 0 0 16px rgba(181,114,10,0.5), inset 0 0 12px rgba(181,114,10,0.25); }
-  50%      { box-shadow: 0 0 32px rgba(181,114,10,0.9), inset 0 0 20px rgba(181,114,10,0.45); }
+.cafe-page--futuristic .cp-hero::before { top: 18px; left: 18px; border-right: none; border-bottom: none; }
+.cafe-page--futuristic .cp-hero::after  { bottom: 18px; right: 18px; border-left: none; border-top: none; }
+
+.cafe-page--futuristic .cp-hero__logo {
+  flex-shrink: 0;
+  margin: 0;
+  border-radius: 4px;
+  border: 1px solid var(--gold);
+  box-shadow: 0 0 0 1px rgba(181,114,10,0.2), 0 0 22px rgba(181,114,10,0.35);
+  position: relative;
 }
 .cafe-page--futuristic .cp-hero__name {
-  font-weight: 800;
-  background: linear-gradient(90deg, var(--gold), #ffe9b3, var(--gold));
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: futuristic-shine 3.5s linear infinite;
-}
-@keyframes futuristic-shine { to { background-position: 200% center; } }
-.cafe-page--futuristic .cp-hero__address { color: rgba(240,228,204,0.5); }
-.cafe-page--futuristic .cp-hero__status {
-  border: 1px solid var(--gold);
-  background: rgba(181,114,10,0.08);
-  box-shadow: 0 0 12px rgba(181,114,10,0.35);
-}
-
-.cafe-page--futuristic .cp-section__title {
-  color: var(--gold);
-  text-shadow: 0 0 10px rgba(181,114,10,0.45);
   font-weight: 700;
+  font-size: 2rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--parchment);
   position: relative;
-  padding-bottom: 0.625rem;
+  display: inline-block;
 }
-.cafe-page--futuristic .cp-section__title::after {
+.cafe-page--futuristic .cp-hero__name::after {
   content: '';
-  position: absolute; left: 0; bottom: 0; width: 64px; height: 2px;
-  background: linear-gradient(90deg, var(--gold), transparent);
-  box-shadow: 0 0 8px rgba(181,114,10,0.7);
+  display: block;
+  width: 100%;
+  height: 2px;
+  margin-top: 0.5rem;
+  background: linear-gradient(90deg, var(--gold), transparent 75%);
+  box-shadow: 0 0 8px rgba(181,114,10,0.6);
+}
+.cafe-page--futuristic .cp-hero__address {
+  color: rgba(240,228,204,0.45);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  margin-top: 0.75rem;
+  display: block;
+}
+.cafe-page--futuristic .cp-hero__address::before { content: '// '; color: var(--gold); }
+.cafe-page--futuristic .cp-hero__status {
+  margin-top: 1.125rem;
+  border: 1px solid var(--gold);
+  border-radius: 2px;
+  background: rgba(181,114,10,0.08);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+  padding: 5px 14px 5px 26px;
+  position: relative;
+}
+.cafe-page--futuristic .cp-hero__status::before {
+  content: '';
+  position: absolute;
+  left: 11px; top: 50%;
+  width: 6px; height: 6px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  animation: fut-blip 1.8s ease-in-out infinite;
+}
+.cafe-page--futuristic .cp-hero__status--open   { color: #8FE39A; }
+.cafe-page--futuristic .cp-hero__status--closed { color: #F0A0A0; }
+@keyframes fut-blip { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ── Sekcje: nagłówki z indeksem numerycznym (styl konsoli) ── */
+.cafe-page--futuristic .cp-main { max-width: 1080px; }
+.cafe-page--futuristic .cp-section__title {
+  color: var(--parchment);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(181,114,10,0.3);
+}
+.cafe-page--futuristic .cp-section__title::before {
+  content: '';
+  width: 9px; height: 9px;
+  background: var(--gold);
+  box-shadow: 0 0 8px rgba(181,114,10,0.8);
+  flex-shrink: 0;
 }
 
+/* ── Panele: karty jako moduły konsoli, narożniki ścięte ──
+   clip-path tylko na kartach z hojnym, stałym paddingiem — na modalu
+   i pasku koszyka (własne nagłówki/stopki blisko krawędzi) ścinanie
+   rogów mogłoby obcinać tekst, więc dostają tylko prosty border. */
 .cafe-page--futuristic .info-card,
 .cafe-page--futuristic .res-table-row,
 .cafe-page--futuristic .rv-card,
@@ -2384,28 +2738,39 @@ select.me-input { cursor: pointer; }
 .cafe-page--futuristic .res-empty-card,
 .cafe-page--futuristic .cp-menu-item,
 .cafe-page--futuristic .cp-news-card,
-.cafe-page--futuristic .menu-editor,
 .cafe-page--futuristic .rv-summary {
-  background: rgba(240,228,204,0.03);
-  border: 1px solid rgba(181,114,10,0.4);
-  border-radius: 10px;
+  background: rgba(181,114,10,0.04);
+  border: 1px solid rgba(181,114,10,0.32);
+  border-radius: 3px;
+  clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
   color: var(--parchment);
   position: relative;
-  transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.35s ease;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+}
+.cafe-page--futuristic .menu-editor,
+.cafe-page--futuristic .cp-cart-bar {
+  background: rgba(181,114,10,0.04);
+  border: 1px solid rgba(181,114,10,0.32);
+  border-radius: 6px;
+  color: var(--parchment);
+  position: relative;
 }
 .cafe-page--futuristic .info-card:hover,
 .cafe-page--futuristic .rv-card:hover,
 .cafe-page--futuristic .cp-team-card:hover,
 .cafe-page--futuristic .cp-menu-item:hover {
   border-color: var(--gold);
-  box-shadow: 0 0 24px rgba(181,114,10,0.35), inset 0 0 20px rgba(181,114,10,0.06);
-  transform: translateY(-2px);
+  background: rgba(181,114,10,0.08);
+  box-shadow: 0 0 26px rgba(181,114,10,0.22), inset 0 0 24px rgba(181,114,10,0.05);
 }
+.cafe-page--futuristic .cp-menu-items { gap: 0.875rem; }
+.cafe-page--futuristic .cp-menu-item { padding: 1.125rem 1.375rem; margin-bottom: 0; }
+
 .cafe-page--futuristic .cp-menu-item__name,
 .cafe-page--futuristic .rv-card__nick,
 .cafe-page--futuristic .cp-team-card__name,
 .cafe-page--futuristic .res-empty-title,
-.cafe-page--futuristic .rv-summary__score { color: var(--parchment); }
+.cafe-page--futuristic .rv-summary__score { color: var(--parchment); font-weight: 600; }
 .cafe-page--futuristic .cp-menu-item__desc,
 .cafe-page--futuristic .rv-card__comment,
 .cafe-page--futuristic .cp-team-card__bio,
@@ -2413,185 +2778,501 @@ select.me-input { cursor: pointer; }
 .cafe-page--futuristic .rv-summary__count,
 .cafe-page--futuristic .rv-card__date,
 .cafe-page--futuristic .res-empty-sub,
-.cafe-page--futuristic .me-label,
-.cafe-page--futuristic .field__label,
 .cafe-page--futuristic .form-subtitle,
 .cafe-page--futuristic .form-switch,
 .cafe-page--futuristic .checkbox-field__label,
-.cafe-page--futuristic .lw-label,
-.cafe-page--futuristic .lw-hint { color: rgba(240,228,204,0.55); }
+.cafe-page--futuristic .lw-hint { color: rgba(240,228,204,0.5); }
 .cafe-page--futuristic .cp-menu-item__price,
 .cafe-page--futuristic .lw-value,
 .cafe-page--futuristic .lw-reward-name { color: var(--gold); text-shadow: 0 0 6px rgba(181,114,10,0.4); }
+.cafe-page--futuristic .me-label,
+.cafe-page--futuristic .field__label,
+.cafe-page--futuristic .lw-label { color: rgba(181,114,10,0.85); }
 
 .cafe-page--futuristic .me-input,
 .cafe-page--futuristic .field__input {
   color: var(--parchment);
   border-bottom-color: rgba(181,114,10,0.4);
   color-scheme: dark;
+  font-family: 'Space Mono', monospace;
 }
 .cafe-page--futuristic .me-input::placeholder,
-.cafe-page--futuristic .field__input::placeholder { color: rgba(240,228,204,0.3); }
+.cafe-page--futuristic .field__input::placeholder { color: rgba(240,228,204,0.28); }
 .cafe-page--futuristic .me-input:focus,
 .cafe-page--futuristic .field__input:focus { border-bottom-color: var(--gold); }
-.cafe-page--futuristic .checkbox-field__input { border-color: rgba(181,114,10,0.5); }
+.cafe-page--futuristic .checkbox-field__input { border-color: rgba(181,114,10,0.5); border-radius: 2px; }
 
 .cafe-page--futuristic .cp-slot-btn {
   color: var(--parchment);
-  border-color: rgba(181,114,10,0.4);
-  background: rgba(240,228,204,0.03);
+  border: 1px solid rgba(181,114,10,0.4);
+  border-radius: 2px;
+  background: rgba(181,114,10,0.04);
+  font-family: 'Space Mono', monospace;
+}
+.cafe-page--futuristic .cp-slot-btn:hover:not(:disabled):not(.cp-slot-btn--selected) {
+  border-color: var(--gold); color: var(--gold);
 }
 .cafe-page--futuristic .cp-slot-btn--selected {
-  background: var(--gold); color: #05060a; box-shadow: 0 0 14px rgba(181,114,10,0.7);
+  background: var(--gold); color: #050608; box-shadow: 0 0 14px rgba(181,114,10,0.7);
+  border-color: var(--gold);
 }
-.cafe-page--futuristic .cp-slot-btn--unavailable { opacity: 0.35; }
+.cafe-page--futuristic .cp-slot-btn--unavailable { opacity: 0.3; }
 
+/* ── Przyciski: techniczny kontur ── */
 .cafe-page--futuristic .btn--primary {
   background: transparent;
   border: 1px solid var(--gold);
+  border-radius: 2px;
   color: var(--gold);
-  box-shadow: 0 0 14px rgba(181,114,10,0.35), inset 0 0 8px rgba(181,114,10,0.1);
-  text-shadow: 0 0 6px rgba(181,114,10,0.5);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  box-shadow: 0 0 14px rgba(181,114,10,0.3), inset 0 0 10px rgba(181,114,10,0.08);
+  position: relative;
 }
 .cafe-page--futuristic .btn--primary:hover {
   background: var(--gold);
-  color: #05060a;
-  text-shadow: none;
-  box-shadow: 0 0 26px rgba(181,114,10,0.8);
+  color: #050608;
+  box-shadow: 0 0 26px rgba(181,114,10,0.75);
 }
-.cafe-page--futuristic .btn--outline-dark { border: 1px solid rgba(181,114,10,0.5); color: var(--parchment); }
+.cafe-page--futuristic .btn--outline-dark {
+  border: 1px solid rgba(181,114,10,0.4);
+  border-radius: 2px;
+  color: rgba(240,228,204,0.7);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
 .cafe-page--futuristic .btn--outline-dark:hover { border-color: var(--gold); color: var(--gold); }
+.cafe-page--futuristic .cp-add-btn {
+  border-radius: 2px;
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+.cafe-page--futuristic .cp-qty-stepper { border-radius: 2px; }
+.cafe-page--futuristic .cp-qty-stepper button { border-radius: 2px; }
 
-.cafe-page--futuristic .menu-badge { box-shadow: 0 0 6px rgba(181,114,10,0.4); }
+.cafe-page--futuristic .menu-badge {
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(181,114,10,0.4);
+  font-family: 'Space Mono', monospace;
+}
 .cafe-page--futuristic .cp-social-links a {
   border: 1px solid rgba(181,114,10,0.4);
+  border-radius: 2px;
   color: var(--parchment);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
 }
 .cafe-page--futuristic .cp-social-links a:hover { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 10px rgba(181,114,10,0.5); }
 
+/* ── Godziny / kontakt / lokalizacja ── */
+.cafe-page--futuristic .cp-hours-row { border-radius: 2px; }
+.cafe-page--futuristic .cp-hours-row--exception {
+  background: rgba(181,114,10,0.08);
+  border: 1px solid rgba(181,114,10,0.4);
+}
+.cafe-page--futuristic .cp-info-grid > div {
+  background: rgba(181,114,10,0.04);
+  border: 1px solid rgba(181,114,10,0.3);
+  border-radius: 3px;
+  padding: 1.25rem 1.5rem;
+}
+.cafe-page--futuristic .cp-info-grid iframe {
+  border: 1px solid rgba(181,114,10,0.35) !important;
+  filter: grayscale(0.3) contrast(1.05) brightness(0.9);
+}
+
+/* ── Galeria: monitor-style ── */
 .cafe-page--futuristic .cp-gallery__item {
   border: 1px solid rgba(181,114,10,0.4);
+  border-radius: 3px;
   box-shadow: 0 0 16px rgba(181,114,10,0.15);
 }
-.cafe-page--futuristic .cp-gallery__item:hover { box-shadow: 0 0 30px rgba(181,114,10,0.55); }
+.cafe-page--futuristic .cp-gallery__item:hover { border-color: var(--gold); box-shadow: 0 0 30px rgba(181,114,10,0.55); }
 
-.cafe-page--futuristic .menu-editor { background: #0a0b12; }
-.cafe-page--futuristic .me-header { background: #05060a; border-bottom: 1px solid rgba(181,114,10,0.35); }
-.cafe-page--futuristic .me-footer { background: rgba(240,228,204,0.02); border-top-color: rgba(181,114,10,0.25); }
+/* ── Modal ── */
+.cafe-page--futuristic .menu-editor {
+  background: #08090c;
+  border: 1px solid rgba(181,114,10,0.3);
+}
+.cafe-page--futuristic .me-header {
+  background: #050608;
+  border-bottom: 1px solid rgba(181,114,10,0.35);
+}
+.cafe-page--futuristic .me-eyebrow { color: var(--gold); font-family: 'Space Mono', monospace; }
+.cafe-page--futuristic .me-title {
+  color: var(--parchment);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.cafe-page--futuristic .me-close {
+  border: 1px solid rgba(181,114,10,0.4);
+  color: rgba(240,228,204,0.6);
+}
+.cafe-page--futuristic .me-close:hover { border-color: var(--gold); color: var(--gold); }
+.cafe-page--futuristic .me-footer { background: rgba(181,114,10,0.03); border-top-color: rgba(181,114,10,0.25); }
 
-.cafe-page--futuristic .cp-home-fab {
-  background: #05060a;
-  border: 1px solid var(--gold);
+/* ── Formularz logowania / rejestracji wewnątrz modala ──
+   LoginForm/RegisterForm używają klas .form-*/.field__*/.checkbox-field__*
+   z index.css, stylowanych domyślnie dla jasnego tła — na ciemnym module
+   HUD trzeba je nadpisać w całości, inaczej tekst ginie na czarnym tle. */
+.cafe-page--futuristic .form-title {
   color: var(--gold);
-  box-shadow: 0 0 18px rgba(181,114,10,0.55);
+  font-family: 'Orbitron', 'Outfit', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 1.375rem;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(181,114,10,0.5);
+}
+.cafe-page--futuristic .form-subtitle,
+.cafe-page--futuristic .form-note,
+.cafe-page--futuristic .form-switch,
+.cafe-page--futuristic .field__hint {
+  color: rgba(240,228,204,0.45);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+}
+.cafe-page--futuristic .form-section__label,
+.cafe-page--futuristic .checkbox-field__label {
+  color: rgba(181,114,10,0.85);
+  font-family: 'Space Mono', monospace;
+}
+.cafe-page--futuristic .form-section + .form-section {
+  border-top-color: rgba(181,114,10,0.25);
+}
+.cafe-page--futuristic .field__input {
+  color: var(--parchment);
+  border-bottom: 1.5px solid rgba(181,114,10,0.4);
+  background: transparent;
+  font-family: 'Space Mono', monospace;
+  color-scheme: dark;
+}
+.cafe-page--futuristic .field__input::placeholder { color: rgba(240,228,204,0.25); }
+.cafe-page--futuristic .field__input:focus { border-bottom-color: var(--gold); }
+.cafe-page--futuristic .field__input--error { border-bottom-color: #F0A0A0 !important; }
+.cafe-page--futuristic .field__error { color: #F0A0A0; font-family: 'Space Mono', monospace; font-size: 0.7rem; }
+.cafe-page--futuristic .checkbox-field__input {
+  border: 1.5px solid rgba(181,114,10,0.5);
+  border-radius: 2px;
+  background: transparent;
+}
+.cafe-page--futuristic .checkbox-field__input:checked {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.cafe-page--futuristic .checkbox-field__input:checked::after { border-color: #050608; }
+.cafe-page--futuristic .link,
+.cafe-page--futuristic .link-btn { color: var(--gold); }
+.cafe-page--futuristic .link:hover,
+.cafe-page--futuristic .link-btn:hover { color: var(--gold-hover); }
+.cafe-page--futuristic .form-error {
+  background: rgba(240,160,160,0.08);
+  border: 1px solid rgba(240,160,160,0.35);
+  color: #F0A0A0;
+  border-radius: 2px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.8125rem;
+}
+.cafe-page--futuristic .form-success {
+  background: rgba(143,227,154,0.08);
+  border: 1px solid rgba(143,227,154,0.35);
+  color: #8FE39A;
+  border-radius: 2px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.8125rem;
+}
+
+/* ── FAB ── */
+.cafe-page--futuristic .cp-home-fab {
+  background: #08090c;
+  border: 1px solid var(--gold);
+  border-radius: 2px;
+  color: var(--gold);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: 0 0 18px rgba(181,114,10,0.5);
 }
 .cafe-page--futuristic .cp-inline-icon { color: var(--gold); }
 
 
 /* ════════════════════════════════════════════════
    18. MOTYW: KAFELKOWY (TILES)
+   Przebudowany od zera jako spójny dashboard:
+   jedna siatka 12-kolumnowa, stały rytm odstępów (4px/8px),
+   jedna typografia, równe wysokości, wyraźna hierarchia.
    ════════════════════════════════════════════════ */
 
 .cafe-page--tiles {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: var(--cream);
+  --tiles-radius: 16px;
+  --tiles-radius-sm: 10px;
+  --tiles-gap: 1rem;
+  --tiles-shadow: 0 1px 2px rgba(17,10,4,0.04), 0 8px 24px rgba(17,10,4,0.06);
+  --tiles-shadow-hover: 0 4px 10px rgba(17,10,4,0.06), 0 16px 36px rgba(17,10,4,0.1);
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  background: #F4F5F7;
 }
 
+.cafe-page--tiles .cp-main,
+.cafe-page--tiles .cp-hours-row,
+.cafe-page--tiles .info-row__value { color: var(--text-dark); }
+
+/* ── Typografia: jedna skala wag w całym motywie ── */
+.cafe-page--tiles .cp-hero__name,
+.cafe-page--tiles .cp-section__title,
+.cafe-page--tiles .rv-summary__score,
+.cafe-page--tiles .lw-value,
+.cafe-page--tiles .me-title,
+.cafe-page--tiles .cp-menu-item__name,
+.cafe-page--tiles .cp-team-card__name,
+.cafe-page--tiles .entity-card__cafe,
+.cafe-page--tiles .info-card__title {
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ── Nav ── */
 .cafe-page--tiles .cp-nav {
-  border-radius: 0 0 20px 20px;
-  box-shadow: 0 4px 20px rgba(17,10,4,0.06);
+  border-radius: 0 0 var(--tiles-radius) var(--tiles-radius);
+  box-shadow: var(--tiles-shadow);
+  padding: 0.875rem 1.5rem;
+  background: var(--surface);
 }
-.cafe-page--tiles .cp-nav__link { border-radius: 12px; }
+.cafe-page--tiles .cp-nav__link {
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 0.8125rem;
+}
 
+/* ── Hero: panel dashboardu, nie ozdobny baner ── */
 .cafe-page--tiles .cp-hero {
   margin: 1.25rem;
-  border-radius: 28px;
-  box-shadow: 0 20px 50px rgba(17,10,4,0.18);
+  border-radius: 20px;
+  box-shadow: var(--tiles-shadow-hover);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  padding: 2.5rem 2.5rem;
 }
-.cafe-page--tiles .cp-hero__logo { border-radius: 22px; }
+.cafe-page--tiles .cp-hero__logo {
+  margin: 0;
+  flex-shrink: 0;
+  border-radius: 16px;
+  width: 84px;
+  height: 84px;
+  border-width: 2px;
+}
+.cafe-page--tiles .cp-hero__name {
+  font-size: 2rem;
+  font-weight: 700;
+  font-style: normal;
+}
+.cafe-page--tiles .cp-hero__status {
+  border-radius: 100px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
 
-.cafe-page--tiles .cp-main { max-width: 1080px; gap: 3rem; }
+/* ── Layout: siatka 12 kolumn ze stałym rytmem ── */
+.cafe-page--tiles .cp-main {
+  max-width: 1120px;
+  gap: 2.5rem;
+  padding: 2rem 1.5rem 4rem;
+}
 
 .cafe-page--tiles .cp-section__title {
-  display: inline-block;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 0.625rem 1.25rem;
-  box-shadow: 0 4px 14px rgba(17,10,4,0.05);
+  display: block;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0 0 0.25rem;
+  box-shadow: none;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 1.25rem;
 }
 
+/* Menu: siatka 12-kol, wszystkie kafelki tej samej wysokości w rzędzie */
+.cafe-page--tiles .cp-menu-section { margin-bottom: 2rem; }
+.cafe-page--tiles .cp-menu-section__name {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0.625rem;
+  margin-bottom: 1rem;
+}
 .cafe-page--tiles .cp-menu-items {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--tiles-gap);
+  align-items: stretch;
 }
 .cafe-page--tiles .cp-menu-item {
   flex-direction: column;
-  align-items: stretch;
-  grid-column: span 3;
-  border-radius: 20px;
-  border: none;
-  padding: 1.25rem 1.375rem;
-  box-shadow: 0 6px 20px rgba(17,10,4,0.06);
-  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease;
+  align-items: flex-start;
+  grid-column: auto;
+  border-radius: var(--tiles-radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 1.25rem;
+  box-shadow: var(--tiles-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  height: 100%;
+  box-sizing: border-box;
 }
-.cafe-page--tiles .cp-menu-item:nth-child(4n+1) { grid-column: span 4; background: rgba(181,114,10,0.06); }
-.cafe-page--tiles .cp-menu-item:nth-child(4n+2) { grid-column: span 2; background: var(--surface); }
-.cafe-page--tiles .cp-menu-item:nth-child(4n+3) { grid-column: span 2; background: var(--surface); }
-.cafe-page--tiles .cp-menu-item:nth-child(4n+4) { grid-column: span 4; background: rgba(46,125,50,0.05); }
-.cafe-page--tiles .cp-menu-item:hover { transform: translateY(-5px) rotate(-0.4deg); box-shadow: 0 16px 34px rgba(17,10,4,0.14); }
+.cafe-page--tiles .cp-menu-item:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--tiles-shadow-hover);
+}
+.cafe-page--tiles .cp-menu-item__info { width: 100%; }
+.cafe-page--tiles .cp-menu-item__name { font-size: 0.9375rem; }
+.cafe-page--tiles .cp-menu-item__price {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  margin-top: 0.5rem;
+}
 .cafe-page--tiles .cp-add-btn,
-.cafe-page--tiles .cp-qty-stepper { margin-top: 0.75rem; align-self: flex-start; }
+.cafe-page--tiles .cp-qty-stepper {
+  margin-top: 0.875rem;
+  align-self: stretch;
+  justify-content: center;
+  border-radius: 100px;
+}
+.cafe-page--tiles .cp-qty-stepper { justify-content: space-between; }
 
+/* Karty ogólne — jeden system promieni/cieni/paddingów */
 .cafe-page--tiles .info-card,
 .cafe-page--tiles .res-table-row,
 .cafe-page--tiles .rv-card,
 .cafe-page--tiles .cp-team-card,
 .cafe-page--tiles .res-empty-card,
 .cafe-page--tiles .cp-news-card,
-.cafe-page--tiles .menu-editor {
-  border-radius: 20px;
-  border: none;
-  box-shadow: 0 6px 20px rgba(17,10,4,0.07);
+.cafe-page--tiles .menu-editor,
+.cafe-page--tiles .rv-summary,
+.cafe-page--tiles .entity-card {
+  border-radius: var(--tiles-radius-sm);
+  border: 1px solid var(--border);
+  box-shadow: var(--tiles-shadow);
+  background: var(--surface);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.cafe-page--tiles .cp-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 1.25rem; }
-.cafe-page--tiles .cp-team-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; }
-.cafe-page--tiles .cp-team-card { grid-column: span 2; border-radius: 20px; }
-.cafe-page--tiles .cp-team-card:nth-child(3n+1) { grid-column: span 3; }
+.cafe-page--tiles .info-card:hover,
+.cafe-page--tiles .rv-card:hover,
+.cafe-page--tiles .cp-team-card:hover,
+.cafe-page--tiles .cp-news-card:hover,
+.cafe-page--tiles .entity-card--clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--tiles-shadow-hover);
+}
+.cafe-page--tiles .info-card__header { padding: 1rem 1.25rem; }
+.cafe-page--tiles .info-card__body,
+.cafe-page--tiles .rv-card,
+.cafe-page--tiles .res-table-row { padding: 1.375rem 1.5rem; }
 
-.cafe-page--tiles .btn--primary { border-radius: 14px; box-shadow: 0 8px 20px rgba(181,114,10,0.3); }
-.cafe-page--tiles .btn--outline-dark { border-radius: 14px; }
-.cafe-page--tiles .cp-add-btn { border-radius: 100px; }
+/* Dashboard-grid (przegląd konta) — równe wysokości kart w rzędzie */
+.cafe-page--tiles .dashboard-grid,
+.cafe-page--tiles .cp-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--tiles-gap);
+  align-items: stretch;
+}
+.cafe-page--tiles .cp-info-grid > div {
+  border-radius: var(--tiles-radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--tiles-shadow);
+  padding: 1.375rem 1.5rem;
+}
+
+/* Zespół — spójna siatka kart równej wysokości, bez losowych rozpiętości */
+.cafe-page--tiles .cp-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--tiles-gap);
+  align-items: stretch;
+}
+.cafe-page--tiles .cp-team-card {
+  border-radius: var(--tiles-radius-sm);
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+/* Przyciski — jeden spójny język: pigułka, średnia waga */
+.cafe-page--tiles .btn--primary {
+  border-radius: 100px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: 0 4px 14px rgba(181,114,10,0.28);
+  padding: 0.875rem 1.75rem;
+}
+.cafe-page--tiles .btn--outline-dark { border-radius: 100px; font-weight: 500; }
+.cafe-page--tiles .cp-add-btn { border-radius: 100px; font-weight: 600; }
 .cafe-page--tiles .cp-qty-stepper { border-radius: 100px; }
-.cafe-page--tiles .menu-badge { border-radius: 8px; }
-.cafe-page--tiles .cp-social-links a { border-radius: 14px; }
+.cafe-page--tiles .menu-badge { border-radius: 6px; font-weight: 700; }
+.cafe-page--tiles .cp-social-links a { border-radius: 100px; font-weight: 500; }
 
+/* Galeria — siatka równych kwadratów, bez losowego rozstrzelenia rozmiarów */
 .cafe-page--tiles .cp-gallery__track {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--tiles-gap);
   overflow: visible;
   padding-bottom: 0;
 }
 .cafe-page--tiles .cp-gallery__item {
-  width: auto; height: auto;
-  aspect-ratio: 1;
-  grid-column: span 2;
-  border-radius: 20px;
+  width: auto;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--tiles-radius-sm);
+  box-shadow: var(--tiles-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.cafe-page--tiles .cp-gallery__item:nth-child(5n+1) { grid-column: span 3; }
-.cafe-page--tiles .cp-gallery__item:nth-child(5n+3) { grid-column: span 3; }
+.cafe-page--tiles .cp-gallery__item:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--tiles-shadow-hover);
+}
 
-.cafe-page--tiles .cp-news-grid { grid-template-columns: repeat(6, 1fr); }
-.cafe-page--tiles .cp-news-card { grid-column: span 2; border-radius: 20px; }
-.cafe-page--tiles .cp-news-card:nth-child(3n+1) { grid-column: span 2; }
+/* Aktualności — spójna siatka kart */
+.cafe-page--tiles .cp-news-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--tiles-gap);
+}
+.cafe-page--tiles .cp-news-card {
+  border-radius: var(--tiles-radius-sm);
+}
+.cafe-page--tiles .cp-news-card__title { font-size: 1rem; font-weight: 600; }
 
-.cafe-page--tiles .cp-home-fab { border-radius: 18px; box-shadow: 0 10px 26px rgba(17,10,4,0.24); }
+/* Modal */
+.cafe-page--tiles .menu-editor { border-radius: 20px; }
+.cafe-page--tiles .me-header { padding: 1.75rem 2rem 1.25rem; }
+.cafe-page--tiles .me-body { padding: 1.5rem 2rem; }
+.cafe-page--tiles .me-footer { padding: 1.25rem 2rem; }
+
+.cafe-page--tiles .cp-home-fab {
+  border-radius: 100px;
+  box-shadow: 0 10px 26px rgba(17,10,4,0.2);
+  font-weight: 600;
+}
 
 @media (max-width: 700px) {
-  .cafe-page--tiles .cp-menu-item,
-  .cafe-page--tiles .cp-team-card,
-  .cafe-page--tiles .cp-gallery__item,
-  .cafe-page--tiles .cp-news-card { grid-column: span 6 !important; }
+  .cafe-page--tiles .cp-hero { margin: 0.75rem; padding: 2rem 1.5rem; flex-direction: column; text-align: center; }
+  .cafe-page--tiles .cp-main { padding: 1.5rem 1.125rem 3rem; }
 }

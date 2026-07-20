@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text
 from sqlalchemy.dialects.sqlite import TEXT
 
 from app.core.database import Base
@@ -25,6 +25,13 @@ class CafeSite(Base):
 
     template = Column(String(20), nullable=False, default="classic")   # classic | modern
     palette  = Column(String(40), nullable=False, default="espresso-gold")
+
+    # Niestandardowa paleta wygenerowana z logo kawiarni — używana tylko
+    # gdy palette == "custom". Trzymana jako zserializowany JSON (mapa
+    # nazw zmiennych CSS na wartości hex) — zestaw kluczy jest stały
+    # (patrz CUSTOM_PALETTE_VAR_KEYS w schemas/site.py), więc osobna
+    # tabela byłaby przerostem formy nad treścią.
+    custom_palette_colors = Column(Text, nullable=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=True, onupdate=datetime.utcnow)

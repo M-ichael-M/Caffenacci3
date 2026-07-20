@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -59,6 +60,25 @@ def _get_or_create_site(cafe_id: str, db: Session) -> CafeSite:
     return s
 
 
+def _parse_custom_palette(raw: str | None) -> dict[str, str] | None:
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _site_to_out(s: CafeSite) -> CafeSiteSettingsOut:
+    return CafeSiteSettingsOut(
+        id=s.id,
+        cafe_id=s.cafe_id,
+        template=s.template,
+        palette=s.palette,
+        custom_palette=_parse_custom_palette(s.custom_palette_colors),
+    )
+
+
 def _logo_url(cafe_id: str, profile: CafeProfile | None) -> str | None:
     if profile and profile.logo_path:
         return f"/profile/logo/{cafe_id}"
@@ -84,7 +104,8 @@ def get_settings(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    return _get_or_create_site(current_cafe.id, db)
+    s = _get_or_create_site(current_cafe.id, db)
+    return _site_to_out(s)
 
 
 @router.put("/settings", response_model=CafeSiteSettingsOut,
@@ -95,12 +116,15 @@ def save_settings(
     db:           Session = Depends(get_db),
 ):
     s = _get_or_create_site(current_cafe.id, db)
-    s.template   = payload.template
-    s.palette    = payload.palette
+    s.template = payload.template
+    s.palette  = payload.palette
+    s.custom_palette_colors = (
+        json.dumps(payload.custom_palette) if payload.palette == "custom" else None
+    )
     s.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(s)
-    return s
+    return _site_to_out(s)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -115,6 +139,7 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, detail="Kawiarnia nie istnieje.")
 
     site = _get_or_create_site(cafe_id, db)
+    custom_palette = _parse_custom_palette(site.custom_palette_colors)
 
     profile = (
         db.query(CafeProfile)
@@ -204,6 +229,7 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
         cafe_name=cafe.cafe_name,
         template=site.template,
         palette=site.palette,
+        custom_palette=custom_palette,
 
         country=cafe.country,
         city=cafe.city,

@@ -1,6 +1,7 @@
 from __future__ import annotations
+import re
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional
+from typing import Dict, List, Optional
 from datetime import datetime
 
 from app.schemas.gallery import PublicGalleryImageOut
@@ -41,7 +42,26 @@ ALLOWED_PALETTES = {
     "ocean-breeze",
     "rose-latte",
     "sunset-amber",
+    "graphite-steel",
+    "lavender-dream",
+    "olive-grove",
+    "terracotta-clay",
+    "arctic-mint",
+    "plum-noir",
 }
+
+# ── Niestandardowa paleta (wygenerowana z logo) ─────────────────────────────
+# palette == "custom" oznacza, że kawiarnia używa własnej palety zamiast
+# jednej z gotowych powyżej. Zestaw wymaganych zmiennych CSS jest identyczny
+# jak w PALETTES na froncie (src/palettes.ts).
+
+CUSTOM_PALETTE_VAR_KEYS = {
+    "--espresso", "--coffee", "--gold", "--gold-hover",
+    "--parchment", "--cream", "--surface",
+    "--text-dark", "--text-body", "--text-muted", "--border",
+}
+
+HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 
 # ── Ustawienia strony (właściciel) ──────────────────────────────────────────
@@ -49,6 +69,7 @@ ALLOWED_PALETTES = {
 class CafeSiteSettingsIn(BaseModel):
     template: str = Field("classic")
     palette:  str = Field("espresso-gold")
+    custom_palette: Optional[Dict[str, str]] = None
 
     @field_validator("template")
     @classmethod
@@ -60,8 +81,30 @@ class CafeSiteSettingsIn(BaseModel):
     @field_validator("palette")
     @classmethod
     def validate_palette(cls, v: str) -> str:
-        if v not in ALLOWED_PALETTES:
-            raise ValueError(f"Nieprawidłowa paleta. Dozwolone: {', '.join(sorted(ALLOWED_PALETTES))}")
+        if v != "custom" and v not in ALLOWED_PALETTES:
+            raise ValueError(
+                f"Nieprawidłowa paleta. Dozwolone: {', '.join(sorted(ALLOWED_PALETTES))}, custom"
+            )
+        return v
+
+    @field_validator("custom_palette")
+    @classmethod
+    def validate_custom_palette(cls, v, info):
+        palette = info.data.get("palette")
+        if palette != "custom":
+            return None
+        if not v:
+            raise ValueError(
+                "Aby zapisać niestandardową paletę, najpierw wygeneruj ją na podstawie logo."
+            )
+        missing = CUSTOM_PALETTE_VAR_KEYS - set(v.keys())
+        if missing:
+            raise ValueError(f"Brakuje kolorów w niestandardowej palecie: {', '.join(sorted(missing))}")
+        for key, val in v.items():
+            if key not in CUSTOM_PALETTE_VAR_KEYS:
+                raise ValueError(f"Nieznany klucz koloru: {key}")
+            if not HEX_COLOR_RE.match(val):
+                raise ValueError(f"Nieprawidłowy format koloru dla {key}: {val}")
         return v
 
 
@@ -70,6 +113,7 @@ class CafeSiteSettingsOut(BaseModel):
     cafe_id:  str
     template: str
     palette:  str
+    custom_palette: Optional[Dict[str, str]] = None
     model_config = {"from_attributes": True}
 
 
@@ -151,6 +195,7 @@ class PublicSiteOut(BaseModel):
     cafe_name: str
     template:  str
     palette:   str
+    custom_palette: Optional[Dict[str, str]] = None
 
     country:         str
     city:            str

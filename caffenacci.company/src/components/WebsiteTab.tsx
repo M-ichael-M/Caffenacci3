@@ -15,9 +15,13 @@ import {
   Factory,
   GlassWater,
   Rocket,
-  Grid3X3
+  Grid3X3,
+  Wand2,
+  Image as ImageIcon,
+  Loader2,
 } from 'lucide-react'
 import { PALETTES } from '../palettes'
+import { extractPaletteFromImageUrl } from '../utils/paletteFromImage'
 
 interface Props {
   token: string
@@ -110,22 +114,54 @@ export default function WebsiteTab({ token, cafeId }: Props) {
   const [saving, setSaving]     = useState(false)
   const [saveMsg, setSaveMsg]   = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
+  const [logoUrl, setLogoUrl]     = useState<string | null>(null)
+  const [customPaletteVars, setCustomPaletteVars] = useState<Record<string, string> | null>(null)
+  const [generatingPalette, setGeneratingPalette] = useState(false)
+  const [paletteGenError, setPaletteGenError]     = useState<string | null>(null)
+
   const fetchSettings = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:8000/site/settings', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
+      const [siteRes, profileRes] = await Promise.all([
+        fetch('http://localhost:8000/site/settings', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch('http://localhost:8000/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ])
+      if (siteRes.ok) {
+        const data = await siteRes.json()
         setTemplate(data.template)
         setPalette(data.palette)
+        setCustomPaletteVars(data.custom_palette ?? null)
+      }
+      if (profileRes.ok) {
+        const p = await profileRes.json()
+        setLogoUrl(p.logo_url ?? null)
       }
     } catch { /* ignore */ }
     finally { setLoading(false) }
   }, [token])
 
   useEffect(() => { fetchSettings() }, [fetchSettings])
+
+  const handleGenerateFromLogo = async () => {
+    if (!logoUrl) return
+    setGeneratingPalette(true)
+    setPaletteGenError(null)
+    try {
+      const vars = await extractPaletteFromImageUrl(`http://localhost:8000${logoUrl}`)
+      setCustomPaletteVars(vars)
+      setPalette('custom')
+    } catch (err: unknown) {
+      setPaletteGenError(
+        err instanceof Error ? err.message : 'Nie udało się wygenerować palety z logo. Spróbuj ponownie.'
+      )
+    } finally {
+      setGeneratingPalette(false)
+    }
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -134,7 +170,11 @@ export default function WebsiteTab({ token, cafeId }: Props) {
       const res = await fetch('http://localhost:8000/site/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ template, palette }),
+        body: JSON.stringify({
+          template,
+          palette,
+          custom_palette: palette === 'custom' ? customPaletteVars : null,
+        }),
       })
       if (!res.ok) {
         const e = await res.json()
@@ -276,6 +316,99 @@ export default function WebsiteTab({ token, cafeId }: Props) {
               </button>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Paleta z logo */}
+      <div className="info-card">
+        <div className="info-card__header">
+          <span className="info-card__icon">
+            <Wand2 size={22} />
+          </span>
+          <h2 className="info-card__title">Paleta z logo</h2>
+        </div>
+        <div className="info-card__body">
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem', lineHeight: 1.6 }}>
+            Wygeneruj unikalną paletę bezpośrednio z barw Twojego logo — algorytm wybiera
+            najciemniejszy, najjaśniejszy i najbardziej nasycony kolor z obrazu i dopasowuje je
+            do wszystkich elementów strony.
+          </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: '50%', overflow: 'hidden',
+              border: '2px solid var(--border)', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--cream)',
+            }}>
+              {logoUrl ? (
+                <img
+                  src={`http://localhost:8000${logoUrl}`}
+                  alt="Logo kawiarni"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <ImageIcon size={26} style={{ opacity: 0.35 }} />
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn btn--primary"
+                style={{ width: 'auto', marginTop: 0, padding: '0.625rem 1.25rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                onClick={handleGenerateFromLogo}
+                disabled={!logoUrl || generatingPalette}
+              >
+                {generatingPalette ? (
+                  <>
+                    <Loader2 size={18} style={{ animation: 'spin 0.9s linear infinite' }} />
+                    Generowanie…
+                  </>
+                ) : (
+                  <>
+                    <Wand2 size={18} />
+                    {customPaletteVars ? 'Wygeneruj ponownie' : 'Wygeneruj paletę z logo'}
+                  </>
+                )}
+              </button>
+              {!logoUrl && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Wgraj najpierw logo w zakładce „Profil", aby móc wygenerować paletę.
+                </span>
+              )}
+            </div>
+          </div>
+
+          {paletteGenError && <div className="form-error">{paletteGenError}</div>}
+
+          {customPaletteVars && (
+            <div style={{
+              border: `2px solid ${palette === 'custom' ? 'var(--gold)' : 'var(--border)'}`,
+              borderRadius: 10, padding: '1rem 1.125rem',
+              background: palette === 'custom' ? 'rgba(181,114,10,0.06)' : 'var(--cream)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {[customPaletteVars['--espresso'], customPaletteVars['--gold'], customPaletteVars['--parchment']].map((c, i) => (
+                      <span key={i} style={{ width: 22, height: 22, borderRadius: '50%', background: c, border: '1px solid rgba(0,0,0,0.1)' }} />
+                    ))}
+                  </div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+                    Twoja paleta z logo
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn--outline-dark btn--sm"
+                  style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                  onClick={() => setPalette('custom')}
+                >
+                  {palette === 'custom' ? (<><Check size={16} /> Wybrana</>) : 'Użyj tej palety'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -73,6 +73,72 @@ export const PALETTES: Palette[] = [
       '--border': '#EEDCC6',
     },
   },
+  {
+    key: 'graphite-steel',
+    label: 'Stalowy Grafit',
+    vars: {
+      '--espresso': '#14181C', '--coffee': '#1D2329',
+      '--gold': '#5C7A99', '--gold-hover': '#7093B3',
+      '--parchment': '#E4E9ED', '--cream': '#F7F9FA', '--surface': '#FFFFFF',
+      '--text-dark': '#171B1F', '--text-body': '#2E363D', '--text-muted': '#6C7780',
+      '--border': '#DCE3E8',
+    },
+  },
+  {
+    key: 'lavender-dream',
+    label: 'Lawendowy Sen',
+    vars: {
+      '--espresso': '#1E1526', '--coffee': '#2A1D36',
+      '--gold': '#8B6FB0', '--gold-hover': '#A186C6',
+      '--parchment': '#EDE4F5', '--cream': '#FAF7FC', '--surface': '#FFFFFF',
+      '--text-dark': '#211830', '--text-body': '#3E2E50', '--text-muted': '#82749A',
+      '--border': '#E3D9EE',
+    },
+  },
+  {
+    key: 'olive-grove',
+    label: 'Oliwny Gaj',
+    vars: {
+      '--espresso': '#1B1F0F', '--coffee': '#282E17',
+      '--gold': '#7A8C3F', '--gold-hover': '#93A652',
+      '--parchment': '#E9EBD8', '--cream': '#F8F9F2', '--surface': '#FFFFFF',
+      '--text-dark': '#1D2110', '--text-body': '#37401F', '--text-muted': '#7A805F',
+      '--border': '#DFE3CC',
+    },
+  },
+  {
+    key: 'terracotta-clay',
+    label: 'Terakotowa Glina',
+    vars: {
+      '--espresso': '#26140D', '--coffee': '#361D13',
+      '--gold': '#C1602F', '--gold-hover': '#D6763F',
+      '--parchment': '#F3DFCF', '--cream': '#FCF4EE', '--surface': '#FFFFFF',
+      '--text-dark': '#2A1710', '--text-body': '#4C2A1C', '--text-muted': '#8C6C5B',
+      '--border': '#EED9C9',
+    },
+  },
+  {
+    key: 'arctic-mint',
+    label: 'Arktyczna Mięta',
+    vars: {
+      '--espresso': '#0B1F1B', '--coffee': '#0F2C26',
+      '--gold': '#2FA394', '--gold-hover': '#3EBBAA',
+      '--parchment': '#DAF0EA', '--cream': '#F2FBF9', '--surface': '#FFFFFF',
+      '--text-dark': '#0D211D', '--text-body': '#20413A', '--text-muted': '#638B83',
+      '--border': '#CFE9E2',
+    },
+  },
+  {
+    key: 'plum-noir',
+    label: 'Śliwkowa Noc',
+    vars: {
+      '--espresso': '#1C0B14', '--coffee': '#2A101E',
+      '--gold': '#9C3B6B', '--gold-hover': '#B84E80',
+      '--parchment': '#EEDCE5', '--cream': '#FAF3F6', '--surface': '#FFFFFF',
+      '--text-dark': '#20101A', '--text-body': '#3E1E30', '--text-muted': '#836274',
+      '--border': '#E7D4DD',
+    },
+  },
 ]
 
 export function getPalette(key: string): Palette {

@@ -46,6 +46,7 @@ interface PublicSiteData {
   cafe_name: string
   template: SiteTemplate
   palette: string
+  custom_palette: Record<string, string> | null
   country: string; city: string; street: string; building_number: string; postal_code: string
   contact_email: string | null
   contact_phone: string | null
@@ -250,7 +251,9 @@ export default function CafePage({ cafeId }: Props) {
     )
   }
 
-  const paletteVars = getPaletteVars(data.palette)
+  const paletteVars = (data.palette === 'custom' && data.custom_palette)
+    ? (data.custom_palette as CSSProperties)
+    : getPaletteVars(data.palette)
   const status = computeTodayStatus(data)
   const todayIsoStr = toLocalDateStr(new Date())
 
