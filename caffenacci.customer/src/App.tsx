@@ -7,6 +7,7 @@ import TopBar from './components/TopBar'
 import CafePage from './components/CafePage/CafePage'
 import { loadClientAuth, saveClientAuth, clearClientAuth } from './authStorage'
 import type { ClientAuthState } from './authStorage'
+import logoCircle from './assets/logo/logo_circle.png'
 import './index.css'
 
 type View = 'home' | 'login' | 'register' | 'account'
@@ -88,6 +89,7 @@ export default function App() {
   // ── Wygenerowana strona kawiarni (/cafe/:id) ────────────────────────
   // Dostępna niezależnie od reszty widoków aplikacji — to osobna,
   // publiczna strona składana na podstawie ustawień właściciela.
+  // Nie jest częścią tego redesignu — zostaje bez zmian.
   if (cafeIdFromUrl) {
     return <CafePage cafeId={cafeIdFromUrl} />
   }
@@ -99,6 +101,7 @@ export default function App() {
         <aside className="auth-brand">
           <div className="auth-brand__rings" aria-hidden="true" />
           <div className="auth-brand__content">
+            <img src={logoCircle} alt="Caffenacci" className="auth-brand__logo" />
             <div className="auth-brand__rule" />
             <h1 className="auth-brand__wordmark">Caffenacci</h1>
             <p className="auth-brand__tagline">Konto gościa</p>
@@ -135,6 +138,7 @@ export default function App() {
         <aside className="auth-brand">
           <div className="auth-brand__rings" aria-hidden="true" />
           <div className="auth-brand__content">
+            <img src={logoCircle} alt="Caffenacci" className="auth-brand__logo" />
             <div className="auth-brand__rule" />
             <h1 className="auth-brand__wordmark">Caffenacci</h1>
             <p className="auth-brand__tagline">Konto gościa</p>

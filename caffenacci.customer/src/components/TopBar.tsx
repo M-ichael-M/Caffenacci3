@@ -1,3 +1,6 @@
+import { Search, LogIn, UserPlus, LogOut } from 'lucide-react'
+import logoWhiteOnBlack from '../assets/logo/logo_white_on_black.png'
+
 interface Props {
   authed: boolean
   displayName?: string
@@ -23,7 +26,8 @@ export default function TopBar({
     <header className="top-bar">
       <div className="top-bar__left">
         <button type="button" className="top-bar__brand" onClick={onSearch}>
-          Caffenacci
+          <img src={logoWhiteOnBlack} alt="Caffenacci" className="top-bar__logo" />
+          <span className="top-bar__wordmark">Caffenacci</span>
         </button>
 
         <nav className="top-bar__nav">
@@ -32,7 +36,8 @@ export default function TopBar({
             className={`top-bar__nav-link${activeView === 'home' ? ' top-bar__nav-link--active' : ''}`}
             onClick={onSearch}
           >
-            🔍 Szukaj kawiarni
+            <Search size={15} />
+            <span>Szukaj kawiarni</span>
           </button>
         </nav>
       </div>
@@ -47,12 +52,14 @@ export default function TopBar({
               <span className="top-bar__name">{displayName}</span>
             </button>
             <button type="button" className="btn btn--outline btn--sm" onClick={onLogout}>
+              <LogOut size={15} />
               Wyloguj
             </button>
           </>
         ) : (
           <>
             <button type="button" className="btn btn--outline-dark btn--sm" onClick={onLogin}>
+              <LogIn size={15} />
               Zaloguj się
             </button>
             <button
@@ -60,6 +67,7 @@ export default function TopBar({
               className="btn btn--primary btn--sm top-bar__register"
               onClick={onRegister}
             >
+              <UserPlus size={15} />
               Zarejestruj się
             </button>
           </>

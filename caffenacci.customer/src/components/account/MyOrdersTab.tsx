@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { ShoppingCart, ClipboardList, RefreshCw } from 'lucide-react'
 
 type OrderStatusType = 'pending' | 'completed' | 'cancelled'
 
@@ -66,7 +67,7 @@ function OrderCard({ o }: { o: ClientOrder }) {
             <span className="entity-card__cafe">{o.cafe_name}</span>
             <span className={`status-badge ${meta.cls}`}>{meta.label}</span>
             <span style={{
-              background: 'rgba(181,114,10,0.1)', color: 'var(--gold)',
+              background: 'rgba(169,114,47,0.1)', color: 'var(--gold)',
               borderRadius: 100, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700,
             }}>
               {money(o.total_value)}
@@ -133,8 +134,13 @@ export default function MyOrdersTab({ token }: Props) {
           <div className="page-header__eyebrow">Twoje konto</div>
           <h1 className="page-header__title" style={{ fontSize: '1.625rem' }}>Zamówienia</h1>
         </div>
-        <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem' }} onClick={fetchAll}>
-          ↻ Odśwież
+        <button
+          className="btn btn--outline-dark"
+          style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+          onClick={fetchAll}
+        >
+          <RefreshCw size={15} />
+          Odśwież
         </button>
       </div>
 
@@ -151,7 +157,11 @@ export default function MyOrdersTab({ token }: Props) {
 
       {list.length === 0 ? (
         <div className="res-empty-card">
-          <div className="res-empty-icon">🛒</div>
+          <div className="res-empty-icon">
+            {activeSub === 'current'
+              ? <ShoppingCart size={44} strokeWidth={1.4} />
+              : <ClipboardList size={44} strokeWidth={1.4} />}
+          </div>
           <div className="res-empty-title">
             {activeSub === 'current' ? 'Brak oczekujących zamówień' : 'Brak historii zamówień'}
           </div>

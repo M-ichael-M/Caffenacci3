@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { QrCode, X } from 'lucide-react'
 
 interface Props {
   token: string
@@ -35,10 +36,11 @@ export default function LoyaltyCodeButton({ token }: Props) {
       <button
         type="button"
         className="btn btn--primary"
-        style={{ width: '100%', padding: '0.75rem' }}
+        style={{ width: '100%', padding: '0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
         onClick={() => setOpen(true)}
       >
-        📱 Pokaż mój kod lojalnościowy
+        <QrCode size={17} />
+        Pokaż mój kod lojalnościowy
       </button>
 
       {open && (
@@ -49,7 +51,7 @@ export default function LoyaltyCodeButton({ token }: Props) {
                 <div className="me-eyebrow">Program lojalnościowy</div>
                 <h2 className="me-title">Twój kod</h2>
               </div>
-              <button className="me-close" type="button" onClick={() => setOpen(false)} aria-label="Zamknij">✕</button>
+              <button className="me-close" type="button" onClick={() => setOpen(false)} aria-label="Zamknij"><X size={16} /></button>
             </div>
 
             <div className="me-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', textAlign: 'center' }}>

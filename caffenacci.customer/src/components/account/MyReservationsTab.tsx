@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { CalendarDays, Users, X, RefreshCw, ArrowRight } from 'lucide-react'
 
 // ── Typy ──────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,7 @@ function ReservationCard({ r, onClick }: { r: ClientReservation; onClick?: () =>
           </div>
 
           <div className="entity-card__sub">
+            <Users size={13} />
             {guestsLabel(r.guests)}
             {tableDesc && <> · {tableDesc}</>}
             {r.is_advanced && <> · rezerwacja zaawansowana</>}
@@ -123,7 +125,9 @@ function ReservationCard({ r, onClick }: { r: ClientReservation; onClick?: () =>
           )}
 
           {clickable && (
-            <div className="entity-card__hint">Kliknij, aby zobaczyć wiadomość od kawiarni →</div>
+            <div className="entity-card__hint">
+              Kliknij, aby zobaczyć wiadomość od kawiarni <ArrowRight size={12} />
+            </div>
           )}
         </div>
       </div>
@@ -143,17 +147,19 @@ function ReservationDetailModal({ r, onClose }: { r: ClientReservation; onClose:
             <div className="me-eyebrow">{r.cafe_name}</div>
             <h2 className="me-title">Rezerwacja · {formatDate(r.date)}</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij">✕</button>
+          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij"><X size={16} /></button>
         </div>
 
         <div className="me-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="res-table-row">
             <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '0.625rem' }}>
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-dark)' }}>
-                📅 {formatDate(r.date)} o {r.start_time}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+                <CalendarDays size={15} />
+                {formatDate(r.date)} o {r.start_time}
               </span>
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                👥 {guestsLabel(r.guests)}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                <Users size={15} />
+                {guestsLabel(r.guests)}
               </span>
             </div>
             <span className={`status-badge ${meta.cls}`}>{meta.label}</span>
@@ -239,8 +245,9 @@ export default function MyReservationsTab({ token }: Props) {
             <div className="page-header__eyebrow">Twoje konto</div>
             <h1 className="page-header__title" style={{ fontSize: '1.625rem' }}>Rezerwacje</h1>
           </div>
-          <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem' }} onClick={fetchAll}>
-            ↻ Odśwież
+          <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={fetchAll}>
+            <RefreshCw size={15} />
+            Odśwież
           </button>
         </div>
 
@@ -257,7 +264,7 @@ export default function MyReservationsTab({ token }: Props) {
 
         {list.length === 0 ? (
           <div className="res-empty-card">
-            <div className="res-empty-icon">📅</div>
+            <div className="res-empty-icon"><CalendarDays size={44} strokeWidth={1.4} /></div>
             <div className="res-empty-title">
               {activeSub === 'current' ? 'Brak nadchodzących rezerwacji' : 'Brak historii rezerwacji'}
             </div>

@@ -1,3 +1,5 @@
+import { User, Coffee } from 'lucide-react'
+
 interface ClientAuthState {
   token: string
   user_id: string
@@ -17,13 +19,13 @@ export default function AccountHome({ auth }: Props) {
         <div className="dashboard-content">
           <div className="page-header">
             <div className="page-header__eyebrow">Twoje konto</div>
-            <h1 className="page-header__title">Cześć, {auth.nick} 👋</h1>
+            <h1 className="page-header__title">Cześć, {auth.nick}</h1>
           </div>
 
           <div className="dashboard-grid">
             <div className="info-card">
               <div className="info-card__header">
-                <span className="info-card__icon">👤</span>
+                <span className="info-card__icon"><User size={18} /></span>
                 <h2 className="info-card__title">Konto</h2>
               </div>
               <div className="info-card__body">
@@ -44,7 +46,7 @@ export default function AccountHome({ auth }: Props) {
 
             <div className="info-card">
               <div className="info-card__header">
-                <span className="info-card__icon">☕</span>
+                <span className="info-card__icon"><Coffee size={18} /></span>
                 <h2 className="info-card__title">Co dalej</h2>
               </div>
               <div className="info-card__body">

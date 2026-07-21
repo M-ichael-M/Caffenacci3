@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Home, CalendarDays, ShoppingCart, Gift, Star, User, Zap, Coffee } from 'lucide-react'
 import type { ClientAuthState } from '../authStorage'
 import MyReviewsTab from './account/MyReviewsTab'
 import MyOrdersTab from './account/MyOrdersTab'
@@ -12,12 +13,12 @@ interface Props {
 
 type TabId = 'overview' | 'reservations' | 'orders' | 'reviews' | 'loyalty'
 
-const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: 'overview',     label: 'Przegląd',     icon: '🏠' },
-  { id: 'reservations', label: 'Rezerwacje',   icon: '📅' },
-  { id: 'orders',       label: 'Zamówienia',   icon: '🛒' },
-  { id: 'loyalty',      label: 'Moje kawiarnie', icon: '🎁' },
-  { id: 'reviews',      label: 'Opinie',       icon: '⭐' },
+const TABS: { id: TabId; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
+  { id: 'overview',     label: 'Przegląd',       icon: Home },
+  { id: 'reservations', label: 'Rezerwacje',     icon: CalendarDays },
+  { id: 'orders',       label: 'Zamówienia',     icon: ShoppingCart },
+  { id: 'loyalty',      label: 'Moje kawiarnie', icon: Gift },
+  { id: 'reviews',      label: 'Opinie',         icon: Star },
 ]
 
 export default function AccountDashboard({ auth }: Props) {
@@ -34,7 +35,7 @@ export default function AccountDashboard({ auth }: Props) {
             className={`dashboard-tab${activeTab === tab.id ? ' dashboard-tab--active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
           >
-            <span className="dashboard-tab__icon">{tab.icon}</span>
+            <span className="dashboard-tab__icon"><tab.icon size={16} /></span>
             <span className="dashboard-tab__label">{tab.label}</span>
           </button>
         ))}
@@ -45,13 +46,13 @@ export default function AccountDashboard({ auth }: Props) {
           <div className="dashboard-content">
             <div className="page-header">
               <div className="page-header__eyebrow">Twoje konto</div>
-              <h1 className="page-header__title">Cześć, {auth.nick} 👋</h1>
+              <h1 className="page-header__title">Cześć, {auth.nick}</h1>
             </div>
 
             <div className="dashboard-grid">
               <div className="info-card">
                 <div className="info-card__header">
-                  <span className="info-card__icon">👤</span>
+                  <span className="info-card__icon"><User size={18} /></span>
                   <h2 className="info-card__title">Konto</h2>
                 </div>
                 <div className="info-card__body">
@@ -73,7 +74,7 @@ export default function AccountDashboard({ auth }: Props) {
               {/* Program lojalnościowy — kod QR + szybki dostęp do "Moich kawiarni" */}
               <div className="info-card">
                 <div className="info-card__header">
-                  <span className="info-card__icon">🎁</span>
+                  <span className="info-card__icon"><Gift size={18} /></span>
                   <h2 className="info-card__title">Program lojalnościowy</h2>
                 </div>
                 <div className="info-card__body" style={{ gap: '0.625rem' }}>
@@ -83,28 +84,44 @@ export default function AccountDashboard({ auth }: Props) {
                   <LoyaltyCodeButton token={auth.token} />
                   <button
                     className="btn btn--outline-dark"
-                    style={{ width: '100%', padding: '0.75rem' }}
+                    style={{ width: '100%', padding: '0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                     onClick={() => setActiveTab('loyalty')}
                   >
-                    🏠 Zobacz moje kawiarnie
+                    <Coffee size={17} />
+                    Zobacz moje kawiarnie
                   </button>
                 </div>
               </div>
 
               <div className="info-card">
                 <div className="info-card__header">
-                  <span className="info-card__icon">📌</span>
+                  <span className="info-card__icon"><Zap size={18} /></span>
                   <h2 className="info-card__title">Szybki dostęp</h2>
                 </div>
                 <div className="info-card__body" style={{ gap: '0.625rem' }}>
-                  <button className="btn btn--primary" style={{ width: '100%', padding: '0.75rem' }} onClick={() => setActiveTab('reservations')}>
-                    📅 Twoje rezerwacje
+                  <button
+                    className="btn btn--primary"
+                    style={{ width: '100%', padding: '0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                    onClick={() => setActiveTab('reservations')}
+                  >
+                    <CalendarDays size={17} />
+                    Twoje rezerwacje
                   </button>
-                  <button className="btn btn--outline-dark" style={{ width: '100%', padding: '0.75rem' }} onClick={() => setActiveTab('orders')}>
-                    🛒 Twoje zamówienia
+                  <button
+                    className="btn btn--outline-dark"
+                    style={{ width: '100%', padding: '0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                    onClick={() => setActiveTab('orders')}
+                  >
+                    <ShoppingCart size={17} />
+                    Twoje zamówienia
                   </button>
-                  <button className="btn btn--outline-dark" style={{ width: '100%', padding: '0.75rem' }} onClick={() => setActiveTab('reviews')}>
-                    ⭐ Twoje opinie
+                  <button
+                    className="btn btn--outline-dark"
+                    style={{ width: '100%', padding: '0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                    onClick={() => setActiveTab('reviews')}
+                  >
+                    <Star size={17} />
+                    Twoje opinie
                   </button>
                 </div>
               </div>

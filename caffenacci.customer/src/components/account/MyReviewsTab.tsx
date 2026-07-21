@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { MessageCircle } from 'lucide-react'
 
 interface ClientReview {
   id: string
@@ -78,7 +79,7 @@ export default function MyReviewsTab({ token }: Props) {
 
       {reviews.length === 0 ? (
         <div className="res-empty-card">
-          <div className="res-empty-icon">💬</div>
+          <div className="res-empty-icon"><MessageCircle size={44} strokeWidth={1.4} /></div>
           <div className="res-empty-title">Nie dodałeś jeszcze żadnej opinii</div>
           <div className="res-empty-sub">
             Odwiedź stronę swojej ulubionej kawiarni i podziel się wrażeniami.

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Search, Coffee, Clock, ChevronRight } from 'lucide-react'
 
 interface TodayHours {
   is_closed: boolean
@@ -66,11 +67,12 @@ export default function HomePage() {
   return (
     <main className="home-main">
       <section className="home-hero">
+        <div className="home-hero__eyebrow">Caffenacci</div>
         <h1 className="home-hero__title">Znajdź swoją kawiarnię</h1>
         <p className="home-hero__subtitle">Szukaj po nazwie, ulicy, mieście lub kodzie pocztowym</p>
 
         <div className="home-search">
-          <span className="home-search__icon">🔍</span>
+          <span className="home-search__icon"><Search size={17} /></span>
           <input
             type="text"
             className="home-search__input"
@@ -104,7 +106,7 @@ export default function HomePage() {
                   {cafe.logo_url ? (
                     <img src={`http://localhost:8000${cafe.logo_url}`} alt={cafe.cafe_name} />
                   ) : (
-                    <span className="cafe-card__logo-fallback">☕</span>
+                    <Coffee size={24} />
                   )}
                 </div>
                 <div className="cafe-card__info">
@@ -117,9 +119,11 @@ export default function HomePage() {
                       cafe.today_hours && !cafe.today_hours.is_closed ? ' cafe-card__hours--open' : ''
                     }`}
                   >
+                    <Clock size={13} />
                     {formatTodayHours(cafe.today_hours)}
                   </p>
                 </div>
+                <ChevronRight size={18} className="cafe-card__chevron" />
               </a>
             ))}
           </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Gift, Coffee, RefreshCw, PartyPopper } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -34,9 +35,9 @@ function StampsTrack({ stamps, max }: { stamps: number; max: number }) {
           border: `2px solid ${i < stamps ? 'var(--gold)' : 'var(--border)'}`,
           background: i < stamps ? 'var(--gold)' : 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '0.75rem', color: i < stamps ? '#fff' : 'var(--text-muted)', flexShrink: 0,
+          color: i < stamps ? '#fff' : 'var(--text-muted)', flexShrink: 0,
         }}>
-          {i < stamps ? '☕' : ''}
+          {i < stamps ? <Coffee size={13} /> : null}
         </div>
       ))}
     </div>
@@ -49,6 +50,8 @@ function CafeLoyaltyCard({ c }: { c: CafeLoyaltyItem }) {
   const nextReward = c.mode === 'points'
     ? c.rewards.filter(r => r.cost_points > c.points).sort((a, b) => a.cost_points - b.cost_points)[0]
     : undefined
+  const stampsReady = c.mode === 'stamps' && c.stamps >= c.stamps_max
+  const pointsReady = c.mode === 'points' && c.rewards.length > 0 && !nextReward
 
   return (
     <div className="entity-card">
@@ -56,12 +59,12 @@ function CafeLoyaltyCard({ c }: { c: CafeLoyaltyItem }) {
         <div style={{
           width: 52, height: 52, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
           border: '1.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'var(--cream)',
+          background: 'var(--surface-2)', color: 'var(--gold)',
         }}>
           {c.logo_url ? (
             <img src={`${API}${c.logo_url}`} alt={c.cafe_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <span style={{ fontSize: '1.25rem' }}>☕</span>
+            <Coffee size={20} />
           )}
         </div>
 
@@ -77,9 +80,10 @@ function CafeLoyaltyCard({ c }: { c: CafeLoyaltyItem }) {
               </div>
               {c.rewards.length > 0 && (
                 <div className="entity-card__sub" style={{ marginTop: '0.375rem' }}>
+                  {pointsReady && <PartyPopper size={13} />}
                   {nextReward
                     ? `Do nagrody „${nextReward.name}" brakuje ${nextReward.cost_points - c.points} pkt.`
-                    : 'Masz wystarczająco punktów na dostępną nagrodę! 🎉'}
+                    : 'Masz wystarczająco punktów na dostępną nagrodę!'}
                 </div>
               )}
             </>
@@ -87,8 +91,9 @@ function CafeLoyaltyCard({ c }: { c: CafeLoyaltyItem }) {
             <div style={{ marginTop: '0.5rem' }}>
               <StampsTrack stamps={c.stamps} max={c.stamps_max} />
               <div className="entity-card__sub" style={{ marginTop: '0.5rem' }}>
+                {stampsReady && <PartyPopper size={13} />}
                 {c.stamps} / {c.stamps_max} pieczątek
-                {c.stamps >= c.stamps_max && ' · nagroda gotowa do odebrania! 🎉'}
+                {stampsReady && ' · nagroda gotowa do odebrania!'}
               </div>
             </div>
           )}
@@ -138,14 +143,15 @@ export default function MyLoyaltyTab({ token }: Props) {
           <div className="page-header__eyebrow">Twoje konto</div>
           <h1 className="page-header__title" style={{ fontSize: '1.625rem' }}>Moje kawiarnie</h1>
         </div>
-        <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem' }} onClick={fetchAll}>
-          ↻ Odśwież
+        <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={fetchAll}>
+          <RefreshCw size={15} />
+          Odśwież
         </button>
       </div>
 
       {cafes.length === 0 ? (
         <div className="res-empty-card">
-          <div className="res-empty-icon">🎁</div>
+          <div className="res-empty-icon"><Gift size={44} strokeWidth={1.4} /></div>
           <div className="res-empty-title">Brak punktów i pieczątek</div>
           <div className="res-empty-sub">
             Pokaż swój kod lojalnościowy w kawiarni przy zakupie, aby zacząć zbierać punkty lub pieczątki.
