@@ -75,7 +75,7 @@ function Toggle({ checked, onChange, disabled = false }: {
       <span style={{
         position: 'absolute', top: 3, left: checked ? 23 : 3,
         width: 18, height: 18, borderRadius: '50%',
-        background: checked ? 'var(--gold)' : '#fff',
+        background: checked ? 'var(--gold-soft)' : '#fff',
         transition: 'left 0.2s, background 0.2s',
         boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
       }} />
@@ -108,18 +108,19 @@ function PendingOrderCard({ o, onDecide, saving }: {
 }) {
   return (
     <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderLeft: '3px solid var(--gold)', borderRadius: 8, overflow: 'hidden',
+      background: 'var(--surface)', border: '1px solid var(--border-soft)',
+      borderLeft: '3px solid var(--gold)', borderRadius: 'var(--radius-md)', overflow: 'hidden',
+      boxShadow: 'var(--shadow-card)',
     }}>
       <div style={{ padding: '1rem 1.25rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
         {/* Data / godzina */}
         <div style={{
-          flexShrink: 0, background: 'var(--espresso)', borderRadius: 8,
+          flexShrink: 0, background: 'var(--sidebar-bg)', borderRadius: 'var(--radius-sm)',
           padding: '0.625rem 0.875rem', textAlign: 'center', minWidth: 64,
         }}>
           <div style={{
             fontFamily: "'Playfair Display', serif", fontSize: '1.375rem',
-            fontWeight: 600, color: 'var(--gold)', lineHeight: 1,
+            fontWeight: 600, color: 'var(--gold-soft)', lineHeight: 1,
           }}>
             {o.date.slice(8)}
           </div>
@@ -141,7 +142,7 @@ function PendingOrderCard({ o, onDecide, saving }: {
               {o.client_nick}
             </span>
             <span style={{
-              background: 'rgba(181,114,10,0.1)', color: 'var(--gold)',
+              background: 'rgba(169,114,47,0.1)', color: 'var(--gold)',
               borderRadius: 100, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700,
             }}>
               {money(o.total_value)}
@@ -158,9 +159,9 @@ function PendingOrderCard({ o, onDecide, saving }: {
 
       {/* Akcje */}
       <div style={{
-        borderTop: '1px solid var(--border)', padding: '0.75rem 1.25rem',
+        borderTop: '1px solid var(--border-soft)', padding: '0.75rem 1.25rem',
         display: 'flex', justifyContent: 'flex-end', gap: '0.625rem',
-        background: 'rgba(250,250,247,0.6)',
+        background: 'var(--surface-2)',
       }}>
         <button
           type="button"
@@ -168,8 +169,8 @@ function PendingOrderCard({ o, onDecide, saving }: {
           disabled={saving}
           style={{
             appearance: 'none', background: 'transparent',
-            border: '1.5px solid rgba(184,50,50,0.35)', color: 'var(--error)',
-            borderRadius: 6, padding: '0.5rem 1rem', fontSize: '0.8125rem',
+            border: '1.5px solid rgba(178,59,59,0.35)', color: 'var(--error)',
+            borderRadius: 'var(--radius-sm)', padding: '0.5rem 1rem', fontSize: '0.8125rem',
             fontFamily: 'inherit', fontWeight: 500, cursor: saving ? 'not-allowed' : 'pointer',
           }}
         >
@@ -180,9 +181,9 @@ function PendingOrderCard({ o, onDecide, saving }: {
           onClick={() => onDecide(o, 'completed')}
           disabled={saving}
           className="btn btn--primary"
-          style={{ width: 'auto', padding: '0.5rem 1.125rem', fontSize: '0.8125rem', marginTop: 0 }}
+          style={{ width: 'auto', padding: '0.5rem 1.125rem', fontSize: '0.8125rem', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
         >
-          <Check size={18} style={{ marginRight: '0.375rem' }} />
+          <Check size={16} />
           Zrealizowano
         </button>
       </div>
@@ -196,17 +197,18 @@ function HistoryOrderCard({ o }: { o: OrderOut }) {
   const isCompleted = o.status === 'completed'
   return (
     <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
+      background: 'var(--surface)', border: '1px solid var(--border-soft)',
       borderLeft: `3px solid ${isCompleted ? 'var(--success)' : 'var(--error)'}`,
-      borderRadius: 8, padding: '0.875rem 1.25rem',
+      borderRadius: 'var(--radius-md)', padding: '0.875rem 1.25rem',
       display: 'flex', alignItems: 'flex-start', gap: '0.875rem',
-      opacity: isCompleted ? 1 : 0.7,
+      opacity: isCompleted ? 1 : 0.75,
+      boxShadow: 'var(--shadow-card)',
     }}>
-      <div style={{ fontSize: '1.25rem', flexShrink: 0, paddingTop: '0.125rem' }}>
+      <div style={{ flexShrink: 0, paddingTop: '0.125rem' }}>
         {isCompleted ? (
-          <Check size={28} color="var(--success)" />
+          <Check size={24} color="var(--success)" />
         ) : (
-          <X size={28} color="var(--error)" />
+          <X size={24} color="var(--error)" />
         )}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -218,7 +220,7 @@ function HistoryOrderCard({ o }: { o: OrderOut }) {
             {formatDate(o.date)} o {o.start_time}
           </span>
           <span style={{
-            background: 'var(--border)', color: 'var(--text-muted)',
+            background: 'var(--border-soft)', color: 'var(--text-muted)',
             borderRadius: 100, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 600,
           }}>
             {money(o.total_value)}
@@ -333,15 +335,15 @@ export default function OrdersTab({ token, cafeId }: Props) {
       {/* ── Nagłówek ──────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.375rem' }}>
+          <div className="page-header__eyebrow" style={{ marginBottom: '0.375rem' }}>
             Zarządzanie
           </div>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
             Zamówienia
           </h2>
         </div>
-        <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem' }} onClick={fetchOrders}>
-          <RefreshCw size={18} style={{ marginRight: '0.5rem' }} />
+        <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={fetchOrders}>
+          <RefreshCw size={15} />
           Odśwież
         </button>
       </div>
@@ -367,15 +369,16 @@ export default function OrdersTab({ token, cafeId }: Props) {
 
       {/* ── Public URL info ───────────────────────────────────────────── */}
       <div style={{
-        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
+        background: 'var(--surface)', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-sm)',
         padding: '0.875rem 1.125rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
+        boxShadow: 'var(--shadow-sm)',
       }}>
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          <Link size={18} style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Link size={15} />
           Link do zamówień dla klientów:
         </span>
         <code style={{
-          fontSize: '0.8rem', color: 'var(--gold)', background: 'rgba(181,114,10,0.08)',
+          fontSize: '0.8rem', color: 'var(--gold)', background: 'rgba(169,114,47,0.08)',
           borderRadius: 4, padding: '2px 8px', wordBreak: 'break-all',
         }}>
           POST /orders/public/{cafeId}
@@ -410,7 +413,7 @@ export default function OrdersTab({ token, cafeId }: Props) {
               {pending.length === 0 ? (
                 <div className="res-empty-card">
                   <div className="res-empty-icon">
-                    <ShoppingCart size={48} strokeWidth={1.4} />
+                    <ShoppingCart size={44} strokeWidth={1.4} />
                   </div>
                   <div className="res-empty-title">Brak nowych zamówień</div>
                   <div className="res-empty-sub">
@@ -439,7 +442,7 @@ export default function OrdersTab({ token, cafeId }: Props) {
               {history.length === 0 ? (
                 <div className="res-empty-card">
                   <div className="res-empty-icon">
-                    <ClipboardList size={48} strokeWidth={1.4} />
+                    <ClipboardList size={44} strokeWidth={1.4} />
                   </div>
                   <div className="res-empty-title">Brak historii zamówień</div>
                   <div className="res-empty-sub">Tu pojawią się zrealizowane i anulowane zamówienia.</div>

@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import SimpleReservationTab from './SimpleReservationTab'
+import {
+  Settings,
+  CalendarDays,
+  ClipboardList,
+  Plus,
+  X,
+  Ban,
+  CircleDot,
+  SlidersHorizontal,
+} from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -87,10 +97,10 @@ function defaultHours(): DayHours[] {
 function tableTypeBadge(type: string) {
   const map: Record<string, { bg: string; color: string; label: string }> = {
     standard: { bg: '#EEF2FF', color: '#3730A3', label: 'standard' },
-    communal: { bg: '#FEF9C3', color: '#854D0E', label: 'komunalny' },
-    special:  { bg: '#FDF2F8', color: '#9D174D', label: 'specjalny' },
+    communal: { bg: '#FBEED2', color: '#7A4E12', label: 'komunalny' },
+    special:  { bg: '#FDF0F7', color: '#9D174D', label: 'specjalny' },
   }
-  const s = map[type] ?? { bg: '#F3F4F6', color: '#374151', label: type }
+  const s = map[type] ?? { bg: 'var(--surface-2)', color: 'var(--text-body)', label: type }
   return (
     <span style={{
       background: s.bg, color: s.color,
@@ -246,7 +256,7 @@ export default function ReservationTab({ token, cafeId }: Props) {
       {/* ── Nagłówek ─────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.25rem' }}>
+          <div className="page-header__eyebrow" style={{ marginBottom: '0.25rem' }}>
             Zarządzanie
           </div>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
@@ -255,10 +265,11 @@ export default function ReservationTab({ token, cafeId }: Props) {
         </div>
         <button
           className="btn btn--primary"
-          style={{ width: 'auto', padding: '0.625rem 1.25rem', fontSize: '0.875rem' }}
+          style={{ width: 'auto', padding: '0.625rem 1.25rem', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
           onClick={() => { setSettingsOpen(true); setSaveMsg(null) }}
         >
-          ⚙ Ustawienia rezerwacji
+          <Settings size={17} />
+          Ustawienia rezerwacji
         </button>
       </div>
 
@@ -271,7 +282,7 @@ export default function ReservationTab({ token, cafeId }: Props) {
       {/* ── Wyłączone ────────────────────────────────────────────────────── */}
       {!settings?.enabled && (
         <div className="res-empty-card">
-          <div className="res-empty-icon">📅</div>
+          <div className="res-empty-icon"><CalendarDays size={44} strokeWidth={1.4} /></div>
           <div className="res-empty-title">System rezerwacji jest wyłączony</div>
           <div className="res-empty-sub">
             Włącz go w ustawieniach, by zacząć przyjmować rezerwacje od klientów.
@@ -370,7 +381,7 @@ function SettingsPanel({
             <div className="me-eyebrow">Konfiguracja</div>
             <h2 className="me-title">Ustawienia rezerwacji</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij">✕</button>
+          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij"><X size={16} /></button>
         </div>
 
         <div className="me-body">
@@ -388,16 +399,22 @@ function SettingsPanel({
               <div className="res-settings-block">
                 <div className="res-settings-block__title">Tryb systemu</div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  {(['simple','advanced'] as ResModeType[]).map(m => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setMode(m)}
-                      className={`res-mode-btn${mode === m ? ' res-mode-btn--active' : ''}`}
-                    >
-                      {m === 'simple' ? '🟡 Prosty' : '⚙ Zaawansowany'}
-                    </button>
-                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setMode('simple')}
+                    className={`res-mode-btn${mode === 'simple' ? ' res-mode-btn--active' : ''}`}
+                  >
+                    <CircleDot size={16} />
+                    Prosty
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('advanced')}
+                    className={`res-mode-btn${mode === 'advanced' ? ' res-mode-btn--active' : ''}`}
+                  >
+                    <SlidersHorizontal size={16} />
+                    Zaawansowany
+                  </button>
                 </div>
                 {mode === 'simple' && (
                   <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.625rem', lineHeight: 1.6 }}>
@@ -441,7 +458,9 @@ function SettingsPanel({
                             <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-dark)', flex: 1 }}>
                               {TABLE_TYPE_LABELS[t.table_type]}
                             </span>
-                            <button type="button" className="me-remove-btn me-remove-item" onClick={() => removeTable(t._uid)} title="Usuń">✕</button>
+                            <button type="button" className="me-remove-btn me-remove-item" onClick={() => removeTable(t._uid)} title="Usuń">
+                              <X size={13} />
+                            </button>
                           </div>
                           <div style={{ display: 'flex', gap: '0.875rem', flexWrap: 'wrap' }}>
                             <div className="field" style={{ flex: '1 1 80px', minWidth: 80 }}>
@@ -474,7 +493,8 @@ function SettingsPanel({
                         <button key={type} type="button" className="me-add-item-btn"
                           style={{ width: 'auto', padding: '0.5rem 0.875rem', fontSize: '0.8rem' }}
                           onClick={() => addTable(type)}>
-                          + {type === 'standard' ? 'Zwykły stolik' : type === 'communal' ? 'Stół komunalny' : 'Stolik specjalny'}
+                          <Plus size={14} />
+                          {type === 'standard' ? 'Zwykły stolik' : type === 'communal' ? 'Stół komunalny' : 'Stolik specjalny'}
                         </button>
                       ))}
                     </div>
@@ -592,18 +612,19 @@ function AdvancedView({
       <div className="info-card">
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-            <span className="info-card__icon">📋</span>
+            <span className="info-card__icon"><ClipboardList size={20} /></span>
             <h2 className="info-card__title">Rezerwacje na ten dzień</h2>
             {!loadingRes && (
               <span style={{
-                background: 'var(--border)', borderRadius: 100, padding: '1px 8px',
+                background: 'var(--border-soft)', borderRadius: 100, padding: '1px 8px',
                 fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)',
               }}>{confirmed.length}</span>
             )}
           </div>
           <button type="button" className="btn btn--primary btn--sm"
-            style={{ width: 'auto' }} onClick={() => setShowAddModal(true)}>
-            + Dodaj rezerwację
+            style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }} onClick={() => setShowAddModal(true)}>
+            <Plus size={15} />
+            Dodaj rezerwację
           </button>
         </div>
 
@@ -629,7 +650,7 @@ function AdvancedView({
       {cancelled.length > 0 && (
         <div className="info-card info-card--muted">
           <div className="info-card__header">
-            <span className="info-card__icon">🚫</span>
+            <span className="info-card__icon"><Ban size={20} /></span>
             <h2 className="info-card__title">Anulowane ({cancelled.length})</h2>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -693,7 +714,9 @@ function ReservationRow({ r, onDelete, settings, cancelled = false }: {
       {!cancelled && (
         <button type="button" className="me-remove-btn me-remove-item"
           onClick={() => onDelete(r.id)} title="Usuń rezerwację"
-          style={{ flexShrink: 0, alignSelf: 'flex-start', marginTop: '0.25rem' }}>✕</button>
+          style={{ flexShrink: 0, alignSelf: 'flex-start', marginTop: '0.25rem' }}>
+          <X size={13} />
+        </button>
       )}
     </div>
   )
@@ -756,7 +779,7 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
             <div className="me-eyebrow">Rezerwacja telefoniczna</div>
             <h2 className="me-title">Nowa rezerwacja</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose}>✕</button>
+          <button className="me-close" type="button" onClick={onClose}><X size={16} /></button>
         </div>
 
         <div className="me-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -856,7 +879,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       <span style={{
         position: 'absolute', top: 3, left: checked ? 23 : 3,
         width: 18, height: 18, borderRadius: '50%',
-        background: checked ? 'var(--gold)' : '#fff',
+        background: checked ? 'var(--gold-soft)' : '#fff',
         transition: 'left 0.2s, background 0.2s',
         boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
       }} />
@@ -875,7 +898,7 @@ function ToggleSmall({ checked, onChange }: { checked: boolean; onChange: (v: bo
       <span style={{
         position: 'absolute', top: 2, left: checked ? 17 : 2,
         width: 16, height: 16, borderRadius: '50%',
-        background: checked ? 'var(--gold)' : '#fff',
+        background: checked ? 'var(--gold-soft)' : '#fff',
         transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.18)',
       }} />
     </button>

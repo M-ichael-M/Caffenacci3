@@ -200,18 +200,13 @@ export default function WebsiteTab({ token, cafeId }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div>
-        <div style={{ 
-          fontSize: '0.6875rem', 
-          fontWeight: 600, 
-          letterSpacing: '0.14em', 
-          textTransform: 'uppercase', 
-          color: 'var(--gold)', 
+        <div className="page-header__eyebrow" style={{ 
           marginBottom: '0.25rem',
           display: 'flex',
           alignItems: 'center',
           gap: '0.5rem'
         }}>
-          <Settings size={18} />
+          <Settings size={16} />
           ZARZĄDZANIE
         </div>
         <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
@@ -232,20 +227,21 @@ export default function WebsiteTab({ token, cafeId }: Props) {
       {/* Link publiczny */}
       <div style={{
         background: 'var(--surface)', 
-        border: '1px solid var(--border)', 
-        borderRadius: 8,
+        border: '1px solid var(--border-soft)', 
+        borderRadius: 'var(--radius-sm)',
         padding: '0.875rem 1.125rem', 
         display: 'flex', 
         alignItems: 'center', 
         gap: '0.75rem', 
         flexWrap: 'wrap',
+        boxShadow: 'var(--shadow-sm)',
       }}>
-        <LinkIcon size={18} style={{ color: 'var(--text-muted)' }} />
+        <LinkIcon size={16} style={{ color: 'var(--text-muted)' }} />
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Twoja strona:</span>
         <code style={{ 
           fontSize: '0.8rem', 
           color: 'var(--gold)', 
-          background: 'rgba(181,114,10,0.08)', 
+          background: 'rgba(169,114,47,0.08)', 
           borderRadius: 4, 
           padding: '2px 8px', 
           wordBreak: 'break-all' 
@@ -259,7 +255,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
           className="link" 
           style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
         >
-          Otwórz podgląd <ExternalLink size={15} />
+          Otwórz podgląd <ExternalLink size={14} />
         </a>
       </div>
 
@@ -267,7 +263,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
       <div className="info-card">
         <div className="info-card__header">
           <span className="info-card__icon">
-            <Palette size={22} />
+            <Palette size={20} />
           </span>
           <h2 className="info-card__title">Szablon</h2>
         </div>
@@ -283,9 +279,9 @@ export default function WebsiteTab({ token, cafeId }: Props) {
                   textAlign: 'left', 
                   cursor: 'pointer',
                   border: `2px solid ${template === t.key ? 'var(--gold)' : 'var(--border)'}`,
-                  borderRadius: 8, 
+                  borderRadius: 'var(--radius-md)', 
                   padding: '1.25rem 1.125rem',
-                  background: template === t.key ? 'rgba(181,114,10,0.06)' : 'var(--cream)',
+                  background: template === t.key ? 'rgba(169,114,47,0.06)' : 'var(--surface-2)',
                   fontFamily: 'inherit',
                   position: 'relative',
                   transition: 'all 0.2s ease',
@@ -323,7 +319,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
       <div className="info-card">
         <div className="info-card__header">
           <span className="info-card__icon">
-            <Wand2 size={22} />
+            <Wand2 size={20} />
           </span>
           <h2 className="info-card__title">Paleta z logo</h2>
         </div>
@@ -338,7 +334,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
             <div style={{
               width: 72, height: 72, borderRadius: '50%', overflow: 'hidden',
               border: '2px solid var(--border)', flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--cream)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)',
             }}>
               {logoUrl ? (
                 <img
@@ -347,7 +343,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               ) : (
-                <ImageIcon size={26} style={{ opacity: 0.35 }} />
+                <ImageIcon size={24} style={{ opacity: 0.35 }} />
               )}
             </div>
 
@@ -384,8 +380,8 @@ export default function WebsiteTab({ token, cafeId }: Props) {
           {customPaletteVars && (
             <div style={{
               border: `2px solid ${palette === 'custom' ? 'var(--gold)' : 'var(--border)'}`,
-              borderRadius: 10, padding: '1rem 1.125rem',
-              background: palette === 'custom' ? 'rgba(181,114,10,0.06)' : 'var(--cream)',
+              borderRadius: 'var(--radius-md)', padding: '1rem 1.125rem',
+              background: palette === 'custom' ? 'rgba(169,114,47,0.06)' : 'var(--surface-2)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -404,7 +400,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
                   style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
                   onClick={() => setPalette('custom')}
                 >
-                  {palette === 'custom' ? (<><Check size={16} /> Wybrana</>) : 'Użyj tej palety'}
+                  {palette === 'custom' ? (<><Check size={15} /> Wybrana</>) : 'Użyj tej palety'}
                 </button>
               </div>
             </div>
@@ -416,7 +412,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
       <div className="info-card">
         <div className="info-card__header">
           <span className="info-card__icon">
-            <SwatchBook size={22} />
+            <SwatchBook size={20} />
           </span>
           <h2 className="info-card__title">Paleta kolorów</h2>
         </div>
@@ -435,9 +431,9 @@ export default function WebsiteTab({ token, cafeId }: Props) {
                 style={{
                   cursor: 'pointer', 
                   border: `2px solid ${palette === p.key ? 'var(--gold)' : 'var(--border)'}`,
-                  borderRadius: 10, 
+                  borderRadius: 'var(--radius-md)', 
                   padding: '0.75rem', 
-                  background: 'var(--cream)', 
+                  background: 'var(--surface-2)', 
                   width: 140,
                   fontFamily: 'inherit', 
                   display: 'flex', 
@@ -461,7 +457,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
                   gap: '0.35rem'
                 }}>
                   {p.label} 
-                  {palette === p.key && <Check size={16} strokeWidth={3} style={{ color: 'var(--gold)' }} />}
+                  {palette === p.key && <Check size={15} strokeWidth={3} style={{ color: 'var(--gold)' }} />}
                 </span>
               </button>
             ))}
@@ -481,7 +477,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
             <>Zapisywanie…</>
           ) : (
             <>
-              Zapisz i opublikuj <Check size={18} />
+              Zapisz i opublikuj <Check size={17} />
             </>
           )}
         </button>

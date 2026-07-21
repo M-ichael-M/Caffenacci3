@@ -71,7 +71,7 @@ function Toggle({ checked, onChange, disabled = false }: {
       <span style={{
         position: 'absolute', top: 3, left: checked ? 23 : 3,
         width: 18, height: 18, borderRadius: '50%',
-        background: checked ? 'var(--gold)' : '#fff',
+        background: checked ? 'var(--gold-soft)' : '#fff',
         transition: 'left 0.2s, background 0.2s',
         boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
       }} />
@@ -315,7 +315,7 @@ export default function LoyaltyTab({ token }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
       <div>
-        <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.25rem' }}>
+        <div className="page-header__eyebrow" style={{ marginBottom: '0.25rem' }}>
           Zarządzanie
         </div>
         <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
@@ -347,11 +347,11 @@ export default function LoyaltyTab({ token }: Props) {
             <div className="res-settings-block__title">Rodzaj programu</div>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button type="button" className={`res-mode-btn${mode === 'points' ? ' res-mode-btn--active' : ''}`} onClick={() => setMode('points')}>
-                <Coins size={18} style={{ marginRight: '0.5rem' }} />
+                <Coins size={18} />
                 Punkty za zakupy
               </button>
               <button type="button" className={`res-mode-btn${mode === 'stamps' ? ' res-mode-btn--active' : ''}`} onClick={() => setMode('stamps')}>
-                <Bookmark size={18} style={{ marginRight: '0.5rem' }} />
+                <Bookmark size={18} />
                 Pieczątki cyfrowe
               </button>
             </div>
@@ -362,7 +362,7 @@ export default function LoyaltyTab({ token }: Props) {
             <div className="info-card">
               <div className="info-card__header">
                 <span className="info-card__icon">
-                  <Gift size={22} />
+                  <Gift size={20} />
                 </span>
                 <h2 className="info-card__title">Nagrody za punkty</h2>
               </div>
@@ -391,7 +391,7 @@ export default function LoyaltyTab({ token }: Props) {
                         </div>
                         <button type="button" className="me-remove-btn me-remove-item"
                           onClick={() => removeReward(r._uid)} title="Usuń nagrodę">
-                          <X size={18} />
+                          <X size={16} />
                         </button>
                       </div>
                     </div>
@@ -409,7 +409,7 @@ export default function LoyaltyTab({ token }: Props) {
             <div className="info-card">
               <div className="info-card__header">
                 <span className="info-card__icon">
-                  <Bookmark size={22} />
+                  <Bookmark size={20} />
                 </span>
                 <h2 className="info-card__title">Ustawienia pieczątek</h2>
               </div>
@@ -446,7 +446,7 @@ export default function LoyaltyTab({ token }: Props) {
           <div className="info-card">
             <div className="info-card__header">
               <span className="info-card__icon">
-                <Receipt size={22} />
+                <Receipt size={20} />
               </span>
               <h2 className="info-card__title">Kasa — obsługa klienta</h2>
             </div>
@@ -480,7 +480,7 @@ export default function LoyaltyTab({ token }: Props) {
                       <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>@{lookup.client_nick} · {lookup.loyalty_code}</div>
                     </div>
                     <div style={{
-                      background: 'rgba(181,114,10,0.1)', color: 'var(--gold)', borderRadius: 100,
+                      background: 'rgba(169,114,47,0.1)', color: 'var(--gold)', borderRadius: 100,
                       padding: '0.375rem 1rem', fontSize: '1.125rem', fontWeight: 700, whiteSpace: 'nowrap',
                     }}>
                       {lookup.mode === 'points' ? `${lookup.points} pkt.` : `${lookup.stamps} / ${lookup.stamps_max} pieczątek`}

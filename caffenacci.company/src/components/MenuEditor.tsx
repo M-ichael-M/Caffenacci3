@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { Leaf, Flame, Ban, X, Plus } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -75,8 +76,8 @@ interface ServerSection {
 
 // ── Badge component ──────────────────────────────────────────────────────────
 
-function Badge({ label, active, onClick, color }: {
-  label: string; active: boolean; onClick: () => void; color: string
+function Badge({ label, icon, active, onClick, color }: {
+  label: string; icon: React.ReactNode; active: boolean; onClick: () => void; color: string
 }) {
   return (
     <button
@@ -84,14 +85,17 @@ function Badge({ label, active, onClick, color }: {
       onClick={onClick}
       style={{
         appearance: 'none',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.3rem',
         border: `1.5px solid ${active ? color : 'var(--border)'}`,
-        background: active ? color : 'transparent',
+        background: active ? color : 'var(--surface)',
         color: active ? '#fff' : 'var(--text-muted)',
         borderRadius: '100px',
-        padding: '2px 10px',
+        padding: '3px 11px',
         fontSize: '0.72rem',
         fontWeight: 600,
-        letterSpacing: '0.07em',
+        letterSpacing: '0.05em',
         cursor: 'pointer',
         transition: 'all 0.15s',
         fontFamily: 'inherit',
@@ -99,6 +103,7 @@ function Badge({ label, active, onClick, color }: {
         whiteSpace: 'nowrap',
       }}
     >
+      {icon}
       {label}
     </button>
   )
@@ -265,7 +270,7 @@ export default function MenuEditor({ token, onClose }: Props) {
             <div className="me-eyebrow">Kreator menu</div>
             <h2 className="me-title">{hasExisting ? 'Edytuj menu' : 'Utwórz menu'}</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij">✕</button>
+          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij"><X size={16} /></button>
         </div>
 
         {/* Body */}
@@ -331,7 +336,7 @@ export default function MenuEditor({ token, onClose }: Props) {
                         title="Usuń pozycję"
                         disabled={sec.items.length === 1}
                       >
-                        ✕
+                        <X size={13} />
                       </button>
                     </div>
 
@@ -350,22 +355,25 @@ export default function MenuEditor({ token, onClose }: Props) {
 
                     <div className="me-item-badges">
                       <Badge
-                        label="🌿 VEGE"
+                        label="VEGE"
+                        icon={<Leaf size={12} />}
                         active={item.is_vege}
                         onClick={() => updateItem(sec.id, item.id, { is_vege: !item.is_vege })}
                         color="#2E7D32"
                       />
                       <Badge
-                        label="🌶 HOT"
+                        label="HOT"
+                        icon={<Flame size={12} />}
                         active={item.is_hot}
                         onClick={() => updateItem(sec.id, item.id, { is_hot: !item.is_hot })}
-                        color="#B83232"
+                        color="#B23B3B"
                       />
                       <Badge
-                        label="⊘ NIEDOSTĘPNE"
+                        label="NIEDOSTĘPNE"
+                        icon={<Ban size={12} />}
                         active={item.is_unavailable}
                         onClick={() => updateItem(sec.id, item.id, { is_unavailable: !item.is_unavailable })}
-                        color="#7A6050"
+                        color="#8A7362"
                       />
                     </div>
                   </div>
@@ -376,14 +384,16 @@ export default function MenuEditor({ token, onClose }: Props) {
                   className="me-add-item-btn"
                   onClick={() => addItem(sec.id)}
                 >
-                  + Dodaj pozycję
+                  <Plus size={14} />
+                  Dodaj pozycję
                 </button>
               </div>
             </div>
           ))}
 
           <button type="button" className="me-add-section-btn" onClick={addSection}>
-            + Dodaj sekcję
+            <Plus size={16} />
+            Dodaj sekcję
           </button>
         </div>
 

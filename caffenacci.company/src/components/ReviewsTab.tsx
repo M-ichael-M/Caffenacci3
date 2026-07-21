@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { MessageCircle, Link as LinkIcon, RefreshCw } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -100,7 +101,7 @@ export default function ReviewsTab({ token, cafeId }: Props) {
       {/* ── Nagłówek ─────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.25rem' }}>
+          <div className="page-header__eyebrow" style={{ marginBottom: '0.25rem' }}>
             Zarządzanie
           </div>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
@@ -109,10 +110,11 @@ export default function ReviewsTab({ token, cafeId }: Props) {
         </div>
         <button
           className="btn btn--outline-dark"
-          style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem' }}
+          style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
           onClick={fetchReviews}
         >
-          ↻ Odśwież
+          <RefreshCw size={15} />
+          Odśwież
         </button>
       </div>
 
@@ -127,14 +129,16 @@ export default function ReviewsTab({ token, cafeId }: Props) {
 
       {/* ── Public URL info ────────────────────────────────────────────── */}
       <div style={{
-        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
+        background: 'var(--surface)', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-sm)',
         padding: '0.875rem 1.125rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
+        boxShadow: 'var(--shadow-sm)',
       }}>
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          🔗 Link do dodawania opinii dla klientów:
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+          <LinkIcon size={15} />
+          Link do dodawania opinii dla klientów:
         </span>
         <code style={{
-          fontSize: '0.8rem', color: 'var(--gold)', background: 'rgba(181,114,10,0.08)',
+          fontSize: '0.8rem', color: 'var(--gold)', background: 'rgba(169,114,47,0.08)',
           borderRadius: 4, padding: '2px 8px', wordBreak: 'break-all',
         }}>
           POST /reviews/public/{cafeId}
@@ -147,7 +151,7 @@ export default function ReviewsTab({ token, cafeId }: Props) {
       {/* ── Lista opinii ───────────────────────────────────────────────── */}
       {reviews.length === 0 ? (
         <div className="res-empty-card">
-          <div className="res-empty-icon">💬</div>
+          <div className="res-empty-icon"><MessageCircle size={44} strokeWidth={1.4} /></div>
           <div className="res-empty-title">Brak opinii</div>
           <div className="res-empty-sub">
             Gdy klienci zaczną dodawać opinie, pojawią się tutaj.

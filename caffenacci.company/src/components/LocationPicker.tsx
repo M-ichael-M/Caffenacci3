@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+import { ExternalLink, X } from 'lucide-react'
 
 // Naprawa domyślnej ikonki markera (Leaflet + bundler = klasyczny problem)
 const DefaultIcon = L.icon({
@@ -87,7 +88,7 @@ function Toggle({ checked, onChange, disabled = false }: {
       <span style={{
         position: 'absolute', top: 3, left: checked ? 20 : 3,
         width: 16, height: 16, borderRadius: '50%',
-        background: checked ? 'var(--gold)' : '#fff',
+        background: checked ? 'var(--gold-soft)' : '#fff',
         transition: 'left 0.2s, background 0.2s',
         boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
       }} />
@@ -172,7 +173,7 @@ export default function LocationPicker({
           placeholder="Wpisz adres, aby wyszukać na mapie (np. Marszałkowska 12, Warszawa)"
         />
         {searching && (
-          <span style={{ position: 'absolute', right: 0, top: '0.625rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          <span style={{ position: 'absolute', right: '0.875rem', top: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             szukam…
           </span>
         )}
@@ -180,8 +181,8 @@ export default function LocationPicker({
           <div style={{
             position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
             background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 6, marginTop: '0.25rem', overflow: 'hidden',
-            boxShadow: '0 8px 24px rgba(17,10,4,0.12)',
+            borderRadius: 'var(--radius-sm)', marginTop: '0.25rem', overflow: 'hidden',
+            boxShadow: 'var(--shadow-pop)',
           }}>
             {results.map(r => (
               <button
@@ -192,9 +193,9 @@ export default function LocationPicker({
                   display: 'block', width: '100%', textAlign: 'left',
                   padding: '0.625rem 0.875rem', border: 'none', background: 'none',
                   fontSize: '0.8125rem', color: 'var(--text-dark)', cursor: 'pointer',
-                  borderBottom: '1px solid var(--border)', fontFamily: 'inherit',
+                  borderBottom: '1px solid var(--border-soft)', fontFamily: 'inherit',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--cream)')}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}
               >
                 {r.display_name}
@@ -240,12 +241,12 @@ export default function LocationPicker({
               {latitude!.toFixed(6)}, {longitude!.toFixed(6)}
             </span>
             {gmapsUrl && (
-              <a href={gmapsUrl} target="_blank" rel="noreferrer" className="link" style={{ fontSize: '0.8125rem' }}>
-                Podgląd w Google Maps ↗
+              <a href={gmapsUrl} target="_blank" rel="noreferrer" className="link" style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                Podgląd w Google Maps <ExternalLink size={13} />
               </a>
             )}
             <button type="button" className="me-remove-btn me-remove-item" onClick={clearPin} title="Usuń pinezkę">
-              ✕
+              <X size={13} />
             </button>
           </>
         ) : (

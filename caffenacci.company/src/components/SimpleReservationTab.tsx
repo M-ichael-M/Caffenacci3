@@ -1,4 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
+import {
+  Check,
+  X,
+  Inbox,
+  ClipboardList,
+  CheckCircle2,
+  XCircle,
+  Link as LinkIcon,
+  RefreshCw,
+} from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -77,7 +87,7 @@ function DecideModal({ reservation: r, action, onConfirm, onClose, saving }: Dec
     <div
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(17,10,4,0.55)',
+        background: 'rgba(17,10,4,0.5)',
         backdropFilter: 'blur(4px)',
         zIndex: 200,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -86,23 +96,23 @@ function DecideModal({ reservation: r, action, onConfirm, onClose, saving }: Dec
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div style={{
-        background: 'var(--cream)',
-        borderRadius: 12,
+        background: 'var(--surface)',
+        borderRadius: 'var(--radius-lg)',
         width: '100%',
         maxWidth: 480,
-        boxShadow: '0 24px 64px rgba(17,10,4,0.22)',
+        boxShadow: 'var(--shadow-pop)',
         overflow: 'hidden',
       }}>
         {/* Header */}
         <div style={{
-          background: isConfirm ? 'var(--espresso)' : '#6B2020',
+          background: isConfirm ? 'var(--sidebar-bg)' : '#5A2323',
           padding: '1.375rem 1.75rem',
           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
         }}>
           <div>
             <div style={{
-              fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.16em',
-              textTransform: 'uppercase', color: isConfirm ? 'var(--gold)' : '#F08080',
+              fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.16em',
+              textTransform: 'uppercase', color: isConfirm ? 'var(--gold-soft)' : '#F0A0A0',
               marginBottom: '0.25rem',
             }}>
               {isConfirm ? 'Akceptacja rezerwacji' : 'Odrzucenie rezerwacji'}
@@ -120,7 +130,7 @@ function DecideModal({ reservation: r, action, onConfirm, onClose, saving }: Dec
             type="button"
             onClick={onClose}
             aria-label="Zamknij"
-          >✕</button>
+          ><X size={16} /></button>
         </div>
 
         {/* Body */}
@@ -128,18 +138,18 @@ function DecideModal({ reservation: r, action, onConfirm, onClose, saving }: Dec
 
           {/* Podsumowanie */}
           <div style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border-soft)',
+            borderRadius: 'var(--radius-sm)',
             padding: '1rem 1.125rem',
             display: 'flex', flexDirection: 'column', gap: '0.5rem',
           }}>
             <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.875rem', color: 'var(--text-dark)', fontWeight: 600 }}>
-                📅 {formatDate(r.date)} o {r.start_time}
+                {formatDate(r.date)} o {r.start_time}
               </span>
               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                👥 {guestsLabel(r.guests)}
+                {guestsLabel(r.guests)}
               </span>
             </div>
             {(r.guest_phone || r.guest_email) && (
@@ -150,7 +160,7 @@ function DecideModal({ reservation: r, action, onConfirm, onClose, saving }: Dec
             {r.comment && (
               <div style={{
                 fontSize: '0.8125rem', color: 'var(--text-body)',
-                fontStyle: 'italic', borderTop: '1px solid var(--border)', paddingTop: '0.5rem', marginTop: '0.25rem',
+                fontStyle: 'italic', borderTop: '1px solid var(--border-soft)', paddingTop: '0.5rem', marginTop: '0.25rem',
               }}>
                 „{r.comment}"
               </div>
@@ -172,21 +182,8 @@ function DecideModal({ reservation: r, action, onConfirm, onClose, saving }: Dec
                 : 'np. Przepraszamy, wybrany termin jest już zajęty. Zapraszamy w innym czasie.'}
               maxLength={500}
               rows={3}
-              style={{
-                appearance: 'none',
-                width: '100%',
-                background: 'transparent',
-                border: '1.5px solid var(--border)',
-                borderRadius: 6,
-                padding: '0.625rem 0.75rem',
-                fontSize: '0.875rem',
-                fontFamily: 'inherit',
-                color: 'var(--text-dark)',
-                resize: 'vertical',
-                outline: 'none',
-                transition: 'border-color 0.15s',
-                lineHeight: 1.55,
-              }}
+              className="field__input"
+              style={{ resize: 'vertical', lineHeight: 1.55 }}
               onFocus={e => (e.target.style.borderColor = 'var(--gold)')}
               onBlur={e => (e.target.style.borderColor = 'var(--border)')}
             />
@@ -200,7 +197,7 @@ function DecideModal({ reservation: r, action, onConfirm, onClose, saving }: Dec
         <div style={{
           padding: '1rem 1.75rem 1.5rem',
           display: 'flex', justifyContent: 'flex-end', gap: '0.75rem',
-          borderTop: '1px solid var(--border)',
+          borderTop: '1px solid var(--border-soft)',
         }}>
           <button className="btn btn--outline-dark" type="button" onClick={onClose}>
             Anuluj
@@ -210,14 +207,19 @@ function DecideModal({ reservation: r, action, onConfirm, onClose, saving }: Dec
             className="btn btn--primary"
             style={{
               width: 'auto', minWidth: 160,
-              background: isConfirm ? 'var(--espresso)' : '#6B2020',
+              background: isConfirm ? 'var(--espresso)' : '#5A2323',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
             }}
             onClick={() => onConfirm(note)}
             disabled={saving}
           >
-            {saving
-              ? 'Zapisywanie…'
-              : isConfirm ? '✓ Akceptuj rezerwację' : '✕ Odrzuć rezerwację'}
+            {saving ? (
+              'Zapisywanie…'
+            ) : isConfirm ? (
+              <><Check size={17} /> Akceptuj rezerwację</>
+            ) : (
+              <><X size={17} /> Odrzuć rezerwację</>
+            )}
           </button>
         </div>
       </div>
@@ -237,18 +239,19 @@ function PendingCard({
   return (
     <div style={{
       background: 'var(--surface)',
-      border: '1px solid var(--border)',
+      border: '1px solid var(--border-soft)',
       borderLeft: '3px solid var(--gold)',
-      borderRadius: 8,
+      borderRadius: 'var(--radius-md)',
       overflow: 'hidden',
+      boxShadow: 'var(--shadow-card)',
     }}>
       <div style={{ padding: '1rem 1.25rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
 
         {/* Date block */}
         <div style={{
           flexShrink: 0,
-          background: 'var(--espresso)',
-          borderRadius: 8,
+          background: 'var(--sidebar-bg)',
+          borderRadius: 'var(--radius-sm)',
           padding: '0.625rem 0.875rem',
           textAlign: 'center',
           minWidth: 60,
@@ -256,7 +259,7 @@ function PendingCard({
           <div style={{
             fontFamily: "'Playfair Display', serif",
             fontSize: '1.5rem', fontWeight: 600,
-            color: 'var(--gold)', lineHeight: 1,
+            color: 'var(--gold-soft)', lineHeight: 1,
           }}>
             {r.date.slice(8)}
           </div>
@@ -275,14 +278,14 @@ function PendingCard({
               {r.guest_name}
             </span>
             <span style={{
-              background: 'rgba(181,114,10,0.1)', color: 'var(--gold)',
+              background: 'rgba(169,114,47,0.1)', color: 'var(--gold)',
               borderRadius: 100, padding: '1px 8px',
               fontSize: '0.75rem', fontWeight: 600,
             }}>
               {r.start_time}
             </span>
             <span style={{
-              background: 'var(--border)', color: 'var(--text-muted)',
+              background: 'var(--border-soft)', color: 'var(--text-muted)',
               borderRadius: 100, padding: '1px 8px', fontSize: '0.75rem',
             }}>
               {guestsLabel(r.guests)}
@@ -299,7 +302,7 @@ function PendingCard({
             <div style={{
               fontSize: '0.8125rem', color: 'var(--text-body)',
               fontStyle: 'italic', marginBottom: '0.25rem',
-              background: 'rgba(240,228,204,0.5)',
+              background: 'var(--surface-2)',
               borderRadius: 4, padding: '0.25rem 0.5rem',
               display: 'inline-block',
             }}>
@@ -315,18 +318,18 @@ function PendingCard({
 
       {/* Actions */}
       <div style={{
-        borderTop: '1px solid var(--border)',
+        borderTop: '1px solid var(--border-soft)',
         padding: '0.75rem 1.25rem',
         display: 'flex', justifyContent: 'flex-end', gap: '0.625rem',
-        background: 'rgba(250,250,247,0.6)',
+        background: 'var(--surface-2)',
       }}>
         <button
           type="button"
           onClick={() => onDecide(r, 'cancelled')}
           style={{
             appearance: 'none', background: 'transparent',
-            border: '1.5px solid rgba(184,50,50,0.35)',
-            color: 'var(--error)', borderRadius: 6,
+            border: '1.5px solid rgba(178,59,59,0.35)',
+            color: 'var(--error)', borderRadius: 'var(--radius-sm)',
             padding: '0.5rem 1rem', fontSize: '0.8125rem',
             fontFamily: 'inherit', fontWeight: 500, cursor: 'pointer',
             transition: 'all 0.15s',
@@ -337,7 +340,7 @@ function PendingCard({
           }}
           onMouseLeave={e => {
             (e.target as HTMLButtonElement).style.background = 'transparent'
-            ;(e.target as HTMLButtonElement).style.borderColor = 'rgba(184,50,50,0.35)'
+            ;(e.target as HTMLButtonElement).style.borderColor = 'rgba(178,59,59,0.35)'
           }}
         >
           Odrzuć
@@ -346,9 +349,10 @@ function PendingCard({
           type="button"
           onClick={() => onDecide(r, 'confirmed')}
           className="btn btn--primary"
-          style={{ width: 'auto', padding: '0.5rem 1.125rem', fontSize: '0.8125rem', marginTop: 0 }}
+          style={{ width: 'auto', padding: '0.5rem 1.125rem', fontSize: '0.8125rem', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
         >
-          ✓ Akceptuj
+          <Check size={15} />
+          Akceptuj
         </button>
       </div>
     </div>
@@ -363,17 +367,19 @@ function HistoryCard({ r, onDelete }: { r: ReservationOut; onDelete: (id: string
   return (
     <div style={{
       background: 'var(--surface)',
-      border: '1px solid var(--border)',
+      border: '1px solid var(--border-soft)',
       borderLeft: `3px solid ${isConfirmed ? 'var(--success)' : 'var(--error)'}`,
-      borderRadius: 8,
+      borderRadius: 'var(--radius-md)',
       padding: '0.875rem 1.25rem',
       display: 'flex', alignItems: 'flex-start', gap: '0.875rem',
-      opacity: isConfirmed ? 1 : 0.7,
+      opacity: isConfirmed ? 1 : 0.75,
+      boxShadow: 'var(--shadow-card)',
     }}>
       <div style={{
-        fontSize: '1.25rem', flexShrink: 0, paddingTop: '0.125rem',
+        flexShrink: 0, paddingTop: '0.125rem',
+        color: isConfirmed ? 'var(--success)' : 'var(--error)',
       }}>
-        {isConfirmed ? '✅' : '❌'}
+        {isConfirmed ? <CheckCircle2 size={22} /> : <XCircle size={22} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.125rem' }}>
@@ -402,7 +408,7 @@ function HistoryCard({ r, onDelete }: { r: ReservationOut; onDelete: (id: string
         onClick={() => onDelete(r.id)}
         title="Usuń z historii"
         style={{ flexShrink: 0 }}
-      >✕</button>
+      ><X size={13} /></button>
     </div>
   )
 }
@@ -538,10 +544,7 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
 
         {/* ── Nagłówek ──────────────────────────────────────────────────── */}
         <div>
-          <div style={{
-            fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.14em',
-            textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.375rem',
-          }}>
+          <div className="page-header__eyebrow" style={{ marginBottom: '0.375rem' }}>
             Zarządzanie
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1rem' }}>
@@ -554,10 +557,11 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
             </h2>
             <button
               className="btn btn--outline-dark"
-              style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem' }}
+              style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
               onClick={fetchAll}
             >
-              ↻ Odśwież
+              <RefreshCw size={15} />
+              Odśwież
             </button>
           </div>
         </div>
@@ -565,17 +569,19 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
         {/* ── Public URL info ────────────────────────────────────────────── */}
         <div style={{
           background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 8,
+          border: '1px solid var(--border-soft)',
+          borderRadius: 'var(--radius-sm)',
           padding: '0.875rem 1.125rem',
           display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
+          boxShadow: 'var(--shadow-sm)',
         }}>
-          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            🔗 Link do rezerwacji dla klientów:
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            <LinkIcon size={15} />
+            Link do rezerwacji dla klientów:
           </span>
           <code style={{
             fontSize: '0.8rem', color: 'var(--gold)',
-            background: 'rgba(181,114,10,0.08)',
+            background: 'rgba(169,114,47,0.08)',
             borderRadius: 4, padding: '2px 8px',
             wordBreak: 'break-all',
           }}>
@@ -615,7 +621,7 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             {pending.length === 0 ? (
               <div className="res-empty-card">
-                <div className="res-empty-icon">📭</div>
+                <div className="res-empty-icon"><Inbox size={44} strokeWidth={1.4} /></div>
                 <div className="res-empty-title">Brak nowych rezerwacji</div>
                 <div className="res-empty-sub">
                   Gdy klient złoży rezerwację, pojawi się ona tutaj do zatwierdzenia.
@@ -648,7 +654,7 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
             {history.length === 0 ? (
               <div className="res-empty-card">
-                <div className="res-empty-icon">📋</div>
+                <div className="res-empty-icon"><ClipboardList size={44} strokeWidth={1.4} /></div>
                 <div className="res-empty-title">Brak historii rezerwacji</div>
                 <div className="res-empty-sub">
                   Tu pojawią się zaakceptowane i odrzucone rezerwacje.

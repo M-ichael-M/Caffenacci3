@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
 import Dashboard from './components/Dashboard'
+import logoTransparent from './assets/logo/logo_transparent.png'
 import './index.css'
 
 type View = 'login' | 'register' | 'dashboard'
@@ -127,6 +128,7 @@ export default function App() {
         <div className="auth-brand__rings" aria-hidden="true" />
 
         <div className="auth-brand__content">
+          <img src={logoTransparent} alt="Caffenacci" className="auth-brand__logo" />
           <div className="auth-brand__rule" />
           <h1 className="auth-brand__wordmark">Caffenacci</h1>
           <p className="auth-brand__tagline">Panel właściciela kawiarni</p>

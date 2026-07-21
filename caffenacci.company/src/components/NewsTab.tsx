@@ -46,7 +46,7 @@ function Toggle({ checked, onChange, disabled = false }: {
       <span style={{
         position: 'absolute', top: 3, left: checked ? 23 : 3,
         width: 18, height: 18, borderRadius: '50%',
-        background: checked ? 'var(--gold)' : '#fff',
+        background: checked ? 'var(--gold-soft)' : '#fff',
         transition: 'left 0.2s, background 0.2s',
         boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
       }} />
@@ -67,7 +67,7 @@ function NewsCard({ post, onDelete, deleting }: {
         <img src={`${API}${post.image_url}`} alt={post.title} className="nw-card__image" />
       ) : (
         <div className="nw-card__image nw-card__image--fallback">
-          <Newspaper size={42} strokeWidth={1.5} />
+          <Newspaper size={38} strokeWidth={1.5} />
         </div>
       )}
       <div className="nw-card__body">
@@ -83,7 +83,7 @@ function NewsCard({ post, onDelete, deleting }: {
         title="Usuń aktualność"
         style={{ position: 'absolute', top: '0.625rem', right: '0.625rem', background: 'rgba(255,255,255,0.92)' }}
       >
-        <X size={18} />
+        <X size={16} />
       </button>
     </div>
   )
@@ -153,7 +153,7 @@ function AddNewsPanel({ token, onClose, onAdded }: {
             <h2 className="me-title">Nowa aktualność</h2>
           </div>
           <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij">
-            <X size={24} />
+            <X size={18} />
           </button>
         </div>
 
@@ -195,7 +195,7 @@ function AddNewsPanel({ token, onClose, onAdded }: {
                   onClick={clearFile}
                   style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(255,255,255,0.92)' }}
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               </div>
             ) : (
@@ -324,7 +324,7 @@ export default function NewsTab({ token }: Props) {
 
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.25rem' }}>
+            <div className="page-header__eyebrow" style={{ marginBottom: '0.25rem' }}>
               Zarządzanie
             </div>
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
@@ -354,7 +354,7 @@ export default function NewsTab({ token }: Props) {
         {posts.length === 0 ? (
           <div className="res-empty-card">
             <div className="res-empty-icon">
-              <Newspaper size={48} strokeWidth={1.4} />
+              <Newspaper size={44} strokeWidth={1.4} />
             </div>
             <div className="res-empty-title">Brak aktualności</div>
             <div className="res-empty-sub">

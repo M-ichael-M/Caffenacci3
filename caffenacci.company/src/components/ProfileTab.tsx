@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import LocationPicker from './LocationPicker'
+import { Coffee, AlertTriangle, X } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -107,10 +108,6 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function platformMeta(platform: string) {
-  return PLATFORM_OPTIONS.find(p => p.value === platform) ?? PLATFORM_OPTIONS[4]
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // SMALL UI HELPERS
 // ═════════════════════════════════════════════════════════════════════════════
@@ -134,7 +131,7 @@ function Toggle({ checked, onChange, disabled = false }: {
       <span style={{
         position: 'absolute', top: 3, left: checked ? 20 : 3,
         width: 16, height: 16, borderRadius: '50%',
-        background: checked ? 'var(--gold)' : '#fff',
+        background: checked ? 'var(--gold-soft)' : '#fff',
         transition: 'left 0.2s, background 0.2s',
         boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
       }} />
@@ -158,7 +155,7 @@ function SectionCard({ title, eyebrow, badge, children }: {
     <div className="info-card">
       <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+          <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
             {eyebrow}
           </div>
           <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
@@ -539,7 +536,7 @@ export default function ProfileTab({ token }: Props) {
       {/* ── Nagłówek ─────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.25rem' }}>
+          <div className="page-header__eyebrow" style={{ marginBottom: '0.25rem' }}>
             Zarządzanie
           </div>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
@@ -547,8 +544,9 @@ export default function ProfileTab({ token }: Props) {
           </h2>
         </div>
         {profile && !profile.profile_complete && (
-          <span className="pf-badge pf-badge--warn">
-            ⚠ Profil niekompletny — uzupełnij wymagane pola
+          <span className="pf-badge pf-badge--warn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}>
+            <AlertTriangle size={14} />
+            Profil niekompletny — uzupełnij wymagane pola
           </span>
         )}
       </div>
@@ -696,20 +694,14 @@ export default function ProfileTab({ token }: Props) {
           badge={<VisibilityBadge visible alwaysPublic />}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-            <div style={{
-              width: 88, height: 88, borderRadius: '50%', overflow: 'hidden',
-              border: '2px solid var(--border)', flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'var(--cream)',
-            }}>
+            <div className="pf-logo-circle">
               {logoUrl ? (
                 <img
                   src={`http://localhost:8000${logoUrl}`}
                   alt="Logo kawiarni"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               ) : (
-                <span style={{ fontSize: '1.5rem', opacity: 0.3 }}>☕</span>
+                <Coffee size={30} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
               )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -726,7 +718,7 @@ export default function ProfileTab({ token }: Props) {
                   <button
                     type="button" className="me-remove-btn me-remove-item"
                     onClick={handleLogoDelete} title="Usuń logo"
-                  >✕</button>
+                  ><X size={13} /></button>
                 )}
               </div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -755,7 +747,7 @@ export default function ProfileTab({ token }: Props) {
       <div className="info-card" style={{ gridColumn: '1 / -1' }}>
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+            <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
               Nowe dane · wymagane *
             </div>
             <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
@@ -816,7 +808,7 @@ export default function ProfileTab({ token }: Props) {
       <div className="info-card" style={{ gridColumn: '1 / -1' }}>
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+            <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
               Nowe dane · opcjonalne
             </div>
             <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
@@ -850,7 +842,7 @@ export default function ProfileTab({ token }: Props) {
       <div className="info-card" style={{ gridColumn: '1 / -1' }}>
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+            <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
               Nowe dane · opcjonalne
             </div>
             <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
@@ -865,7 +857,7 @@ export default function ProfileTab({ token }: Props) {
         <div className="info-card__body">
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
             Dodaj do {MAX_GALLERY_IMAGES} zdjęć swojej kawiarni. W zależności od wybranego szablonu strony
-            (zakładka „Strona WWW”) galeria pojawi się jako przewijany pasek, siatka zdjęć albo — w motywie
+            (zakładka „Strona WWW") galeria pojawi się jako przewijany pasek, siatka zdjęć albo — w motywie
             magicznym — unoszące się fotografie wychodzące poza treść strony.
           </p>
 
@@ -881,7 +873,7 @@ export default function ProfileTab({ token }: Props) {
                     className="pf-gallery-item__btn pf-gallery-item__btn--danger"
                     title="Usuń zdjęcie"
                     onClick={() => handleGalleryDelete(img.id)}
-                  >✕</button>
+                  ><X size={14} /></button>
                 </div>
               </div>
             ))}
@@ -917,7 +909,7 @@ export default function ProfileTab({ token }: Props) {
       <div className="info-card">
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+            <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
               Nowe dane · opcjonalne
             </div>
             <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
@@ -960,7 +952,7 @@ export default function ProfileTab({ token }: Props) {
                     <VisibilityBadge visible={s.visible} />
                     <Toggle checked={s.visible} onChange={v => updateSocialLink(idx, { visible: v })} />
                     <button type="button" className="me-remove-btn me-remove-item"
-                      onClick={() => removeSocialLink(idx)} title="Usuń">✕</button>
+                      onClick={() => removeSocialLink(idx)} title="Usuń"><X size={13} /></button>
                   </div>
                 </div>
               </div>
@@ -976,7 +968,7 @@ export default function ProfileTab({ token }: Props) {
       <div className="info-card">
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+            <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
               Nowe dane · opcjonalne
             </div>
             <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
@@ -1008,7 +1000,7 @@ export default function ProfileTab({ token }: Props) {
                     <VisibilityBadge visible={e.visible} />
                     <Toggle checked={e.visible} onChange={v => updateEmployee(idx, { visible: v })} />
                     <button type="button" className="me-remove-btn me-remove-item"
-                      onClick={() => removeEmployee(idx)} title="Usuń">✕</button>
+                      onClick={() => removeEmployee(idx)} title="Usuń"><X size={13} /></button>
                   </div>
                 </div>
                 <div className="field">
@@ -1079,11 +1071,7 @@ function ExceptionEditor({ exceptions, maxDate, minDate, loading, onSave, onDele
             .slice()
             .sort((a, b) => a.date.localeCompare(b.date))
             .map(exc => (
-              <div key={exc.date} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'var(--cream)', border: '1px solid var(--border)',
-                borderRadius: 6, padding: '0.625rem 0.875rem', flexWrap: 'wrap', gap: '0.5rem',
-              }}>
+              <div key={exc.date} className="pf-exception-row">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-dark)', textTransform: 'capitalize' }}>
                     {formatDate(exc.date)}
@@ -1097,7 +1085,7 @@ function ExceptionEditor({ exceptions, maxDate, minDate, loading, onSave, onDele
                   )}
                 </div>
                 <button type="button" className="me-remove-btn me-remove-item"
-                  onClick={() => onDelete(exc.date)} title="Usuń wyjątek" disabled={loading}>✕</button>
+                  onClick={() => onDelete(exc.date)} title="Usuń wyjątek" disabled={loading}><X size={13} /></button>
               </div>
           ))}
         </div>
