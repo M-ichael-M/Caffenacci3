@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.database import get_db          # ← tego brakowało
 from app.core.security import create_access_token, hash_password, verify_password
 from app.core.slugs import generate_unique_slug
 from app.models.cafe import Cafe
