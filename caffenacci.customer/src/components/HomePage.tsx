@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Search, Coffee, Clock, ChevronRight } from 'lucide-react'
+import { Search, Coffee, Clock, ChevronRight, Star } from 'lucide-react'
 
 interface TodayHours {
   is_closed: boolean
@@ -17,12 +17,26 @@ interface CafeResult {
   postal_code: string
   logo_url: string | null
   today_hours: TodayHours | null
+  average_rating?: number | null
+  review_count?: number
 }
 
 function formatTodayHours(h: TodayHours | null): string {
   if (!h) return 'Brak informacji o godzinach otwarcia'
   if (h.is_closed || !h.open_time || !h.close_time) return 'Dziś zamknięte'
   return `Dziś czynne: ${h.open_time}–${h.close_time}`
+}
+
+function RatingBadge({ rating, count }: { rating: number; count: number }) {
+  return (
+    <span className="cafe-card__rating">
+      <Star size={12} fill="currentColor" strokeWidth={0} />
+      {rating.toFixed(1)}
+      <span className="cafe-card__rating-count">
+        ({count === 1 ? '1 opinia' : count < 5 ? `${count} opinie` : `${count} opinii`})
+      </span>
+    </span>
+  )
 }
 
 export default function HomePage() {
@@ -110,7 +124,12 @@ export default function HomePage() {
                   )}
                 </div>
                 <div className="cafe-card__info">
-                  <h2 className="cafe-card__name">{cafe.cafe_name}</h2>
+                  <div className="cafe-card__title-row">
+                    <h2 className="cafe-card__name">{cafe.cafe_name}</h2>
+                    {!!cafe.average_rating && !!cafe.review_count && (
+                      <RatingBadge rating={cafe.average_rating} count={cafe.review_count} />
+                    )}
+                  </div>
                   <p className="cafe-card__address">
                     {cafe.street} {cafe.building_number}, {cafe.postal_code} {cafe.city}
                   </p>

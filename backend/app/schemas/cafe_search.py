@@ -11,6 +11,7 @@ class TodayHoursOut(BaseModel):
 
 class CafeSearchResultOut(BaseModel):
     cafe_id: str
+    slug: str
     cafe_name: str
     country: str
     city: str

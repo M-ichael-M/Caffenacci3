@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
+from app.core.slugs import generate_unique_slug
 from app.models.cafe import Cafe
 from app.models.site import CafeSite
 from app.models.cafe_profile import CafeProfile
@@ -21,11 +22,13 @@ from app.models.gallery import CafeGalleryImage
 from app.models.news import NewsSettings, NewsPost
 from app.schemas.gallery import PublicGalleryImageOut
 from app.schemas.site import (
-    CafeSiteSettingsIn, CafeSiteSettingsOut, PublicSiteOut,
+    CafeSiteSettingsIn, CafeSiteSettingsOut, PublicSiteOut, PublishStatusOut,
     SiteNewsPostOut,
     ALLOWED_TEMPLATES, ALLOWED_PALETTES,
 )
 from app.models.loyalty import LoyaltySettings
+from app.routers.cafe_profile import _hours_complete
+from app.routers.billing import has_active_access
 
 router = APIRouter(prefix="/site", tags=["site"])
 bearer_scheme = HTTPBearer()
@@ -85,8 +88,17 @@ def _logo_url(cafe_id: str, profile: CafeProfile | None) -> str | None:
     return None
 
 
+def _ensure_slug(cafe: Cafe, db: Session) -> None:
+    """Zabezpieczenie dla kawiarni sprzed wprowadzenia slugów — generuje go
+    leniwie przy pierwszym zapytaniu, jeśli z jakiegoś powodu go brakuje."""
+    if not cafe.slug:
+        cafe.slug = generate_unique_slug(cafe.cafe_name, db, exclude_cafe_id=cafe.id)
+        db.commit()
+        db.refresh(cafe)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
-# OPCJE — dostępne szablony i palety (do wyświetlenia w kreatorze właściciela)
+# OPCJE — dostępne szablony i palety
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/options", summary="Dostępne szablony i palety kolorów")
@@ -128,17 +140,84 @@ def save_settings(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# PUBLIKACJA — wymogi, publikacja, wycofanie
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _publish_requirements(cafe: Cafe, profile: CafeProfile | None, db: Session) -> list[str]:
+    reasons: list[str] = []
+    if not profile or not profile.logo_path:
+        reasons.append("Dodaj logo kawiarni.")
+    if not profile or not _hours_complete(profile):
+        reasons.append("Uzupełnij plan godzin otwarcia.")
+    if not has_active_access(cafe.id, db):
+        reasons.append("Aktywuj subskrypcję lub kod promocyjny.")
+    return reasons
+
+
+def _publish_status_out(cafe: Cafe, site: CafeSite, reasons: list[str]) -> PublishStatusOut:
+    return PublishStatusOut(
+        is_published=site.is_published,
+        can_publish=len(reasons) == 0,
+        missing_reasons=reasons,
+        slug=cafe.slug,
+        public_path=f"/{cafe.slug}" if cafe.slug else None,
+        published_at=site.published_at,
+    )
+
+
+@router.get("/publish-status", response_model=PublishStatusOut,
+            summary="Sprawdź, czy stronę można opublikować")
+def get_publish_status(
+    current_cafe: Cafe    = Depends(get_current_cafe),
+    db:           Session = Depends(get_db),
+):
+    _ensure_slug(current_cafe, db)
+    site = _get_or_create_site(current_cafe.id, db)
+    profile = db.query(CafeProfile).filter(CafeProfile.cafe_id == current_cafe.id).first()
+    reasons = _publish_requirements(current_cafe, profile, db)
+    return _publish_status_out(current_cafe, site, reasons)
+
+
+@router.post("/publish", response_model=PublishStatusOut, summary="Opublikuj stronę")
+def publish_site(
+    current_cafe: Cafe    = Depends(get_current_cafe),
+    db:           Session = Depends(get_db),
+):
+    _ensure_slug(current_cafe, db)
+    site = _get_or_create_site(current_cafe.id, db)
+    profile = db.query(CafeProfile).filter(CafeProfile.cafe_id == current_cafe.id).first()
+    reasons = _publish_requirements(current_cafe, profile, db)
+    if reasons:
+        raise HTTPException(400, detail="Nie można opublikować strony — " + " ".join(reasons))
+
+    site.is_published = True
+    site.published_at = datetime.utcnow()
+    db.commit()
+    db.refresh(site)
+    return _publish_status_out(current_cafe, site, [])
+
+
+@router.post("/unpublish", response_model=PublishStatusOut, summary="Wycofaj publikację strony")
+def unpublish_site(
+    current_cafe: Cafe    = Depends(get_current_cafe),
+    db:           Session = Depends(get_db),
+):
+    site = _get_or_create_site(current_cafe.id, db)
+    site.is_published = False
+    db.commit()
+    db.refresh(site)
+
+    profile = db.query(CafeProfile).filter(CafeProfile.cafe_id == current_cafe.id).first()
+    reasons = _publish_requirements(current_cafe, profile, db)
+    return _publish_status_out(current_cafe, site, reasons)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PUBLICZNY BUNDLE — wszystko czego potrzebuje wygenerowana strona kawiarni
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/public/{cafe_id}", response_model=PublicSiteOut,
-            summary="Pobierz w pełni złożoną, publiczną stronę kawiarni")
-def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
-    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
-    if not cafe:
-        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
-
-    site = _get_or_create_site(cafe_id, db)
+def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
+    site = _get_or_create_site(cafe.id, db)
     custom_palette = _parse_custom_palette(site.custom_palette_colors)
 
     profile = (
@@ -149,7 +228,7 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
             selectinload(CafeProfile.social_links),
             selectinload(CafeProfile.employees),
         )
-        .filter(CafeProfile.cafe_id == cafe_id)
+        .filter(CafeProfile.cafe_id == cafe.id)
         .first()
     )
 
@@ -161,30 +240,30 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
     menu_sections_raw = (
         db.query(MenuSection)
         .options(selectinload(MenuSection.items))
-        .filter(MenuSection.cafe_id == cafe_id)
+        .filter(MenuSection.cafe_id == cafe.id)
         .order_by(MenuSection.position)
         .all()
     )
 
-    order_settings = db.query(OrderSettings).filter(OrderSettings.cafe_id == cafe_id).first()
-    res_settings   = db.query(ReservationSettings).filter(ReservationSettings.cafe_id == cafe_id).first()
+    order_settings = db.query(OrderSettings).filter(OrderSettings.cafe_id == cafe.id).first()
+    res_settings   = db.query(ReservationSettings).filter(ReservationSettings.cafe_id == cafe.id).first()
 
     loyalty_settings = (
         db.query(LoyaltySettings)
         .options(selectinload(LoyaltySettings.rewards))
-        .filter(LoyaltySettings.cafe_id == cafe_id)
+        .filter(LoyaltySettings.cafe_id == cafe.id)
         .first()
     )
 
     reviews_rows = (
         db.query(Review)
-        .filter(Review.cafe_id == cafe_id)
+        .filter(Review.cafe_id == cafe.id)
         .order_by(Review.created_at.desc())
         .all()
     )
     agg = (
         db.query(func.avg(Review.rating), func.count(Review.id))
-        .filter(Review.cafe_id == cafe_id)
+        .filter(Review.cafe_id == cafe.id)
         .first()
     )
     reviews_average = round(float(agg[0]), 2) if agg and agg[0] is not None else 0.0
@@ -194,21 +273,21 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
     if profile and profile.gallery_visible:
         gallery_rows = (
             db.query(CafeGalleryImage)
-            .filter(CafeGalleryImage.cafe_id == cafe_id)
+            .filter(CafeGalleryImage.cafe_id == cafe.id)
             .order_by(CafeGalleryImage.position)
             .all()
         )
         gallery_images = [
-            PublicGalleryImageOut(url=f"/profile/gallery/{cafe_id}/{g.id}")
+            PublicGalleryImageOut(url=f"/profile/gallery/{cafe.id}/{g.id}")
             for g in gallery_rows
         ]
 
-    news_settings = db.query(NewsSettings).filter(NewsSettings.cafe_id == cafe_id).first()
+    news_settings = db.query(NewsSettings).filter(NewsSettings.cafe_id == cafe.id).first()
     news_posts_out: list[SiteNewsPostOut] = []
     if news_settings and news_settings.enabled:
         news_rows = (
             db.query(NewsPost)
-            .filter(NewsPost.cafe_id == cafe_id)
+            .filter(NewsPost.cafe_id == cafe.id)
             .order_by(NewsPost.created_at.desc())
             .limit(3)
             .all()
@@ -218,7 +297,7 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
                 id=p.id,
                 title=p.title,
                 content=p.content,
-                image_url=(f"/news/image/{cafe_id}/{p.id}" if p.image_path else None),
+                image_url=(f"/news/image/{cafe.id}/{p.id}" if p.image_path else None),
                 created_at=p.created_at,
             )
             for p in news_rows
@@ -273,3 +352,42 @@ def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
         news_enabled=bool(news_settings and news_settings.enabled),
         news_posts=news_posts_out,
     )
+
+
+@router.get("/public/by-slug/{slug}", response_model=PublicSiteOut,
+            summary="Publiczna strona kawiarni po adresie (slug) — wymaga publikacji")
+def get_public_site_by_slug(slug: str, db: Session = Depends(get_db)):
+    cafe = db.query(Cafe).filter(Cafe.slug == slug).first()
+    if not cafe:
+        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
+    site = db.query(CafeSite).filter(CafeSite.cafe_id == cafe.id).first()
+    if not site or not site.is_published:
+        raise HTTPException(404, detail="Ta strona nie jest obecnie publicznie dostępna.")
+    return _build_public_site(cafe, db)
+
+
+@router.get("/public/{cafe_id}", response_model=PublicSiteOut,
+            summary="Publiczna strona kawiarni po ID — wymaga publikacji")
+def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
+    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+    if not cafe:
+        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
+    site = db.query(CafeSite).filter(CafeSite.cafe_id == cafe.id).first()
+    if not site or not site.is_published:
+        raise HTTPException(404, detail="Ta strona nie jest obecnie publicznie dostępna.")
+    return _build_public_site(cafe, db)
+
+
+@router.get("/preview/{cafe_id}", response_model=PublicSiteOut,
+            summary="Podgląd strony dla właściciela — ignoruje status publikacji i subskrypcji")
+def get_site_preview(cafe_id: str, token: str, db: Session = Depends(get_db)):
+    payload = decode_access_token(token)
+    if not payload or payload.get("sub") != cafe_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Nieprawidłowy lub wygasły token podglądu.",
+        )
+    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+    if not cafe:
+        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
+    return _build_public_site(cafe, db)

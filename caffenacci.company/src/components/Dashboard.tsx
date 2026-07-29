@@ -7,6 +7,7 @@ import ReviewsTab from './ReviewsTab'
 import OrdersTab from './OrdersTab'
 import WebsiteTab from './WebsiteTab'
 import LoyaltyTab from './LoyaltyTab'
+import BillingTab from './BillingTab'
 import NewsTab from './NewsTab'
 import logoCircle from '../assets/logo/logo_circle.png'
 import {
@@ -508,6 +509,13 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
             {activeTab === 'website' && (
               <div className="dashboard-content">
                 <WebsiteTab token={auth.token} cafeId={cafeId} />
+              </div>
+            )}
+
+            {/* PŁATNOŚCI I PUBLIKACJA */}
+            {activeTab === 'billing' && (
+              <div className="dashboard-content">
+                <BillingTab token={auth.token} cafeId={cafeId} />
               </div>
             )}
 

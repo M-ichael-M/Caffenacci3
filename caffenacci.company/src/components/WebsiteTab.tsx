@@ -19,6 +19,8 @@ import {
   Wand2,
   Image as ImageIcon,
   Loader2,
+  Eye,
+  Lock,
 } from 'lucide-react'
 import { PALETTES } from '../palettes'
 import { extractPaletteFromImageUrl } from '../utils/paletteFromImage'
@@ -107,6 +109,12 @@ const TEMPLATES: { key: SiteTemplate; label: string; desc: string }[] = [
   },
 ]
 
+interface PublishInfo {
+  slug: string | null
+  is_published: boolean
+  public_path: string | null
+}
+
 export default function WebsiteTab({ token, cafeId }: Props) {
   const [template, setTemplate] = useState<SiteTemplate>('classic')
   const [palette, setPalette]   = useState('espresso-gold')
@@ -119,14 +127,19 @@ export default function WebsiteTab({ token, cafeId }: Props) {
   const [generatingPalette, setGeneratingPalette] = useState(false)
   const [paletteGenError, setPaletteGenError]     = useState<string | null>(null)
 
+  const [publishInfo, setPublishInfo] = useState<PublishInfo | null>(null)
+
   const fetchSettings = useCallback(async () => {
     setLoading(true)
     try {
-      const [siteRes, profileRes] = await Promise.all([
+      const [siteRes, profileRes, publishRes] = await Promise.all([
         fetch('http://localhost:8000/site/settings', {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch('http://localhost:8000/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch('http://localhost:8000/site/publish-status', {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ])
@@ -139,6 +152,14 @@ export default function WebsiteTab({ token, cafeId }: Props) {
       if (profileRes.ok) {
         const p = await profileRes.json()
         setLogoUrl(p.logo_url ?? null)
+      }
+      if (publishRes.ok) {
+        const pub = await publishRes.json()
+        setPublishInfo({
+          slug: pub.slug,
+          is_published: pub.is_published,
+          public_path: pub.public_path,
+        })
       }
     } catch { /* ignore */ }
     finally { setLoading(false) }
@@ -186,7 +207,8 @@ export default function WebsiteTab({ token, cafeId }: Props) {
     } finally { setSaving(false) }
   }
 
-  const publicUrl = `http://localhost:5174/cafe/${cafeId}`
+  const previewUrl = `http://localhost:5174/preview/${cafeId}?token=${encodeURIComponent(token)}`
+  const liveUrl = publishInfo?.slug ? `http://localhost:5174/cafe/${publishInfo.slug}` : null
 
   if (loading) {
     return (
@@ -224,7 +246,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
         <div className={saveMsg.type === 'ok' ? 'form-success' : 'form-error'}>{saveMsg.text}</div>
       )}
 
-      {/* Link publiczny */}
+      {/* Adres publiczny */}
       <div style={{
         background: 'var(--surface)', 
         border: '1px solid var(--border-soft)', 
@@ -237,7 +259,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
         boxShadow: 'var(--shadow-sm)',
       }}>
         <LinkIcon size={16} style={{ color: 'var(--text-muted)' }} />
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Twoja strona:</span>
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Adres Twojej strony:</span>
         <code style={{ 
           fontSize: '0.8rem', 
           color: 'var(--gold)', 
@@ -246,17 +268,50 @@ export default function WebsiteTab({ token, cafeId }: Props) {
           padding: '2px 8px', 
           wordBreak: 'break-all' 
         }}>
-          {publicUrl}
+          caffenacci.com{publishInfo?.public_path ?? ''}
         </code>
-        <a 
-          href={publicUrl} 
-          target="_blank" 
-          rel="noreferrer" 
-          className="link" 
-          style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-        >
-          Otwórz podgląd <ExternalLink size={14} />
-        </a>
+        {publishInfo?.is_published && liveUrl ? (
+          <a 
+            href={liveUrl} 
+            target="_blank" 
+            rel="noreferrer" 
+            className="link" 
+            style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            Otwórz <ExternalLink size={14} />
+          </a>
+        ) : (
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+            <Lock size={13} />
+            Strona nie jest jeszcze opublikowana — zarządzaj tym w zakładce „Płatności i publikacja".
+          </span>
+        )}
+      </div>
+
+      {/* Podgląd na żywo — działa niezależnie od publikacji i subskrypcji, wyłącznie dla właściciela */}
+      <div className="info-card">
+        <div className="info-card__header">
+          <span className="info-card__icon"><Eye size={20} /></span>
+          <h2 className="info-card__title">Podgląd na żywo</h2>
+        </div>
+        <div className="info-card__body">
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
+            Tak dokładnie będzie wyglądać Twoja strona po opublikowaniu — działa nawet bez aktywnej
+            subskrypcji i samo w sobie nigdy nie powoduje publikacji.
+          </p>
+         <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+            <iframe src={previewUrl} title="Podgląd strony kawiarni" style={{ width: '100%', height: 720, border: 'none', display: 'block' }} />
+          </div>
+          <button
+            type="button"
+            className="btn btn--outline-dark"
+            style={{ width: 'auto', alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}
+          >
+            <ExternalLink size={16} />
+            Otwórz podgląd w nowej karcie
+          </button>
+        </div>
       </div>
 
       {/* Wybór szablonu */}

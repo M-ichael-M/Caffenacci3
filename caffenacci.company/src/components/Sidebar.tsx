@@ -9,6 +9,7 @@ import {
   Newspaper,
   Settings,
   Globe,
+  CreditCard,
   Menu as MenuIcon,
   X,
   LogOut,
@@ -17,7 +18,7 @@ import logoTransparent from '../assets/logo/logo_transparent.png'
 
 export type TabId =
   | 'overview' | 'menu' | 'orders' | 'reservations'
-  | 'loyalty'  | 'reviews' | 'news' | 'profile' | 'website'
+  | 'loyalty'  | 'reviews' | 'news' | 'profile' | 'website' | 'billing'
 
 type TabIcon = React.ComponentType<{ size?: number; strokeWidth?: number }>
 
@@ -31,6 +32,7 @@ const TABS: { id: TabId; label: string; icon: TabIcon }[] = [
   { id: 'news',         label: 'Aktualności',   icon: Newspaper },
   { id: 'profile',      label: 'Profil',        icon: Settings },
   { id: 'website',      label: 'Strona WWW',    icon: Globe },
+  { id: 'billing',      label: 'Płatności',     icon: CreditCard },
 ]
 
 function initials(name: string): string {
@@ -80,7 +82,6 @@ export default function Sidebar({ activeTab, onSelectTab, cafeName, ownerName, o
 
   return (
     <>
-      {/* ── Mobile topbar ─────────────────────────────────────────── */}
       <header className="mobile-topbar">
         <div className="mobile-topbar__brand">
           <img src={logoTransparent} alt="Caffenacci" className="mobile-topbar__logo" />
@@ -100,7 +101,6 @@ export default function Sidebar({ activeTab, onSelectTab, cafeName, ownerName, o
         <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* ── Desktop sidebar ───────────────────────────────────────── */}
       <aside className={`sidebar${mobileOpen ? ' sidebar--mobile-open' : ''}`}>
         <div className="sidebar__brand">
           <img src={logoTransparent} alt="Caffenacci" className="sidebar__logo" />

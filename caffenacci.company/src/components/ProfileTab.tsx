@@ -85,11 +85,11 @@ interface Props {
 
 const DAYS = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela']
 const PLATFORM_OPTIONS = [
-  { value: 'instagram', label: 'Instagram', icon: '📷' },
-  { value: 'facebook',  label: 'Facebook',  icon: '📘' },
-  { value: 'x',         label: 'X (Twitter)', icon: '✕' },
-  { value: 'tiktok',    label: 'TikTok',    icon: '🎵' },
-  { value: 'other',     label: 'Inny',      icon: '🔗' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'facebook',  label: 'Facebook' },
+  { value: 'x',         label: 'X (Twitter)' },
+  { value: 'tiktok',    label: 'TikTok' },
+  { value: 'other',     label: 'Inny' },
 ]
 const MAX_EXCEPTION_DAYS_AHEAD = 21
 const MAX_GALLERY_IMAGES = 10
@@ -930,7 +930,7 @@ export default function ProfileTab({ token }: Props) {
                     <select className="me-input" style={{ cursor: 'pointer' }}
                       value={s.platform} onChange={e => updateSocialLink(idx, { platform: e.target.value })}>
                       {PLATFORM_OPTIONS.map(p => (
-                        <option key={p.value} value={p.value}>{p.icon} {p.label}</option>
+                        <option key={p.value} value={p.value}>{p.label}</option>
                       ))}
                     </select>
                   </div>

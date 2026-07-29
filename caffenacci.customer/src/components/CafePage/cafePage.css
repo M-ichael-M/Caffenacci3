@@ -3276,3 +3276,23 @@ select.me-input { cursor: pointer; }
   .cafe-page--tiles .cp-hero { margin: 0.75rem; padding: 2rem 1.5rem; flex-direction: column; text-align: center; }
   .cafe-page--tiles .cp-main { padding: 1.5rem 1.125rem 3rem; }
 }
+
+/* ════════════════════════════════════════════════
+   19. BANER PODGLĄDU WŁAŚCICIELA
+   ════════════════════════════════════════════════ */
+
+.cp-preview-banner {
+  position: sticky;
+  top: 0;
+  z-index: 500;
+  background: var(--espresso);
+  color: var(--parchment);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.625rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}

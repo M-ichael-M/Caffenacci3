@@ -6,22 +6,6 @@ from datetime import datetime
 
 from app.schemas.gallery import PublicGalleryImageOut
 
-# ── Dostępne szablony i palety kolorów ──────────────────────────────────────
-# Trzymane jako proste klucze (string) — wygląd (kolory, typografia, animacje)
-# jest renderowany po stronie frontendu na podstawie tego klucza. Backend tylko
-# waliduje, że klucz jest jednym z dozwolonych.
-#
-# classic     — elegancki, tradycyjny, przytulny klimat kawiarni
-# modern      — minimalistyczny, płaski, geometryczny
-# magic       — mroczny magiczny klimat, świecące akcenty, dym, gwiazdy
-# usa80s      — neonowy amerykański diner z lat 80.
-# expressive  — odważne kształty i duże fonty w duchu Material 3 Expressive
-# premium     — luksusowy styl: hojne odstępy, duża typografia, subtelne animacje
-# industrial  — surowy, techniczny charakter: ostre krawędzie, grube obramowania
-# glass       — glassmorphism: półprzezroczyste, rozmyte karty
-# futuristic  — świecące obramowania, dynamiczne przejścia, klimat miasta przyszłości
-# tiles       — wszystko w kartach, asymetryczna siatka w stylu Pinterest / Bento
-
 ALLOWED_TEMPLATES = {
     "classic",
     "modern",
@@ -50,11 +34,6 @@ ALLOWED_PALETTES = {
     "plum-noir",
 }
 
-# ── Niestandardowa paleta (wygenerowana z logo) ─────────────────────────────
-# palette == "custom" oznacza, że kawiarnia używa własnej palety zamiast
-# jednej z gotowych powyżej. Zestaw wymaganych zmiennych CSS jest identyczny
-# jak w PALETTES na froncie (src/palettes.ts).
-
 CUSTOM_PALETTE_VAR_KEYS = {
     "--espresso", "--coffee", "--gold", "--gold-hover",
     "--parchment", "--cream", "--surface",
@@ -63,8 +42,6 @@ CUSTOM_PALETTE_VAR_KEYS = {
 
 HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
-
-# ── Ustawienia strony (właściciel) ──────────────────────────────────────────
 
 class CafeSiteSettingsIn(BaseModel):
     template: str = Field("classic")
@@ -117,9 +94,18 @@ class CafeSiteSettingsOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Status publikacji (właściciel) ──────────────────────────────────────────
+
+class PublishStatusOut(BaseModel):
+    is_published: bool
+    can_publish: bool
+    missing_reasons: List[str]
+    slug: Optional[str] = None
+    public_path: Optional[str] = None       # np. "/luna_cafe"
+    published_at: Optional[datetime] = None
+
+
 # ── Publiczna strona kawiarni — pełny bundle do wyrenderowania ─────────────
-# Wszystkie zagnieżdżone modele mają from_attributes=True, bo są budowane
-# bezpośrednio z obiektów SQLAlchemy (relacje ORM), nie ze słowników.
 
 class PublicWeeklyHoursOut(BaseModel):
     day_of_week: int
@@ -235,8 +221,6 @@ class PublicSiteOut(BaseModel):
     loyalty_stamps_reward_desc: Optional[str] = None
     loyalty_rewards: List[SiteLoyaltyRewardOut] = []
 
-
-    # Pusta lista, jeśli właściciel wyłączył galerię lub nie dodał zdjęć.
     gallery_images: List[PublicGalleryImageOut] = []
     news_enabled: bool = False
     news_posts: List[SiteNewsPostOut] = []

@@ -4,15 +4,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import Base, engine
 from app.models import cafe         # noqa: F401
 from app.models import menu         # noqa: F401
-from app.models import reservation  # noqa: F401  ← rejestruje modele rezerwacji
-from app.models import cafe_profile # noqa: F401  ← rejestruje modele profilu kawiarni
-from app.models import review       # noqa: F401  ← rejestruje model opinii
-from app.models import order        # noqa: F401  ← rejestruje modele zamówień
-from app.models import client       # noqa: F401  ← rejestruje model konta klienta
-from app.models import site         # noqa: F401  ← rejestruje model strony (szablon/paleta)
-from app.models import gallery      # noqa: F401  ← rejestruje model galerii zdjęć
-from app.models import loyalty      # noqa: F401  ← rejestruje modele programu lojalnościowego
-from app.models import news         # noqa: F401  ← rejestruje modele aktualności
+from app.models import reservation  # noqa: F401
+from app.models import cafe_profile # noqa: F401
+from app.models import review       # noqa: F401
+from app.models import order        # noqa: F401
+from app.models import client       # noqa: F401
+from app.models import site         # noqa: F401
+from app.models import gallery      # noqa: F401
+from app.models import loyalty      # noqa: F401
+from app.models import news         # noqa: F401
+from app.models import billing      # noqa: F401  ← rejestruje model subskrypcji
 from app.routers import auth, me
 from app.routers import menu as menu_router
 from app.routers import reservation as reservation_router
@@ -21,6 +22,7 @@ from app.routers import review as review_router
 from app.routers import order as order_router
 from app.routers import client_auth as client_auth_router
 from app.routers import cafe_search as cafe_search_router
+from app.routers import billing as billing_router
 from app.routers import site as site_router
 from app.routers import loyalty as loyalty_router
 from app.routers import news as news_router
@@ -55,6 +57,7 @@ app.include_router(review_router.router)
 app.include_router(order_router.router)
 app.include_router(client_auth_router.router)
 app.include_router(cafe_search_router.router)
+app.include_router(billing_router.router)
 app.include_router(site_router.router)
 app.include_router(loyalty_router.router)
 app.include_router(news_router.router)

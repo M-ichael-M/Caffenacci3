@@ -20,6 +20,10 @@ class Cafe(Base):
     # Kawiarnia
     cafe_name = Column(String(150), nullable=False)
 
+    # Adres URL publicznej strony — generowany automatycznie z nazwy przy
+    # rejestracji (patrz app/core/slugs.py). Unikalny w całej bazie.
+    slug = Column(String(160), nullable=True, unique=True, index=True)
+
     # Adres
     country = Column(String(100), nullable=False)
     city = Column(String(100), nullable=False)

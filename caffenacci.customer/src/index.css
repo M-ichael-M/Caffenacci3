@@ -794,11 +794,38 @@ body {
   gap: 0.1875rem;
 }
 
+.cafe-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.0625rem;
+}
+
 .cafe-card__name {
   font-family: 'Playfair Display', serif;
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--text-dark);
+}
+
+.cafe-card__rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(169, 114, 47, 0.1);
+  border-radius: 100px;
+  padding: 1px 9px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cafe-card__rating-count {
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .cafe-card__address {

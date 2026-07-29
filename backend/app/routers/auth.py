@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
 from app.core.security import create_access_token, hash_password, verify_password
+from app.core.slugs import generate_unique_slug
 from app.models.cafe import Cafe
 from app.schemas.cafe import LoginIn, RegisterIn, RegisterOut, TokenOut
 
@@ -30,13 +30,13 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
         email=payload.email,
         phone=payload.phone,
         password_hash=hash_password(payload.password),
-        # Adres
         country=payload.address.country,
         city=payload.address.city,
         street=payload.address.street,
         building_number=payload.address.building_number,
         postal_code=payload.address.postal_code,
     )
+    cafe.slug = generate_unique_slug(payload.cafe_name, db)
 
     db.add(cafe)
     db.commit()

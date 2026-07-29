@@ -13,6 +13,7 @@ import './cafePage.css'
 import LoyaltyWidget from './LoyaltyWidget'
 import NewsWidget from './NewsWidget'
 import { CoffeeIcon, PhoneIcon, MailIcon } from './icons'
+import { Eye } from 'lucide-react'
 
 // ── Typy (odpowiadają backendowemu PublicSiteOut) ───────────────────────────
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
@@ -78,8 +79,11 @@ interface PublicSiteData {
   news_posts: NewsPostItem[]
 }
 
-interface Props { cafeId: string }
-
+interface Props {
+  identifier: string        // slug (mode='public') lub cafe_id (mode='preview')
+  mode?: 'public' | 'preview'
+  previewToken?: string
+}
 const DAYS = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela']
 
 // Buduje string YYYY-MM-DD z lokalnej daty, bez przechodzenia przez UTC.
@@ -158,7 +162,7 @@ function HomeFab() {
   )
 }
 
-export default function CafePage({ cafeId }: Props) {
+export default function CafePage({ identifier, mode = 'public', previewToken }: Props) {
   const [data, setData] = useState<PublicSiteData | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -171,7 +175,10 @@ export default function CafePage({ cafeId }: Props) {
   const fetchSite = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`http://localhost:8000/site/public/${cafeId}`)
+      const url = mode === 'preview'
+        ? `http://localhost:8000/site/preview/${identifier}?token=${encodeURIComponent(previewToken ?? '')}`
+        : `http://localhost:8000/site/public/by-slug/${identifier}`
+      const res = await fetch(url)
       if (!res.ok) { setNotFound(true); return }
       setData(await res.json())
     } catch {
@@ -179,7 +186,7 @@ export default function CafePage({ cafeId }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [cafeId])
+  }, [identifier, mode, previewToken])
 
   useEffect(() => { fetchSite() }, [fetchSite])
 
@@ -287,8 +294,14 @@ export default function CafePage({ cafeId }: Props) {
 
   const gmapsUrl = hasLocation ? `https://www.google.com/maps?q=${data.latitude},${data.longitude}` : null
 
-  return (
+ return (
     <div className={`cafe-page cafe-page--${data.template}`} style={paletteVars as CSSProperties}>
+      {mode === 'preview' && (
+        <div className="cp-preview-banner">
+          <Eye size={15} />
+          Podgląd właściciela — tak będzie wyglądać strona po opublikowaniu.
+        </div>
+      )}
       {/* Sticky nav */}
       <nav className="cp-nav">
         <button className="cp-nav__link" onClick={() => document.getElementById('cp-menu')?.scrollIntoView({ behavior: 'smooth' })}>Menu</button>

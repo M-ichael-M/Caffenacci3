@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.database import get_db
 from app.models.cafe import Cafe
 from app.models.cafe_profile import CafeProfile
+from app.models.site import CafeSite
 from app.schemas.cafe_search import CafeSearchResultOut, CafeSearchListOut, TodayHoursOut
 
 router = APIRouter(prefix="/cafes", tags=["cafe-search"])
@@ -22,14 +23,12 @@ def _logo_url(cafe_id: str, profile: CafeProfile | None) -> str | None:
 
 
 def _today_hours(profile: CafeProfile | None) -> TodayHoursOut | None:
-    """Zwraca godziny otwarcia na dziś: najpierw sprawdza wyjątek dla
-    konkretnej daty, w przeciwnym razie plan tygodniowy."""
     if not profile:
         return None
 
     today = date_cls.today()
     today_str = today.isoformat()
-    dow = today.weekday()  # 0 = poniedziałek, tak jak w reszcie aplikacji
+    dow = today.weekday()
 
     exception = next((e for e in profile.hour_exceptions if e.date == today_str), None)
     if exception:
@@ -54,13 +53,20 @@ def _today_hours(profile: CafeProfile | None) -> TodayHoursOut | None:
 @router.get(
     "/search",
     response_model=CafeSearchListOut,
-    summary="Wyszukaj kawiarnie po nazwie / adresie / mieście (publiczne)",
+    summary="Wyszukaj opublikowane kawiarnie po nazwie / adresie / mieście (publiczne)",
 )
 def search_cafes(
     q: str | None = Query(None, max_length=200),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Cafe)
+    # Tylko opublikowane strony pojawiają się w wyszukiwarce — kawiarnia bez
+    # wiersza w cafe_sites albo z is_published=False jest niewidoczna
+    # (dopóki właściciel nie kliknie "Opublikuj stronę" w panelu).
+    query = (
+        db.query(Cafe)
+        .join(CafeSite, CafeSite.cafe_id == Cafe.id)
+        .filter(CafeSite.is_published == True)  # noqa: E712
+    )
 
     term = (q or "").strip()
     if term:
@@ -91,6 +97,7 @@ def search_cafes(
     results = [
         CafeSearchResultOut(
             cafe_id=c.id,
+            slug=c.slug or c.id,
             cafe_name=c.cafe_name,
             country=c.country,
             city=c.city,
