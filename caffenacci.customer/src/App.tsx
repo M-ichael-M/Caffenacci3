@@ -91,7 +91,7 @@ export default function App() {
   // publiczna strona składana na podstawie ustawień właściciela.
   // Nie jest częścią tego redesignu — zostaje bez zmian.
   if (cafeIdFromUrl) {
-    return <CafePage cafeId={cafeIdFromUrl} />
+    return <CafePage identifier={cafeIdFromUrl} mode="public" />
   }
 
   // ── Logowanie ──────────────────────────────────

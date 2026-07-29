@@ -9,6 +9,7 @@ interface TodayHours {
 
 interface CafeResult {
   cafe_id: string
+  slug: string
   cafe_name: string
   country: string
   city: string
@@ -113,7 +114,7 @@ export default function HomePage() {
               <a
                 key={cafe.cafe_id}
                 className="cafe-card"
-                href={`/cafe/${cafe.cafe_id}`}
+                href={`/cafe/${cafe.slug}`}
                 style={{ textDecoration: 'none', color: 'inherit' }}
               >
                 <div className="cafe-card__logo">
