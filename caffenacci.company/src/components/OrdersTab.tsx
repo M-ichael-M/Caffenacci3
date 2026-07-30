@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ShoppingCart, ClipboardList, Check, X, RefreshCw, Link } from 'lucide-react'
+import { ShoppingCart, ClipboardList, Check, X, RefreshCw } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -367,26 +367,6 @@ export default function OrdersTab({ token, cafeId }: Props) {
         </div>
       </div>
 
-      {/* ── Public URL info ───────────────────────────────────────────── */}
-      <div style={{
-        background: 'var(--surface)', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-sm)',
-        padding: '0.875rem 1.125rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
-        boxShadow: 'var(--shadow-sm)',
-      }}>
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Link size={15} />
-          Link do zamówień dla klientów:
-        </span>
-        <code style={{
-          fontSize: '0.8rem', color: 'var(--gold)', background: 'rgba(169,114,47,0.08)',
-          borderRadius: 4, padding: '2px 8px', wordBreak: 'break-all',
-        }}>
-          POST /orders/public/{cafeId}
-        </code>
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          (panel klienta będzie dostępny wkrótce)
-        </span>
-      </div>
 
       {loading ? (
         <div className="loading-state">
