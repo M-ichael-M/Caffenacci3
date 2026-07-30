@@ -4,6 +4,7 @@ import RegisterForm from './components/RegisterForm'
 import Dashboard from './components/Dashboard'
 import logoTransparent from './assets/logo/logo_transparent.png'
 import './index.css'
+import { ArrowRight } from 'lucide-react'
 
 type View = 'login' | 'register' | 'dashboard'
 
@@ -157,9 +158,11 @@ export default function App() {
               onSwitchToLogin={() => setView('login')}
             />
           )}
-          <p className="cross-app-link">
+          <p className="cross-app-link" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem' }}>
             Jesteś gościem kawiarni?{' '}
-            <a href="http://localhost:5174">Przejdź do strony dla klientów →</a>
+            <a href="http://localhost:5174" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+              Przejdź do strony dla klientów <ArrowRight size={14} />
+            </a>
           </p>
         </div>
       </main>

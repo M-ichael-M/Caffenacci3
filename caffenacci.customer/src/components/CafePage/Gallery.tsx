@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface GalleryImageItem {
   url: string
@@ -46,10 +47,10 @@ export default function Gallery({ images }: Props) {
 
       {lightboxIndex !== null && (
         <div className="cp-lightbox" onClick={close}>
-          <button type="button" className="cp-lightbox__close" onClick={close} aria-label="Zamknij">✕</button>
+          <button type="button" className="cp-lightbox__close" onClick={close} aria-label="Zamknij"><X size={20} /></button>
 
           {images.length > 1 && (
-            <button type="button" className="cp-lightbox__nav cp-lightbox__nav--prev" onClick={showPrev} aria-label="Poprzednie zdjęcie">‹</button>
+            <button type="button" className="cp-lightbox__nav cp-lightbox__nav--prev" onClick={showPrev} aria-label="Poprzednie zdjęcie"><ChevronLeft size={26} /></button>
           )}
 
           <img
@@ -60,7 +61,7 @@ export default function Gallery({ images }: Props) {
           />
 
           {images.length > 1 && (
-            <button type="button" className="cp-lightbox__nav cp-lightbox__nav--next" onClick={showNext} aria-label="Następne zdjęcie">›</button>
+            <button type="button" className="cp-lightbox__nav cp-lightbox__nav--next" onClick={showNext} aria-label="Następne zdjęcie"><ChevronRight size={26} /></button>
           )}
         </div>
       )}

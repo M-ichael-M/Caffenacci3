@@ -8,9 +8,10 @@ interface Props {
   mode: string // 'simple' | 'advanced'
   requireLogin: (action: () => void) => void
   authToken: string | null
+  previewMode?: boolean
 }
 
-export default function ReservationWidget({ cafeId, enabled, mode, requireLogin, authToken }: Props) {
+export default function ReservationWidget({ cafeId, enabled, mode, requireLogin, authToken, previewMode = false }: Props) {
   if (!enabled) {
     return (
       <div className="res-empty-card">
@@ -23,8 +24,8 @@ export default function ReservationWidget({ cafeId, enabled, mode, requireLogin,
 
   // Dwa całkowicie niezależne mechanizmy — bez wspólnego formularza ani statusu.
   if (mode === 'advanced') {
-    return <AdvancedReservationForm cafeId={cafeId} requireLogin={requireLogin} authToken={authToken} />
+    return <AdvancedReservationForm cafeId={cafeId} requireLogin={requireLogin} authToken={authToken} previewMode={previewMode} />
   }
 
-  return <SimpleReservationForm cafeId={cafeId} requireLogin={requireLogin} authToken={authToken} />
+  return <SimpleReservationForm cafeId={cafeId} requireLogin={requireLogin} authToken={authToken} previewMode={previewMode} />
 }

@@ -13,7 +13,7 @@ import './cafePage.css'
 import LoyaltyWidget from './LoyaltyWidget'
 import NewsWidget from './NewsWidget'
 import { CoffeeIcon, PhoneIcon, MailIcon } from './icons'
-import { Eye } from 'lucide-react'
+import { Eye, X, ExternalLink } from 'lucide-react'
 
 // ── Typy (odpowiadają backendowemu PublicSiteOut) ───────────────────────────
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
@@ -163,10 +163,13 @@ function HomeFab() {
 }
 
 export default function CafePage({ identifier, mode = 'public', previewToken }: Props) {
+  const isPreview = mode === 'preview'
   const [data, setData] = useState<PublicSiteData | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-  const [auth, setAuth] = useState<ClientAuthState | null>(() => loadClientAuth())
+  // W trybie podglądu nigdy nie ma sensu wczytywać zapisanej sesji klienta —
+  // podgląd ma pokazywać stronę tak, jak widzi ją niezalogowany gość.
+  const [auth, setAuth] = useState<ClientAuthState | null>(() => (isPreview ? null : loadClientAuth()))
   const [authModal, setAuthModal] = useState<null | 'login' | 'register'>(null)
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
 
@@ -217,7 +220,11 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
     return () => window.removeEventListener('click', spawnSparks)
   }, [data?.template])
 
+  // W trybie podglądu logowanie/rejestracja są całkowicie wyłączone — to ma
+  // być wyłącznie podgląd wizualny, bez możliwości wykonania jakiejkolwiek
+  // akcji wymagającej kontaktu z serwerem (zamówienia, rezerwacje, opinie).
   function requireLogin(action: () => void) {
+    if (isPreview) return
     if (auth) { action(); return }
     setPendingAction(() => action)
     setAuthModal('login')
@@ -253,7 +260,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
     return (
       <div className="loading-state" style={{ minHeight: '100vh' }}>
         <p>Nie znaleziono takiej kawiarni.</p>
-        <HomeFab />
+        {!isPreview && <HomeFab />}
       </div>
     )
   }
@@ -294,12 +301,12 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
 
   const gmapsUrl = hasLocation ? `https://www.google.com/maps?q=${data.latitude},${data.longitude}` : null
 
- return (
+  return (
     <div className={`cafe-page cafe-page--${data.template}`} style={paletteVars as CSSProperties}>
       {mode === 'preview' && (
         <div className="cp-preview-banner">
           <Eye size={15} />
-          Podgląd właściciela — tak będzie wyglądać strona po opublikowaniu.
+          Podgląd właściciela — tylko wygląd, bez logowania i akcji na serwerze.
         </div>
       )}
       {/* Sticky nav */}
@@ -322,7 +329,16 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
         <button className="cp-nav__link" onClick={() => document.getElementById('cp-reviews')?.scrollIntoView({ behavior: 'smooth' })}>Opinie</button>
         <div style={{ flex: 1 }} />
         <div className="cp-account">
-          {auth ? (
+          {isPreview ? (
+            // Podgląd jest wyłącznie wizualny — brak logowania/rejestracji/konta.
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+              fontSize: '0.8125rem', color: 'var(--text-muted)',
+              border: '1px solid var(--border)', borderRadius: 100, padding: '0.3rem 0.75rem',
+            }}>
+              <Eye size={14} /> Podgląd
+            </span>
+          ) : auth ? (
             <>
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Cześć, {auth.nick}</span>
               <button className="btn btn--outline-dark btn--sm" onClick={handleLogout}>Wyloguj</button>
@@ -377,6 +393,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
               authToken={auth?.token ?? null}
               weeklyHours={data.weekly_hours}
               hourExceptions={data.hour_exceptions}
+              previewMode={isPreview}
             />
           ) : (
             <p className="cp-muted-note">Menu nie zostało jeszcze opublikowane.</p>
@@ -393,6 +410,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
               mode={data.reservations_mode}
               requireLogin={requireLogin}
               authToken={auth?.token ?? null}
+              previewMode={isPreview}
             />
           </section>
         )}
@@ -410,6 +428,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
               rewards={data.loyalty_rewards}
               requireLogin={requireLogin}
               authToken={auth?.token ?? null}
+              previewMode={isPreview}
             />
           </section>
         )}
@@ -436,8 +455,8 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
                   {row.exception && <span className="cp-hours-exception-badge">wyjątek</span>}
                 </span>
                 <span>
-                  {!row.is_closed && row.open_time && row.close_time 
-                    ? `${row.open_time}–${row.close_time}` 
+                  {!row.is_closed && row.open_time && row.close_time
+                    ? `${row.open_time}–${row.close_time}`
                     : 'Zamknięte'}
                 </span>
               </div>
@@ -487,8 +506,8 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
                     />
                   )}
                   {data.location_show_gmaps_link && gmapsUrl && (
-                    <a href={gmapsUrl} target="_blank" rel="noreferrer" className="link" style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.8125rem' }}>
-                      Otwórz w Google Maps ↗
+                    <a href={gmapsUrl} target="_blank" rel="noreferrer" className="link" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem', fontSize: '0.8125rem' }}>
+                      Otwórz w Google Maps <ExternalLink size={13} />
                     </a>
                   )}
                 </div>
@@ -537,12 +556,13 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
             reviews={data.reviews}
             requireLogin={requireLogin}
             authToken={auth?.token ?? null}
+            previewMode={isPreview}
           />
         </section>
       </main>
 
-      {/* Modal logowania/rejestracji */}
-      {authModal && (
+      {/* Modal logowania/rejestracji — nigdy nie renderowany w trybie podglądu */}
+      {!isPreview && authModal && (
         <div className="menu-editor-overlay" onClick={e => { if (e.target === e.currentTarget) { setAuthModal(null); setPendingAction(null) } }}>
           <div className="menu-editor" style={{ maxWidth: 460, height: 'auto', maxHeight: '90vh' }}>
             <div className="me-header">
@@ -550,7 +570,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
                 <div className="me-eyebrow">Konto gościa</div>
                 <h2 className="me-title">{authModal === 'login' ? 'Zaloguj się' : 'Załóż konto'}</h2>
               </div>
-              <button className="me-close" type="button" onClick={() => { setAuthModal(null); setPendingAction(null) }}>✕</button>
+              <button className="me-close" type="button" onClick={() => { setAuthModal(null); setPendingAction(null) }}><X size={16} /></button>
             </div>
             <div className="me-body">
               <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
@@ -567,7 +587,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
       )}
 
       {data.template === 'magic' && <div ref={sparkLayerRef} className="cp-spark-layer" aria-hidden="true" />}
-      <HomeFab />
+      {!isPreview && <HomeFab />}
     </div>
   )
 }

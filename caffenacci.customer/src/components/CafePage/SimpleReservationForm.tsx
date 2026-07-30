@@ -5,13 +5,16 @@ interface Props {
   cafeId: string
   requireLogin: (action: () => void) => void
   authToken: string | null
+  previewMode?: boolean
 }
+
+const PREVIEW_TITLE = 'Niedostępne w trybie podglądu.'
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function SimpleReservationForm({ cafeId, requireLogin, authToken }: Props) {
+export default function SimpleReservationForm({ cafeId, requireLogin, authToken, previewMode = false }: Props) {
   const [open, setOpen] = useState(false)
   const [date, setDate] = useState(todayStr())
   const [time, setTime] = useState('12:00')
@@ -24,7 +27,7 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken 
   const [success, setSuccess] = useState(false)
 
   const handleSubmit = async () => {
-    if (!authToken) return
+    if (!authToken || previewMode) return
     setSubmitting(true)
     setError(null)
     try {
@@ -58,7 +61,9 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken 
           type="button"
           className="btn btn--primary"
           style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-          onClick={() => requireLogin(() => setOpen(true))}
+          onClick={() => { if (!previewMode) requireLogin(() => setOpen(true)) }}
+          disabled={previewMode}
+          title={previewMode ? PREVIEW_TITLE : undefined}
         >
           <CalendarIcon size={16} /> Zarezerwuj stolik
         </button>

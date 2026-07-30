@@ -33,9 +33,11 @@ interface Props {
   authToken: string | null
   weeklyHours: WeeklyHours[]
   hourExceptions: HourException[]
+  previewMode?: boolean
 }
 
 const ORDER_BUFFER_MINUTES = 15
+const PREVIEW_TITLE = 'Niedostępne w trybie podglądu.'
 
 function dayOfWeekFromDate(dateStr: string): number {
   const d = new Date(dateStr + 'T00:00:00')
@@ -75,7 +77,10 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireLogin, authToken, weeklyHours, hourExceptions }: Props) {
+export default function MenuOrdering({
+  cafeId, sections, ordersEnabled, requireLogin, authToken, weeklyHours, hourExceptions,
+  previewMode = false,
+}: Props) {
   const [cart, setCart] = useState<Record<string, CartLine>>({})
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [date, setDate] = useState(todayStr())
@@ -102,7 +107,9 @@ export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireL
     : false
 
   const addToCart = (item: MenuItem) => {
-    if (item.is_unavailable || !ordersEnabled) return
+    // Podgląd jest wyłącznie wizualny — nigdy nie dopuszczamy do żadnej
+    // akcji, nawet gdyby przycisk poniżej nie był (z jakiegoś powodu) disabled.
+    if (item.is_unavailable || !ordersEnabled || previewMode) return
     requireLogin(() => {
       setCart(prev => {
         const existing = prev[item.id]
@@ -136,7 +143,7 @@ export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireL
   })()
 
   const handleSubmitOrder = async () => {
-    if (lines.length === 0 || !authToken) return
+    if (lines.length === 0 || !authToken || previewMode) return
     if (!orderWindow) {
       setError('Kawiarnia jest zamknięta w wybranym dniu — wybierz inną datę.')
       return
@@ -206,7 +213,13 @@ export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireL
                         <button type="button" onClick={() => addToCart(item)}>+</button>
                       </div>
                     ) : (
-                      <button type="button" className="cp-add-btn" onClick={() => addToCart(item)}>
+                      <button
+                        type="button"
+                        className="cp-add-btn"
+                        onClick={() => addToCart(item)}
+                        disabled={previewMode}
+                        title={previewMode ? PREVIEW_TITLE : undefined}
+                      >
                         + Dodaj do zamówienia
                       </button>
                     )
@@ -236,9 +249,6 @@ export default function MenuOrdering({ cafeId, sections, ordersEnabled, requireL
 
       {checkoutOpen && (
         <div className="menu-editor-overlay" onClick={e => { if (e.target === e.currentTarget) setCheckoutOpen(false) }}>
-          {/* Bez inline height/maxHeight — korzystamy z domyślnych (hojniejszych)
-              wymiarów z .menu-editor w cafePage.css, żeby podsumowanie
-              zamówienia miało dość miejsca i nie wymagało ciągłego przewijania. */}
           <div className="menu-editor" style={{ maxWidth: 480 }}>
             <div className="me-header">
               <div>

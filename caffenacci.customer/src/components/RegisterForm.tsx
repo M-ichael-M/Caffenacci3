@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Check } from 'lucide-react'
 
 interface FormData {
   full_name: string
@@ -168,7 +169,9 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
             ) : nickStatus === 'checking' ? (
               <span className="field__hint">Sprawdzanie dostępności…</span>
             ) : nickStatus === 'available' ? (
-              <span className="field__hint field__hint--ok">✓ Nick dostępny</span>
+              <span className="field__hint field__hint--ok" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <Check size={13} /> Nick dostępny
+              </span>
             ) : nickStatus === 'taken' ? (
               <span className="field__error">Ten nick jest już zajęty</span>
             ) : null}

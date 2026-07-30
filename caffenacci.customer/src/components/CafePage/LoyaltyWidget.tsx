@@ -18,7 +18,10 @@ interface Props {
   rewards: RewardItem[]
   requireLogin: (action: () => void) => void
   authToken: string | null
+  previewMode?: boolean
 }
+
+const PREVIEW_TITLE = 'Niedostępne w trybie podglądu.'
 
 interface BalanceOut {
   points: number
@@ -45,13 +48,13 @@ function StampsTrack({ stamps, max }: { stamps: number; max: number }) {
 
 export default function LoyaltyWidget({
   cafeId, mode, stampsMax, stampsEarnDesc, stampsRewardDesc, rewards,
-  requireLogin, authToken,
+  requireLogin, authToken, previewMode = false,
 }: Props) {
   const [balance, setBalance] = useState<BalanceOut | null>(null)
   const [loading, setLoading] = useState(false)
 
   const fetchBalance = useCallback(async () => {
-    if (!authToken) { setBalance(null); return }
+    if (!authToken || previewMode) { setBalance(null); return }
     setLoading(true)
     try {
       const res = await fetch(`http://localhost:8000/loyalty/client/${cafeId}/mine`, {
@@ -60,7 +63,7 @@ export default function LoyaltyWidget({
       if (res.ok) setBalance(await res.json())
     } catch { /* ignore */ }
     finally { setLoading(false) }
-  }, [cafeId, authToken])
+  }, [cafeId, authToken, previewMode])
 
   useEffect(() => { fetchBalance() }, [fetchBalance])
 
@@ -115,7 +118,7 @@ export default function LoyaltyWidget({
       )}
 
       {/* Twój stan */}
-      {authToken ? (
+      {authToken && !previewMode ? (
         loading ? (
           <div className="loading-state" style={{ padding: '1rem' }}>
             <div className="loading-spinner" />
@@ -149,7 +152,9 @@ export default function LoyaltyWidget({
           type="button"
           className="btn btn--outline-dark"
           style={{ width: 'auto' }}
-          onClick={() => requireLogin(() => {})}
+          onClick={() => { if (!previewMode) requireLogin(() => {}) }}
+          disabled={previewMode}
+          title={previewMode ? PREVIEW_TITLE : undefined}
         >
           Zaloguj się, aby zobaczyć swój stan
         </button>

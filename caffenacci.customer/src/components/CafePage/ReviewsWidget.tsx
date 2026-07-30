@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Star, Pencil } from 'lucide-react'
 
 interface ReviewItem {
   id: string
@@ -15,13 +16,22 @@ interface Props {
   reviews: ReviewItem[]
   requireLogin: (action: () => void) => void
   authToken: string | null
+  previewMode?: boolean
 }
 
-function Stars({ rating, size = '1rem' }: { rating: number; size?: string }) {
+const PREVIEW_TITLE = 'Niedostępne w trybie podglądu.'
+
+function Stars({ rating, size = 16 }: { rating: number; size?: number }) {
   return (
-    <span style={{ fontSize: size, letterSpacing: '1px', color: 'var(--gold)', whiteSpace: 'nowrap' }}>
+    <span style={{ display: 'inline-flex', gap: 2, color: 'var(--gold)' }}>
       {[1, 2, 3, 4, 5].map(i => (
-        <span key={i} style={{ opacity: i <= Math.round(rating) ? 1 : 0.25 }}>★</span>
+        <Star
+          key={i}
+          size={size}
+          fill={i <= Math.round(rating) ? 'currentColor' : 'none'}
+          strokeWidth={i <= Math.round(rating) ? 0 : 1.5}
+          style={{ opacity: i <= Math.round(rating) ? 1 : 0.35 }}
+        />
       ))}
     </span>
   )
@@ -54,8 +64,8 @@ function RatingForm({
         <div style={{ display: 'flex', gap: '0.25rem' }}>
           {[1, 2, 3, 4, 5].map(n => (
             <button key={n} type="button" onClick={() => setRating(n)}
-              style={{ appearance: 'none', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--gold)', opacity: n <= rating ? 1 : 0.3 }}>
-              ★
+              style={{ appearance: 'none', border: 'none', background: 'none', cursor: 'pointer', display: 'inline-flex', color: 'var(--gold)', opacity: n <= rating ? 1 : 0.3 }}>
+              <Star size={20} fill={n <= rating ? 'currentColor' : 'none'} strokeWidth={n <= rating ? 0 : 1.5} />
             </button>
           ))}
         </div>
@@ -120,7 +130,7 @@ function MyReviewCard({ r, onEdit, onDelete, deleting }: {
   )
 }
 
-export default function ReviewsWidget({ cafeId, average, count, reviews, requireLogin, authToken }: Props) {
+export default function ReviewsWidget({ cafeId, average, count, reviews, requireLogin, authToken, previewMode = false }: Props) {
   const [list, setList] = useState(reviews)
   const [avg, setAvg] = useState(average)
   const [cnt, setCnt] = useState(count)
@@ -137,7 +147,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
   // ── Sprawdź, czy zalogowany klient ma już opinię o tej kawiarni ────────
 
   const fetchMine = useCallback(async () => {
-    if (!authToken) { setMyReview(null); return }
+    if (!authToken || previewMode) { setMyReview(null); return }
     setLoadingMine(true)
     try {
       const res = await fetch(`http://localhost:8000/reviews/client/${cafeId}/mine`, {
@@ -149,7 +159,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       }
     } catch { /* ignore */ }
     finally { setLoadingMine(false) }
-  }, [cafeId, authToken])
+  }, [cafeId, authToken, previewMode])
 
   useEffect(() => { fetchMine() }, [fetchMine])
 
@@ -159,7 +169,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
   // ── Dodanie nowej opinii ───────────────────────────────────────────────
 
   const handleCreate = async (rating: number, comment: string) => {
-    if (!authToken) return
+    if (!authToken || previewMode) return
     setSubmitting(true)
     setError(null)
     try {
@@ -188,7 +198,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
   // ── Edycja własnej opinii ──────────────────────────────────────────────
 
   const handleUpdate = async (rating: number, comment: string) => {
-    if (!authToken || !myReview) return
+    if (!authToken || !myReview || previewMode) return
     setSubmitting(true)
     setError(null)
     try {
@@ -216,7 +226,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
   // ── Usunięcie własnej opinii ───────────────────────────────────────────
 
   const handleDelete = async () => {
-    if (!authToken || !myReview) return
+    if (!authToken || !myReview || previewMode) return
     if (!confirm('Czy na pewno chcesz usunąć swoją opinię?')) return
     setDeleting(true)
     try {
@@ -244,14 +254,20 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       <div className="rv-summary">
         <div className="rv-summary__score">{cnt > 0 ? avg.toFixed(1) : '—'}</div>
         <div className="rv-summary__details">
-          <Stars rating={avg} size="1.25rem" />
+          <Stars rating={avg} size={20} />
           <div className="rv-summary__count">{cnt === 0 ? 'Brak opinii' : cnt === 1 ? '1 opinia' : `${cnt} opinii`}</div>
         </div>
         <div style={{ flex: 1 }} />
         {!formOpen && !myReview && !loadingMine && (
-          <button type="button" className="btn btn--primary" style={{ width: 'auto', marginTop: 0 }}
-            onClick={() => requireLogin(() => setFormOpen(true))}>
-            ✎ Dodaj opinię
+          <button
+            type="button"
+            className="btn btn--primary"
+            style={{ width: 'auto', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            onClick={() => { if (!previewMode) requireLogin(() => setFormOpen(true)) }}
+            disabled={previewMode}
+            title={previewMode ? PREVIEW_TITLE : undefined}
+          >
+            <Pencil size={15} /> Dodaj opinię
           </button>
         )}
       </div>

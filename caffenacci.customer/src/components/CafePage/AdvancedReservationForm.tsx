@@ -48,7 +48,10 @@ interface Props {
   cafeId: string
   requireLogin: (action: () => void) => void
   authToken: string | null
+  previewMode?: boolean
 }
+
+const PREVIEW_TITLE = 'Niedostępne w trybie podglądu.'
 
 // Grupa identycznych stolików (ten sam typ, liczba miejsc i etykieta) —
 // dla klienta liczy się tylko "jaki to rodzaj stolika", a nie który
@@ -151,7 +154,7 @@ function availableTableIdsInGroup(
   return result
 }
 
-export default function AdvancedReservationForm({ cafeId, requireLogin, authToken }: Props) {
+export default function AdvancedReservationForm({ cafeId, requireLogin, authToken, previewMode = false }: Props) {
   const [open, setOpen] = useState(false)
   const [info, setInfo] = useState<ReservationInfo | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(false)
@@ -332,7 +335,9 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
         type="button"
         className="btn btn--primary"
         style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-        onClick={() => requireLogin(() => setOpen(true))}
+        onClick={() => { if (!previewMode) requireLogin(() => setOpen(true)) }}
+        disabled={previewMode}
+        title={previewMode ? PREVIEW_TITLE : undefined}
       >
         <CalendarIcon size={16} /> Zarezerwuj stolik
       </button>

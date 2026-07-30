@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { NewspaperIcon } from './icons'
+import { NewspaperIcon} from './icons'
+import { X } from 'lucide-react'
 
 interface NewsPostItem {
   id: string
@@ -59,7 +60,7 @@ export default function NewsWidget({ posts }: Props) {
                 <div className="me-eyebrow">Aktualność</div>
                 <h2 className="me-title">{openPost.title}</h2>
               </div>
-              <button className="me-close" type="button" onClick={() => setOpenId(null)} aria-label="Zamknij">✕</button>
+              <button className="me-close" type="button" onClick={() => setOpenId(null)} aria-label="Zamknij"><X size={16} /></button>
             </div>
             <div className="me-body">
               <div className="cp-news-modal-date">{formatDate(openPost.created_at)}</div>
