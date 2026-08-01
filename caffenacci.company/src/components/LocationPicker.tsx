@@ -1,25 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+import * as maplibregl from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
 import { ExternalLink, X } from 'lucide-react'
 
-// Naprawa domyślnej ikonki markera (Leaflet + bundler = klasyczny problem)
-const DefaultIcon = L.icon({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-})
-L.Marker.prototype.options.icon = DefaultIcon
-
-// ── Typy ─────────────────────────────────────────────────────────────────
+// Styl mapy: OpenFreeMap „Liberty" — darmowe na zawsze, bez limitów, bez
+// klucza API, można używać komercyjnie (dane © OpenStreetMap contributors,
+// atrybucję dorzuca automatycznie MapLibre). Alternatywa: „positron" —
+// bardziej stonowany, szary styl, jeśli „liberty" jest zbyt kolorowe.
+// https://openfreemap.org
+const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty'
 
 interface NominatimResult {
   place_id: number
@@ -41,33 +30,9 @@ interface Props {
   onShowGmapsLinkChange: (v: boolean) => void
 }
 
-const DEFAULT_CENTER: [number, number] = [52.0, 19.0] // środek Polski
+const DEFAULT_CENTER: [number, number] = [19.0, 52.0] // środek Polski (lng, lat)
 const DEFAULT_ZOOM = 6
 const PIN_ZOOM = 16
-
-// ── Klik na mapie ustawia pinezkę ───────────────────────────────────────
-
-function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      onPick(e.latlng.lat, e.latlng.lng)
-    },
-  })
-  return null
-}
-
-// ── Programowe przelecenie mapy do punktu (po wyszukaniu adresu) ───────
-
-function FlyTo({ lat, lng, tick }: { lat: number; lng: number; tick: number }) {
-  const map = useMap()
-  useEffect(() => {
-    if (tick > 0) map.flyTo([lat, lng], PIN_ZOOM)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick])
-  return null
-}
-
-// ── Toggle (spójny z resztą aplikacji) ──────────────────────────────────
 
 function Toggle({ checked, onChange, disabled = false }: {
   checked: boolean; onChange: (v: boolean) => void; disabled?: boolean
@@ -96,8 +61,6 @@ function Toggle({ checked, onChange, disabled = false }: {
   )
 }
 
-// ── Główny komponent ─────────────────────────────────────────────────────
-
 export default function LocationPicker({
   latitude, longitude, onPositionChange,
   locationVisible, onLocationVisibleChange,
@@ -108,11 +71,70 @@ export default function LocationPicker({
   const [results, setResults]   = useState<NominatimResult[]>([])
   const [searching, setSearching] = useState(false)
   const [showResults, setShowResults] = useState(false)
-  const [flyTick, setFlyTick]   = useState(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<maplibregl.Map | null>(null)
+  const markerRef = useRef<maplibregl.Marker | null>(null)
+
   const hasPin = latitude !== null && longitude !== null
-  const center: [number, number] = hasPin ? [latitude!, longitude!] : DEFAULT_CENTER
+
+  // Ref na najnowszy callback, żeby nie przebudowywać mapy (i nie tracić
+  // jej zoomu/pozycji) za każdym razem, gdy rodzic przekaże nową funkcję.
+  const onPositionChangeRef = useRef(onPositionChange)
+  onPositionChangeRef.current = onPositionChange
+
+  // ── Inicjalizacja mapy (raz) ─────────────────────────────────────────
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return
+
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: MAP_STYLE,
+      center: hasPin ? [longitude!, latitude!] : DEFAULT_CENTER,
+      zoom: hasPin ? PIN_ZOOM : DEFAULT_ZOOM,
+    })
+
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+
+    map.on('click', e => {
+      onPositionChangeRef.current(e.lngLat.lat, e.lngLat.lng)
+    })
+
+    mapRef.current = map
+    return () => {
+      map.remove()
+      mapRef.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Marker: dodaj / przesuń / usuń w zależności od pinezki ──────────
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    if (!hasPin) {
+      markerRef.current?.remove()
+      markerRef.current = null
+      return
+    }
+
+    if (!markerRef.current) {
+      markerRef.current = new maplibregl.Marker({ draggable: true, color: '#A9722F' })
+        .setLngLat([longitude!, latitude!])
+        .addTo(map)
+
+      markerRef.current.on('dragend', () => {
+        const pos = markerRef.current!.getLngLat()
+        onPositionChangeRef.current(pos.lat, pos.lng)
+      })
+    } else {
+      markerRef.current.setLngLat([longitude!, latitude!])
+    }
+  }, [hasPin, latitude, longitude])
 
   // ── Wyszukiwanie adresu przez Nominatim (OpenStreetMap) ────────────────
 
@@ -148,7 +170,7 @@ export default function LocationPicker({
     onPositionChange(lat, lng)
     setQuery(r.display_name)
     setShowResults(false)
-    setFlyTick(t => t + 1)
+    mapRef.current?.flyTo({ center: [lng, lat], zoom: PIN_ZOOM })
   }
 
   const clearPin = () => {
@@ -206,28 +228,7 @@ export default function LocationPicker({
       </div>
 
       {/* Mapa */}
-      <div className="loc-map-container">
-        <MapContainer center={center} zoom={hasPin ? PIN_ZOOM : DEFAULT_ZOOM} style={{ height: '100%', width: '100%' }}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <ClickHandler onPick={onPositionChange} />
-          {hasPin && <FlyTo lat={latitude!} lng={longitude!} tick={flyTick} />}
-          {hasPin && (
-            <Marker
-              position={[latitude!, longitude!]}
-              draggable
-              eventHandlers={{
-                dragend: (e) => {
-                  const pos = e.target.getLatLng()
-                  onPositionChange(pos.lat, pos.lng)
-                },
-              }}
-            />
-          )}
-        </MapContainer>
-      </div>
+      <div className="loc-map-container" ref={mapContainerRef} />
 
       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
         Kliknij na mapie, aby postawić pinezkę, albo przeciągnij istniejącą. Możesz też wyszukać adres powyżej.

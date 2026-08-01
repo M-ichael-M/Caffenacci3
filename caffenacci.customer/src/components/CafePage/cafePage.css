@@ -69,6 +69,13 @@
   display: flex; align-items: center; gap: 0.625rem;
 }
 
+.cp-location-map {
+  width: 100%;
+  height: 180px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
 /* ── Hero ───────────────────────────────────────── */
 
 .cp-hero {
@@ -2382,9 +2389,9 @@ select.me-input { cursor: pointer; }
   padding: 1.375rem 1.5rem;
   box-shadow: 0 8px 28px rgba(31,38,135,0.09);
 }
-.cafe-page--glass .cp-info-grid iframe {
+.cafe-page--glass .cp-location-map {
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.6) !important;
+  border: 1px solid rgba(255,255,255,0.6);
 }
 
 .cafe-page--glass .btn--primary {
@@ -2883,8 +2890,8 @@ select.me-input { cursor: pointer; }
   border-radius: 3px;
   padding: 1.25rem 1.5rem;
 }
-.cafe-page--futuristic .cp-info-grid iframe {
-  border: 1px solid rgba(181,114,10,0.35) !important;
+.cafe-page--futuristic .cp-location-map {
+  border: 1px solid rgba(181,114,10,0.35);
   filter: grayscale(0.3) contrast(1.05) brightness(0.9);
 }
 
@@ -2918,8 +2925,7 @@ select.me-input { cursor: pointer; }
 .cafe-page--futuristic .me-close:hover { border-color: var(--gold); color: var(--gold); }
 .cafe-page--futuristic .me-footer { background: rgba(181,114,10,0.03); border-top-color: rgba(181,114,10,0.25); }
 
-/* ── Formularz logowania / rejestracji wewnątrz modala ──
-   LoginForm/RegisterForm używają klas .form-*/.field__*/.checkbox-field__*
+/* ── Formularz logowania / rejestracji wewnątrz modala *
    z index.css, stylowanych domyślnie dla jasnego tła — na ciemnym module
    HUD trzeba je nadpisać w całości, inaczej tekst ginie na czarnym tle. */
 .cafe-page--futuristic .form-title {

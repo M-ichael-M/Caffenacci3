@@ -14,6 +14,7 @@ import LoyaltyWidget from './LoyaltyWidget'
 import NewsWidget from './NewsWidget'
 import { CoffeeIcon, PhoneIcon, MailIcon } from './icons'
 import { Eye, X, ExternalLink } from 'lucide-react'
+import CafeLocationMap from './CafeLocationMap'
 
 // ── Typy (odpowiadają backendowemu PublicSiteOut) ───────────────────────────
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
@@ -496,14 +497,9 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
               {hasLocation && (
                 <div>
                   {data.location_show_map && (
-                    <iframe
-                      title="Mapa"
-                      width="100%"
-                      height="180"
-                      style={{ border: 0, borderRadius: 8 }}
-                      loading="lazy"
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${data.longitude! - 0.01}%2C${data.latitude! - 0.01}%2C${data.longitude! + 0.01}%2C${data.latitude! + 0.01}&layer=mapnik&marker=${data.latitude}%2C${data.longitude}`}
-                    />
+                    <div className="cp-location-map">
+                      <CafeLocationMap latitude={data.latitude!} longitude={data.longitude!} />
+                    </div>
                   )}
                   {data.location_show_gmaps_link && gmapsUrl && (
                     <a href={gmapsUrl} target="_blank" rel="noreferrer" className="link" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem', fontSize: '0.8125rem' }}>

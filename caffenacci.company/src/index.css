@@ -1827,7 +1827,7 @@ textarea.field__input::placeholder {
   z-index: 0;
 }
 
-.leaflet-container {
+.maplibregl-map {
   font-family: 'Inter', system-ui, sans-serif;
 }
 
