@@ -104,6 +104,8 @@ export default function LocationPicker({
 
     mapRef.current = map
     return () => {
+      markerRef.current?.remove()
+      markerRef.current = null
       map.remove()
       mapRef.current = null
     }
