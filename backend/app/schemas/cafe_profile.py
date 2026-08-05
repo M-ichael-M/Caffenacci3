@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.schemas.gallery import GalleryImageOut, PublicGalleryImageOut
+from app.schemas.badges import ALLOWED_BADGE_KEYS, MAX_FEATURED_BADGES
 
 
 # ── Stałe ──────────────────────────────────────────────────────────────────
@@ -91,6 +92,34 @@ class EmployeeOut(EmployeeIn):
     model_config = {"from_attributes": True}
 
 
+# ── Plakietki ────────────────────────────────────────────────────────────────
+# Katalog etykiet/ikon/opisów żyje na froncie (badges.ts w obu aplikacjach) —
+# backend zna wyłącznie zbiór dozwolonych kluczy, do walidacji.
+
+class BadgeIn(BaseModel):
+    key:      str  = Field(..., max_length=50)
+    featured: bool = False
+    position: int  = Field(0, ge=0)
+
+    @field_validator("key")
+    @classmethod
+    def validate_key(cls, v: str) -> str:
+        if v not in ALLOWED_BADGE_KEYS:
+            raise ValueError(f"Nieprawidłowa plakietka: {v}")
+        return v
+
+
+class BadgeOut(BadgeIn):
+    id: str
+    model_config = {"from_attributes": True}
+
+
+class PublicBadgeOut(BaseModel):
+    key:      str
+    featured: bool
+    model_config = {"from_attributes": True}
+
+
 # ── Pełny profil — zapis (PUT) ────────────────────────────────────────────
 # Logo i zdjęcia galerii wgrywane są osobnymi endpointami (multipart),
 # więc tu nie występują — poza flagą widoczności galerii.
@@ -122,6 +151,9 @@ class CafeProfileIn(BaseModel):
     # Social media i pracownicy — opcjonalne listy
     social_links: List[SocialLinkIn] = []
     employees:    List[EmployeeIn]   = []
+
+    # Plakietki — opcjonalne, maks. MAX_FEATURED_BADGES wyróżnionych
+    badges: List[BadgeIn] = []
 
     # ── Lokalizacja ──────────────────────────────────────────────────────
     latitude: Optional[float] = Field(None, ge=-90, le=90)
@@ -159,6 +191,17 @@ class CafeProfileIn(BaseModel):
         days = {h.day_of_week for h in v}
         if days != set(range(7)):
             raise ValueError("Plan tygodniowy musi zawierać dokładnie 7 dni (0-6), po jednym wpisie na dzień.")
+        return v
+
+    @field_validator("badges")
+    @classmethod
+    def validate_badges(cls, v: List[BadgeIn]) -> List[BadgeIn]:
+        keys = [b.key for b in v]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Każdą plakietkę można wybrać tylko raz.")
+        featured_count = sum(1 for b in v if b.featured)
+        if featured_count > MAX_FEATURED_BADGES:
+            raise ValueError(f"Można wyróżnić maksymalnie {MAX_FEATURED_BADGES} plakietki.")
         return v
 
 
@@ -200,6 +243,7 @@ class CafeProfileOut(BaseModel):
     hour_exceptions: List[HourExceptionOut]
     social_links:    List[SocialLinkOut]
     employees:       List[EmployeeOut]
+    badges:          List[BadgeOut] = []
 
     gallery_visible: bool
     gallery_images:  List[GalleryImageOut] = []
@@ -265,6 +309,7 @@ class PublicCafeProfileOut(BaseModel):
 
     social_links: List[PublicSocialLinkOut]
     employees:    List[PublicEmployeeOut]
+    badges:       List[PublicBadgeOut] = []
 
     # Pusta lista, jeśli galeria jest wyłączona lub bez zdjęć.
     gallery_images: List[PublicGalleryImageOut] = []

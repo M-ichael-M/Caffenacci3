@@ -60,6 +60,10 @@ class CafeProfile(Base):
         "ProfileEmployee", back_populates="profile",
         cascade="all, delete-orphan", order_by="ProfileEmployee.position",
     )
+    badges = relationship(
+        "CafeProfileBadge", back_populates="profile",
+        cascade="all, delete-orphan", order_by="CafeProfileBadge.position",
+    )
 
     # ── Lokalizacja na mapie ─────────────────────────────────────────────
     latitude = Column(Float, nullable=True)
@@ -150,3 +154,25 @@ class ProfileEmployee(Base):
     position   = Column(Integer, nullable=False, default=0)
 
     profile = relationship("CafeProfile", back_populates="employees")
+
+
+# ── Plakietki ────────────────────────────────────────────────────────────
+# Wybierane przez właściciela — pomagają gościom znaleźć kawiarnię pasującą
+# do ich potrzeb (np. "przyjazna zwierzętom", "idealna do pracy"). Katalog
+# dozwolonych kluczy (etykiety/ikony/opisy żyją na froncie) trzymany jest
+# w app/schemas/badges.py i służy tylko do walidacji.
+# `featured=True` oznacza plakietkę wyróżnioną — pokazuje się w kafelku
+# kawiarni w wynikach wyszukiwania (maks. MAX_FEATURED_BADGES, egzekwowane
+# w app/schemas/cafe_profile.py).
+
+class CafeProfileBadge(Base):
+    __tablename__ = "cafe_profile_badges"
+
+    id         = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
+    profile_id = Column(TEXT, ForeignKey("cafe_profiles.id", ondelete="CASCADE"),
+                         nullable=False, index=True)
+    key        = Column(String(50), nullable=False)
+    featured   = Column(Boolean, nullable=False, default=False)
+    position   = Column(Integer, nullable=False, default=0)
+
+    profile = relationship("CafeProfile", back_populates="badges")

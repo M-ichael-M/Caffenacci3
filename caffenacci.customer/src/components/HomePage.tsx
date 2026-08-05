@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Search, Coffee, Clock, ChevronRight, Star } from 'lucide-react'
+import { BADGE_CATALOG } from '../badges'
 
 interface TodayHours {
   is_closed: boolean
@@ -20,6 +21,7 @@ interface CafeResult {
   today_hours: TodayHours | null
   average_rating?: number | null
   review_count?: number
+  featured_badges?: string[]
 }
 
 function formatTodayHours(h: TodayHours | null): string {
@@ -37,6 +39,34 @@ function RatingBadge({ rating, count }: { rating: number; count: number }) {
         ({count === 1 ? '1 opinia' : count < 5 ? `${count} opinie` : `${count} opinii`})
       </span>
     </span>
+  )
+}
+
+function CafeBadgeChips({ keys }: { keys: string[] }) {
+  if (keys.length === 0) return null
+  return (
+    <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+      {keys.map(key => {
+        const def = BADGE_CATALOG.find(b => b.key === key)
+        if (!def) return null
+        const Icon = def.icon
+        return (
+          <span
+            key={key}
+            title={def.info ?? def.label}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+              fontSize: '0.6875rem', fontWeight: 600, color: 'var(--gold)',
+              background: 'rgba(169,114,47,0.1)', borderRadius: 100,
+              padding: '2px 8px', whiteSpace: 'nowrap',
+            }}
+          >
+            <Icon size={11} />
+            {def.label}
+          </span>
+        )
+      })}
+    </div>
   )
 }
 
@@ -142,6 +172,7 @@ export default function HomePage() {
                     <Clock size={13} />
                     {formatTodayHours(cafe.today_hours)}
                   </p>
+                  <CafeBadgeChips keys={cafe.featured_badges ?? []} />
                 </div>
                 <ChevronRight size={18} className="cafe-card__chevron" />
               </a>

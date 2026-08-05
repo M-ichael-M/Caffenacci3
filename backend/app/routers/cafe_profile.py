@@ -17,12 +17,13 @@ from app.core.config import settings as app_settings
 from app.models.cafe import Cafe
 from app.models.cafe_profile import (
     CafeProfile, ProfileWeeklyHours, ProfileHourException,
-    ProfileSocialLink, ProfileEmployee,
+    ProfileSocialLink, ProfileEmployee, CafeProfileBadge,
 )
 from app.models.gallery import CafeGalleryImage
 from app.schemas.cafe_profile import (
     CafeProfileIn, CafeProfileOut, PublicCafeProfileOut,
     HourExceptionIn, HourExceptionOut,
+    PublicBadgeOut,
     MAX_EXCEPTION_DAYS_AHEAD,
 )
 from app.schemas.gallery import (
@@ -83,6 +84,7 @@ def _get_or_create_profile(cafe_id: str, db: Session) -> CafeProfile:
             selectinload(CafeProfile.hour_exceptions),
             selectinload(CafeProfile.social_links),
             selectinload(CafeProfile.employees),
+            selectinload(CafeProfile.badges),
         )
         .filter(CafeProfile.cafe_id == cafe_id)
         .first()
@@ -102,6 +104,7 @@ def _get_or_create_profile(cafe_id: str, db: Session) -> CafeProfile:
                 selectinload(CafeProfile.hour_exceptions),
                 selectinload(CafeProfile.social_links),
                 selectinload(CafeProfile.employees),
+                selectinload(CafeProfile.badges),
             )
             .filter(CafeProfile.id == p.id)
             .first()
@@ -171,6 +174,7 @@ def _profile_to_out(cafe: Cafe, profile: CafeProfile, db: Session) -> CafeProfil
         hour_exceptions=profile.hour_exceptions,
         social_links=profile.social_links,
         employees=profile.employees,
+        badges=profile.badges,
         gallery_visible=profile.gallery_visible,
         gallery_images=gallery_images,
         profile_complete=logo_complete and hours_complete,
@@ -273,6 +277,17 @@ def save_profile(
             bio=e.bio,
             visible=e.visible,
             position=e.position,
+        ))
+
+    # Plakietki — replace-all (maks. liczba wyróżnionych już zwalidowana
+    # w schemas/cafe_profile.py: BadgeIn/validate_badges).
+    db.query(CafeProfileBadge).filter(CafeProfileBadge.profile_id == profile.id).delete()
+    for b in payload.badges:
+        db.add(CafeProfileBadge(
+            profile_id=profile.id,
+            key=b.key,
+            featured=b.featured,
+            position=b.position,
         ))
 
     db.commit()
@@ -591,6 +606,7 @@ def get_public_profile(cafe_id: str, db: Session = Depends(get_db)):
             selectinload(CafeProfile.hour_exceptions),
             selectinload(CafeProfile.social_links),
             selectinload(CafeProfile.employees),
+            selectinload(CafeProfile.badges),
         )
         .filter(CafeProfile.cafe_id == cafe_id)
         .first()
@@ -618,6 +634,7 @@ def get_public_profile(cafe_id: str, db: Session = Depends(get_db)):
             hour_exceptions=[],
             social_links=[],
             employees=[],
+            badges=[],
             gallery_images=[],
         )
 
@@ -667,6 +684,10 @@ def get_public_profile(cafe_id: str, db: Session = Depends(get_db)):
         employees=[
             {"full_name": e.full_name, "role": e.role, "bio": e.bio}
             for e in profile.employees if e.visible
+        ],
+        badges=[
+            PublicBadgeOut(key=b.key, featured=b.featured)
+            for b in profile.badges
         ],
         gallery_images=gallery_images,
     )

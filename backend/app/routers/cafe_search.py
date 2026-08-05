@@ -50,6 +50,16 @@ def _today_hours(profile: CafeProfile | None) -> TodayHoursOut | None:
     return None
 
 
+def _featured_badges(profile: CafeProfile | None) -> list[str]:
+    """Klucze plakietek wyróżnionych przez właściciela — pokazują się w
+    kafelku kawiarni w wynikach wyszukiwania. Maks. 3 jest już egzekwowane
+    przy zapisie profilu (schemas/cafe_profile.py); [:3] tu to tylko
+    dodatkowe zabezpieczenie."""
+    if not profile:
+        return []
+    return [b.key for b in profile.badges if b.featured][:3]
+
+
 @router.get(
     "/search",
     response_model=CafeSearchListOut,
@@ -88,6 +98,7 @@ def search_cafes(
             .options(
                 selectinload(CafeProfile.weekly_hours),
                 selectinload(CafeProfile.hour_exceptions),
+                selectinload(CafeProfile.badges),
             )
             .filter(CafeProfile.cafe_id.in_(cafe_ids))
             .all()
@@ -106,6 +117,7 @@ def search_cafes(
             postal_code=c.postal_code,
             logo_url=_logo_url(c.id, profiles.get(c.id)),
             today_hours=_today_hours(profiles.get(c.id)),
+            featured_badges=_featured_badges(profiles.get(c.id)),
         )
         for c in cafes
     ]

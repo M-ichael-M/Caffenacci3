@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import LocationPicker from './LocationPicker'
-import { Coffee, AlertTriangle, X } from 'lucide-react'
+import { Coffee, AlertTriangle, X, Info, Star } from 'lucide-react'
+import { BADGE_CATALOG, MAX_FEATURED_BADGES } from '../badges'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,12 @@ interface Employee {
   bio:       string | null
   visible:   boolean
   position:  number
+}
+
+interface ProfileBadge {
+  id?:      string
+  key:      string
+  featured: boolean
 }
 
 interface GalleryImage {
@@ -71,6 +78,7 @@ interface CafeProfileData {
   hour_exceptions: HourException[]
   social_links: SocialLink[]
   employees: Employee[]
+  badges: ProfileBadge[]
   gallery_visible: boolean
   gallery_images: GalleryImage[]
   profile_complete: boolean
@@ -169,6 +177,71 @@ function SectionCard({ title, eyebrow, badge, children }: {
   )
 }
 
+// ── Plakietka (chip) — wybór + wyróżnienie gwiazdką ─────────────────────
+
+function BadgeChip({
+  label, icon: Icon, info, selected, featured, canFeature, onToggle, onToggleFeatured,
+}: {
+  label: string
+  icon: React.ComponentType<{ size?: number; className?: string }>
+  info?: string
+  selected: boolean
+  featured: boolean
+  canFeature: boolean
+  onToggle: () => void
+  onToggleFeatured: () => void
+}) {
+  return (
+    <div
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+        border: `1.5px solid ${featured ? 'var(--gold)' : selected ? 'var(--text-dark)' : 'var(--border)'}`,
+        background: featured ? 'rgba(169,114,47,0.1)' : selected ? 'var(--surface-2)' : 'var(--surface)',
+        borderRadius: 100,
+        padding: '4px 8px 4px 4px',
+        transition: 'all 0.15s',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          appearance: 'none', border: 'none', background: 'none', cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+          fontFamily: 'inherit', fontSize: '0.8125rem', fontWeight: 600,
+          color: selected ? 'var(--text-dark)' : 'var(--text-muted)',
+          padding: '0.25rem 0.375rem',
+        }}
+      >
+        <Icon size={15} />
+        {label}
+      </button>
+      {info && (
+        <span title={info} style={{ color: 'var(--text-muted)', display: 'inline-flex', cursor: 'help', flexShrink: 0 }}>
+          <Info size={13} />
+        </span>
+      )}
+      {selected && (
+        <button
+          type="button"
+          onClick={onToggleFeatured}
+          disabled={!canFeature}
+          title={featured ? 'Usuń z wyróżnionych' : 'Wyróżnij — pokaże się w wynikach wyszukiwania'}
+          style={{
+            appearance: 'none', border: 'none', background: 'none',
+            cursor: canFeature ? 'pointer' : 'not-allowed',
+            color: featured ? 'var(--gold)' : 'var(--text-muted)',
+            opacity: canFeature ? 1 : 0.35,
+            display: 'inline-flex', alignItems: 'center', padding: '2px', flexShrink: 0,
+          }}
+        >
+          <Star size={14} fill={featured ? 'currentColor' : 'none'} />
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════════════════
@@ -200,6 +273,7 @@ export default function ProfileTab({ token }: Props) {
   const [weeklyHours, setWeeklyHours] = useState<WeeklyHours[]>(defaultWeeklyHours())
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([])
   const [employees, setEmployees]     = useState<Employee[]>([])
+  const [badges, setBadges]           = useState<ProfileBadge[]>([])
 
   const [logoUrl, setLogoUrl]           = useState<string | null>(null)
   const [logoUploading, setLogoUploading] = useState(false)
@@ -251,6 +325,7 @@ export default function ProfileTab({ token }: Props) {
         setWeeklyHours(data.weekly_hours.length === 7 ? data.weekly_hours : defaultWeeklyHours())
         setSocialLinks(data.social_links)
         setEmployees(data.employees)
+        setBadges((data.badges ?? []).map(b => ({ key: b.key, featured: b.featured })))
         setLogoUrl(data.logo_url)
         setExceptions(data.hour_exceptions)
         setLatitude(data.latitude ?? null)
@@ -446,6 +521,25 @@ export default function ProfileTab({ token }: Props) {
   const removeEmployee = (idx: number) =>
     setEmployees(prev => prev.filter((_, i) => i !== idx))
 
+  // ── Plakietki mutations ──────────────────────────────────────────────────
+
+  const isBadgeSelected = (key: string) => badges.some(b => b.key === key)
+  const isBadgeFeatured = (key: string) => badges.find(b => b.key === key)?.featured ?? false
+  const featuredBadgeCount = badges.filter(b => b.featured).length
+
+  const toggleBadge = (key: string) =>
+    setBadges(prev => prev.some(b => b.key === key)
+      ? prev.filter(b => b.key !== key)
+      : [...prev, { key, featured: false }])
+
+  const toggleBadgeFeatured = (key: string) =>
+    setBadges(prev => {
+      const current = prev.find(b => b.key === key)
+      if (!current) return prev
+      if (!current.featured && featuredBadgeCount >= MAX_FEATURED_BADGES) return prev
+      return prev.map(b => b.key === key ? { ...b, featured: !b.featured } : b)
+    })
+
   // ── Location mutations ───────────────────────────────────────────────────
 
   const handlePositionChange = (lat: number, lng: number) => {
@@ -492,6 +586,7 @@ export default function ProfileTab({ token }: Props) {
         employees: employees
           .filter(e => e.full_name.trim() && e.role.trim())
           .map((e, i) => ({ full_name: e.full_name.trim(), role: e.role.trim(), bio: e.bio?.trim() || null, visible: e.visible, position: i })),
+        badges: badges.map((b, i) => ({ key: b.key, featured: b.featured, position: i })),
       }
       const res = await fetch('http://localhost:8000/profile', {
         method: 'PUT',
@@ -506,6 +601,7 @@ export default function ProfileTab({ token }: Props) {
       setProfile(data)
       setSocialLinks(data.social_links)
       setEmployees(data.employees)
+      setBadges((data.badges ?? []).map(b => ({ key: b.key, featured: b.featured })))
       setLatitude(data.latitude ?? null)
       setLongitude(data.longitude ?? null)
       setLocationVisible(data.location_visible)
@@ -800,6 +896,50 @@ export default function ProfileTab({ token }: Props) {
               onSave={saveException}
               onDelete={deleteException}
             />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Plakietki (pełna szerokość) ──────────────────────────────────── */}
+      <div className="info-card" style={{ gridColumn: '1 / -1' }}>
+        <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+              Nowe dane · opcjonalne
+            </div>
+            <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
+              Plakietki
+            </h2>
+          </div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            <Star size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
+            {featuredBadgeCount}/{MAX_FEATURED_BADGES} wyróżnionych
+          </span>
+        </div>
+        <div className="info-card__body">
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem', lineHeight: 1.6 }}>
+            Wybierz to, co pasuje do Twojej kawiarni — pomoże to gościom znaleźć ją w wyszukiwarce.
+            Kliknij gwiazdkę przy wybranej plakietce, aby wyróżnić ją w kafelku kawiarni na liście
+            wyszukiwania (maksymalnie {MAX_FEATURED_BADGES}).
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem' }}>
+            {BADGE_CATALOG.map(def => {
+              const selected = isBadgeSelected(def.key)
+              const featured = isBadgeFeatured(def.key)
+              return (
+                <BadgeChip
+                  key={def.key}
+                  label={def.label}
+                  icon={def.icon}
+                  info={def.info}
+                  selected={selected}
+                  featured={featured}
+                  canFeature={featured || featuredBadgeCount < MAX_FEATURED_BADGES}
+                  onToggle={() => toggleBadge(def.key)}
+                  onToggleFeatured={() => toggleBadgeFeatured(def.key)}
+                />
+              )
+            })}
           </div>
         </div>
       </div>

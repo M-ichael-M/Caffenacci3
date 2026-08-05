@@ -20,6 +20,10 @@ class CafeSearchResultOut(BaseModel):
     postal_code: str
     logo_url: Optional[str] = None
     today_hours: Optional[TodayHoursOut] = None
+    # Klucze maks. 3 wyróżnionych plakietek (patrz app/schemas/badges.py) —
+    # front (caffenacci.customer) mapuje je na etykietę/ikonę do wyświetlenia
+    # w kafelku kawiarni.
+    featured_badges: List[str] = []
 
 
 class CafeSearchListOut(BaseModel):
