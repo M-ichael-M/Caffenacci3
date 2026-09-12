@@ -1,7 +1,7 @@
 @echo off
 
 :: Backend
-powershell -Command "Start-Process cmd -Verb RunAs -ArgumentList '/k cd /d C:\Users\malec\Desktop\Projekty\Caffenacci3\backend && uvicorn main:app --reload'"
+powershell -Command "Start-Process cmd -Verb RunAs -ArgumentList '/k cd /d C:\Users\malec\Desktop\Projekty\Caffenacci3\backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000'"
 
 :: Company
 powershell -Command "Start-Process cmd -Verb RunAs -ArgumentList '/k cd /d C:\Users\malec\Desktop\Projekty\Caffenacci3\caffenacci.company && npm run dev'"

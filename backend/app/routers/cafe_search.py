@@ -9,11 +9,39 @@ from app.core.database import get_db
 from app.models.cafe import Cafe
 from app.models.cafe_profile import CafeProfile
 from app.models.site import CafeSite
-from app.schemas.cafe_search import CafeSearchResultOut, CafeSearchListOut, TodayHoursOut
+from app.schemas.cafe_search import (
+    CafeSearchResultOut, CafeSearchListOut, TodayHoursOut,
+    CafeListItemOut, CafeListOut,
+)
 
 router = APIRouter(prefix="/cafes", tags=["cafe-search"])
 
 MAX_RESULTS = 50
+
+
+@router.get(
+    "/all",
+    response_model=CafeListOut,
+    summary="Pobierz wszystkie zarejestrowane kawiarnie (bez filtra publikacji)",
+)
+def list_all_cafes(db: Session = Depends(get_db)):
+    """Zwraca WSZYSTKIE zarejestrowane kawiarnie, niezależnie od statusu
+    publikacji strony czy subskrypcji — w odróżnieniu od /cafes/search.
+    Używane m.in. przez aplikację pracowniczą (wybór kawiarni przed
+    zalogowaniem pracownika kodem)."""
+    cafes = db.query(Cafe).order_by(Cafe.cafe_name).all()
+    items = [
+        CafeListItemOut(
+            id=c.id,
+            cafe_name=c.cafe_name,
+            city=c.city,
+            street=c.street,
+            building_number=c.building_number,
+            slug=c.slug,
+        )
+        for c in cafes
+    ]
+    return CafeListOut(cafes=items, count=len(items))
 
 
 def _logo_url(cafe_id: str, profile: CafeProfile | None) -> str | None:

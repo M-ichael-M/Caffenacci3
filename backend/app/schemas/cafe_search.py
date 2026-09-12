@@ -29,3 +29,21 @@ class CafeSearchResultOut(BaseModel):
 class CafeSearchListOut(BaseModel):
     results: List[CafeSearchResultOut]
     count: int
+
+# ── Lista wszystkich zarejestrowanych kawiarni (bez filtra publikacji) ────
+# Używane m.in. przez aplikację pracowniczą do wyboru kawiarni przed
+# zalogowaniem pracownika — w odróżnieniu od /cafes/search, nie wymaga
+# opublikowanej strony ani aktywnej subskrypcji.
+
+class CafeListItemOut(BaseModel):
+    id: str
+    cafe_name: str
+    city: str
+    street: str
+    building_number: str
+    slug: Optional[str] = None
+
+
+class CafeListOut(BaseModel):
+    cafes: List[CafeListItemOut]
+    count: int
