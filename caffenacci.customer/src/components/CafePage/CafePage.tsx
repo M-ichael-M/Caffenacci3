@@ -15,6 +15,8 @@ import NewsWidget from './NewsWidget'
 import { CoffeeIcon, PhoneIcon, MailIcon } from './icons'
 import { Eye, X, ExternalLink } from 'lucide-react'
 import CafeLocationMap from './CafeLocationMap'
+import { BADGE_CATALOG } from '../../badges'
+import InfoTooltip from './InfoTooltip'
 
 // ── Typy (odpowiadają backendowemu PublicSiteOut) ───────────────────────────
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
@@ -29,6 +31,7 @@ interface MenuSection { id: string; name: string; items: MenuItem[] }
 interface ReviewItem { id: string; nick: string; rating: number; comment: string | null; created_at: string }
 interface GalleryImageItem { url: string }
 interface NewsPostItem { id: string; title: string; content: string; image_url: string | null; created_at: string }
+interface BadgeItem { key: string; featured: boolean }
 
 // Szablon strony — musi odpowiadać ALLOWED_TEMPLATES w backend/app/schemas/site.py
 type SiteTemplate =
@@ -78,6 +81,7 @@ interface PublicSiteData {
   gallery_images: GalleryImageItem[]
   news_enabled: boolean
   news_posts: NewsPostItem[]
+  badges: BadgeItem[]
 }
 
 interface Props {
@@ -160,6 +164,19 @@ function HomeFab() {
       <span className="cp-home-fab__icon" aria-hidden="true"><CoffeeIcon size={16} /></span>
       <span className="cp-home-fab__label">Caffenacci</span>
     </button>
+  )
+}
+
+function BadgeDisplay({ item }: { item: BadgeItem }) {
+  const def = BADGE_CATALOG.find(b => b.key === item.key)
+  if (!def) return null
+  const Icon = def.icon
+  return (
+    <span className={`cp-badge-chip${item.featured ? ' cp-badge-chip--featured' : ''}`}>
+      <Icon size={14} />
+      {def.label}
+      {def.info && <InfoTooltip text={def.info} />}
+    </span>
   )
 }
 
@@ -297,6 +314,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
   const hasSocial = data.social_links.length > 0
   const hasTeam = data.employees.length > 0
   const hasGallery = data.gallery_images.length > 0
+  const hasBadges = data.badges.length > 0
   const menuSections = data.menu_sections.filter(s => s.items.length > 0)
   const hasMenu = menuSections.length > 0
 
@@ -322,6 +340,11 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
         {hasGallery && (
           <button className="cp-nav__link" onClick={() => document.getElementById('cp-gallery')?.scrollIntoView({ behavior: 'smooth' })}>
             Galeria
+          </button>
+        )}
+        {hasBadges && (
+          <button className="cp-nav__link" onClick={() => document.getElementById('cp-amenities')?.scrollIntoView({ behavior: 'smooth' })}>
+            Udogodnienia
           </button>
         )}
         {(hasContact || hasLocation) && (
@@ -439,6 +462,16 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
           <section id="cp-gallery">
             <h2 className="cp-section__title">Galeria</h2>
             <Gallery images={data.gallery_images} />
+          </section>
+        )}
+
+        {/* Udogodnienia (badges) */}
+        {hasBadges && (
+          <section id="cp-amenities">
+            <h2 className="cp-section__title">Udogodnienia</h2>
+            <div className="cp-badge-list">
+              {data.badges.map(b => <BadgeDisplay key={b.key} item={b} />)}
+            </div>
           </section>
         )}
 

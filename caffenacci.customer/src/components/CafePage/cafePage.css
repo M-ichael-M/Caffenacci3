@@ -3302,3 +3302,82 @@ select.me-input { cursor: pointer; }
   justify-content: center;
   gap: 0.5rem;
 }
+
+
+/* ── Plakietki (udogodnienia) ─────────────────────── */
+
+.cp-badge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.cp-badge-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dark);
+  border-radius: 100px;
+  padding: 0.4rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.cp-badge-chip--featured {
+  border-color: var(--gold);
+  background: rgba(169,114,47,0.08);
+  color: var(--gold);
+}
+
+/* Tooltip pojedynczych plakietek (użyty przez InfoTooltip.tsx) */
+.info-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.info-tooltip__trigger {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  opacity: 0.7;
+  cursor: help;
+  line-height: 1;
+}
+.info-tooltip__trigger:hover,
+.info-tooltip__trigger:focus-visible { opacity: 1; }
+.info-tooltip__bubble {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--espresso);
+  color: var(--parchment);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.45;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  width: max-content;
+  max-width: 220px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+  z-index: 60;
+  text-align: left;
+  pointer-events: none;
+}
+.info-tooltip__bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--espresso);
+}

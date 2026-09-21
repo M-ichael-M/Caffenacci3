@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import LocationPicker from './LocationPicker'
 import { Coffee, AlertTriangle, X, Info, Star } from 'lucide-react'
 import { BADGE_CATALOG, MAX_FEATURED_BADGES } from '../badges'
+import InfoTooltip from './InfoTooltip'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -219,11 +220,7 @@ function BadgeChip({
         <Icon size={15} />
         {label}
       </button>
-      {info && (
-        <span title={info} style={{ color: 'var(--text-muted)', display: 'inline-flex', cursor: 'help', flexShrink: 0 }}>
-          <Info size={13} />
-        </span>
-      )}
+      {info && <InfoTooltip text={info} />}
       {selected && (
         <button
           type="button"

@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 
 from app.schemas.gallery import PublicGalleryImageOut
+from app.schemas.cafe_profile import PublicBadgeOut
 
 ALLOWED_TEMPLATES = {
     "classic",
@@ -224,3 +225,4 @@ class PublicSiteOut(BaseModel):
     gallery_images: List[PublicGalleryImageOut] = []
     news_enabled: bool = False
     news_posts: List[SiteNewsPostOut] = []
+    badges: List[PublicBadgeOut] = []

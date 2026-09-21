@@ -21,6 +21,7 @@ from app.models.review import Review
 from app.models.gallery import CafeGalleryImage
 from app.models.news import NewsSettings, NewsPost
 from app.schemas.gallery import PublicGalleryImageOut
+from app.schemas.cafe_profile import PublicBadgeOut
 from app.schemas.site import (
     CafeSiteSettingsIn, CafeSiteSettingsOut, PublicSiteOut, PublishStatusOut,
     SiteNewsPostOut,
@@ -227,6 +228,7 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
             selectinload(CafeProfile.hour_exceptions),
             selectinload(CafeProfile.social_links),
             selectinload(CafeProfile.employees),
+            selectinload(CafeProfile.badges),
         )
         .filter(CafeProfile.cafe_id == cafe.id)
         .first()
@@ -351,6 +353,10 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
         gallery_images=gallery_images,
         news_enabled=bool(news_settings and news_settings.enabled),
         news_posts=news_posts_out,
+        badges=[
+            PublicBadgeOut(key=b.key, featured=b.featured)
+            for b in (profile.badges if profile else [])
+        ],
     )
 
 
