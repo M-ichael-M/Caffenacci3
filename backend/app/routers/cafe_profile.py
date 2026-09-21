@@ -267,16 +267,28 @@ def save_profile(
             position=s.position,
         ))
 
-    # Pracownicy — replace-all
+    # Pracownicy — replace-all, ale zachowaj stan zaproszenia/dostępu dla
+    # istniejących wpisów (dopasowanych po id), żeby zwykły zapis profilu
+    # nie kasował aktywnego dostępu pracownika.
+    existing_by_id = {e.id: e for e in profile.employees}
     db.query(ProfileEmployee).filter(ProfileEmployee.profile_id == profile.id).delete()
-    for e in payload.employees:
+    db.flush()
+    for i, e in enumerate(payload.employees):
+        prior = existing_by_id.get(getattr(e, "id", None))
         db.add(ProfileEmployee(
+            id=prior.id if prior else None,
             profile_id=profile.id,
             full_name=e.full_name,
             role=e.role,
             bio=e.bio,
             visible=e.visible,
-            position=e.position,
+            position=i,
+            email=e.email,
+            invite_code=prior.invite_code if prior else None,
+            invite_code_expires_at=prior.invite_code_expires_at if prior else None,
+            access_enabled=prior.access_enabled if prior else False,
+            access_granted_at=prior.access_granted_at if prior else None,
+            invited_at=prior.invited_at if prior else None,
         ))
 
     # Plakietki — replace-all (maks. liczba wyróżnionych już zwalidowana

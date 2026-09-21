@@ -29,12 +29,15 @@ interface SocialLink {
 }
 
 interface Employee {
-  id?:       string
-  full_name: string
-  role:      string
-  bio:       string | null
-  visible:   boolean
-  position:  number
+  id?:             string
+  full_name:       string
+  role:            string
+  bio:             string | null
+  visible:         boolean
+  position:        number
+  email:           string | null
+  access_enabled?: boolean
+  invited_at?:     string | null
 }
 
 interface ProfileBadge {
@@ -297,6 +300,10 @@ export default function ProfileTab({ token }: Props) {
   const [galleryError, setGalleryError]       = useState<string | null>(null)
   const galleryFileInputRef = useRef<HTMLInputElement>(null)
 
+  // Invite / access for employees
+  const [inviteBusy, setInviteBusy] = useState<string | null>(null)
+  const [inviteMsg, setInviteMsg]   = useState<{ idx: number; type: 'ok' | 'err'; text: string } | null>(null)
+
   // ── Fetch ───────────────────────────────────────────────────────────────
 
   const fetchProfile = useCallback(async () => {
@@ -324,7 +331,17 @@ export default function ProfileTab({ token }: Props) {
         setDescriptionVisible(data.description_visible)
         setWeeklyHours(data.weekly_hours.length === 7 ? data.weekly_hours : defaultWeeklyHours())
         setSocialLinks(data.social_links)
-        setEmployees(data.employees)
+        setEmployees((data.employees ?? []).map(e => ({
+          id: e.id,
+          full_name: e.full_name,
+          role: e.role,
+          bio: e.bio,
+          visible: e.visible,
+          position: e.position,
+          email: e.email ?? null,
+          access_enabled: e.access_enabled,
+          invited_at: e.invited_at ?? null,
+        })))
         setBadges((data.badges ?? []).map(b => ({ key: b.key, featured: b.featured })))
         setLogoUrl(data.logo_url)
         setExceptions(data.hour_exceptions)
@@ -514,12 +531,66 @@ export default function ProfileTab({ token }: Props) {
   // ── Employees mutations ──────────────────────────────────────────────────
 
   const addEmployee = () => setEmployees(prev => [
-    ...prev, { full_name: '', role: '', bio: '', visible: true, position: prev.length },
+    ...prev, {
+      full_name: '',
+      role: '',
+      bio: '',
+      visible: true,
+      position: prev.length,
+      email: null,
+      access_enabled: false,
+      invited_at: null,
+    },
   ])
   const updateEmployee = (idx: number, patch: Partial<Employee>) =>
     setEmployees(prev => prev.map((e, i) => i === idx ? { ...e, ...patch } : e))
   const removeEmployee = (idx: number) =>
     setEmployees(prev => prev.filter((_, i) => i !== idx))
+
+  const updateEmployeeEmail = (idx: number, email: string) =>
+    updateEmployee(idx, { email: email.trim() || null })
+
+  const handleInvite = async (idx: number) => {
+    const emp = employees[idx]
+    if (!emp.id) {
+      setInviteMsg({ idx, type: 'err', text: 'Zapisz najpierw profil, żeby móc zaprosić tego pracownika.' })
+      return
+    }
+    if (!emp.email) {
+      setInviteMsg({ idx, type: 'err', text: 'Podaj adres e-mail pracownika.' })
+      return
+    }
+    setInviteBusy(emp.id)
+    setInviteMsg(null)
+    try {
+      const res = await fetch(`http://localhost:8000/employee-auth/employees/${emp.id}/invite`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const e = await res.json()
+        throw new Error(e.detail || 'Błąd wysyłania zaproszenia.')
+      }
+      setInviteMsg({ idx, type: 'ok', text: 'Zaproszenie zostało wysłane (ważne 30 minut).' })
+    } catch (err: unknown) {
+      setInviteMsg({ idx, type: 'err', text: err instanceof Error ? err.message : 'Błąd.' })
+    } finally { setInviteBusy(null) }
+  }
+
+  const handleRevoke = async (idx: number) => {
+    const emp = employees[idx]
+    if (!emp.id) return
+    if (!confirm(`Usunąć dostęp pracownika „${emp.full_name}” do aplikacji?`)) return
+    setInviteBusy(emp.id)
+    try {
+      await fetch(`http://localhost:8000/employee-auth/employees/${emp.id}/access`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setEmployees(prev => prev.map((e, i) => i === idx ? { ...e, access_enabled: false } : e))
+    } catch { /* ignore */ }
+    finally { setInviteBusy(null) }
+  }
 
   // ── Plakietki mutations ──────────────────────────────────────────────────
 
@@ -585,7 +656,15 @@ export default function ProfileTab({ token }: Props) {
           .map((s, i) => ({ platform: s.platform, url: s.url.trim(), label: s.label?.trim() || null, visible: s.visible, position: i })),
         employees: employees
           .filter(e => e.full_name.trim() && e.role.trim())
-          .map((e, i) => ({ full_name: e.full_name.trim(), role: e.role.trim(), bio: e.bio?.trim() || null, visible: e.visible, position: i })),
+          .map((e, i) => ({
+            id: e.id,
+            full_name: e.full_name.trim(),
+            role: e.role.trim(),
+            bio: e.bio?.trim() || null,
+            visible: e.visible,
+            position: i,
+            email: e.email ?? null,
+          })),
         badges: badges.map((b, i) => ({ key: b.key, featured: b.featured, position: i })),
       }
       const res = await fetch('http://localhost:8000/profile', {
@@ -600,7 +679,17 @@ export default function ProfileTab({ token }: Props) {
       const data: CafeProfileData = await res.json()
       setProfile(data)
       setSocialLinks(data.social_links)
-      setEmployees(data.employees)
+      setEmployees((data.employees ?? []).map(e => ({
+        id: e.id,
+        full_name: e.full_name,
+        role: e.role,
+        bio: e.bio,
+        visible: e.visible,
+        position: e.position,
+        email: e.email ?? null,
+        access_enabled: e.access_enabled,
+        invited_at: e.invited_at ?? null,
+      })))
       setBadges((data.badges ?? []).map(b => ({ key: b.key, featured: b.featured })))
       setLatitude(data.latitude ?? null)
       setLongitude(data.longitude ?? null)
@@ -1148,6 +1237,39 @@ export default function ProfileTab({ token }: Props) {
                   <input className="me-input" value={e.bio ?? ''}
                     onChange={ev => updateEmployee(idx, { bio: ev.target.value })}
                     placeholder="np. Mistrz Polski Baristów 2023" />
+                </div>
+
+                <div className="field">
+                  <label className="me-label">E-mail (do zaproszenia w aplikacji — nigdy niepubliczny)</label>
+                  <input className="me-input" type="email" value={e.email ?? ''}
+                    onChange={ev => updateEmployeeEmail(idx, ev.target.value)}
+                    placeholder="pracownik@example.com" />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap' }}>
+                  {e.access_enabled ? (
+                    <span className="pf-badge pf-badge--public">Ma dostęp do aplikacji</span>
+                  ) : e.invited_at ? (
+                    <span className="pf-badge pf-badge--warn">Zaproszenie wysłane, czeka na logowanie</span>
+                  ) : (
+                    <span className="pf-badge pf-badge--private">Brak zaproszenia</span>
+                  )}
+                  <button type="button" className="btn btn--outline-dark btn--sm" style={{ width: 'auto' }}
+                    onClick={() => handleInvite(idx)} disabled={inviteBusy === e.id || !e.id}>
+                    {e.invited_at ? 'Wyślij ponownie' : 'Zaproś'}
+                  </button>
+                  {(e.access_enabled || e.invited_at) && (
+                    <button type="button" className="btn btn--outline-dark btn--sm"
+                      style={{ width: 'auto', color: 'var(--error)' }}
+                      onClick={() => handleRevoke(idx)} disabled={inviteBusy === e.id}>
+                      Usuń dostęp
+                    </button>
+                  )}
+                  {inviteMsg?.idx === idx && (
+                    <span style={{ fontSize: '0.75rem', color: inviteMsg.type === 'ok' ? 'var(--success)' : 'var(--error)' }}>
+                      {inviteMsg.text}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

@@ -30,3 +30,6 @@ class Cafe(Base):
     street = Column(String(150), nullable=False)
     building_number = Column(String(20), nullable=False)
     postal_code = Column(String(20), nullable=False)
+    # Stały 8-znakowy kod kawiarni używany przez pracowników do logowania
+    # w aplikacji mobilnej (obok ich osobistego kodu z zaproszenia).
+    staff_code = Column(String(8), nullable=True, unique=True, index=True)

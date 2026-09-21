@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   RefreshCw,
   ExternalLink,
+  Users,
 } from 'lucide-react'
 
 interface Props {
@@ -74,6 +75,7 @@ function SubBadge({ status }: { status: SubStatus }) {
 export default function BillingTab({ token, cafeId: _cafeId }: Props) {
   const [sub, setSub] = useState<SubscriptionStatusOut | null>(null)
   const [pub, setPub] = useState<PublishStatusOut | null>(null)
+  const [staffCode, setStaffCode] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -82,12 +84,14 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [subRes, pubRes] = await Promise.all([
+      const [subRes, pubRes, staffRes] = await Promise.all([
         fetch(`${API}/billing/status`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API}/site/publish-status`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/billing/staff-code`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
       if (subRes.ok) setSub(await subRes.json())
       if (pubRes.ok) setPub(await pubRes.json())
+      if (staffRes.ok) setStaffCode((await staffRes.json()).staff_code)
     } catch { /* ignore */ }
     finally { setLoading(false) }
   }, [token])
@@ -368,6 +372,27 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
               </button>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* ── Kod kawiarni dla pracowników ────────────────────────────────── */}
+      <div className="info-card">
+        <div className="info-card__header">
+          <span className="info-card__icon"><Users size={20} /></span>
+          <h2 className="info-card__title">Kod kawiarni dla pracowników</h2>
+        </div>
+        <div className="info-card__body">
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            Ten stały kod, razem z osobistym kodem z zaproszenia, pracownik podaje przy
+            pierwszym logowaniu w aplikacji Caffenacci Business. Udostępnij go zespołowi.
+          </p>
+          <code style={{
+            fontSize: '1.25rem', fontWeight: 700, letterSpacing: '0.15em',
+            color: 'var(--gold)', background: 'rgba(169,114,47,0.08)',
+            borderRadius: 6, padding: '0.5rem 1rem', display: 'inline-block',
+          }}>
+            {staffCode ?? '········'}
+          </code>
         </div>
       </div>
     </div>

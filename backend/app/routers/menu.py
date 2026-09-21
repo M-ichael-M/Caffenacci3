@@ -4,9 +4,10 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
+from app.core.employee_access import get_current_cafe_id
 from app.models.cafe import Cafe
 from app.models.menu import MenuSection, MenuItem
-from app.schemas.menu import MenuSaveIn, MenuOut, MenuSectionOut
+from app.schemas.menu import MenuSaveIn, MenuOut, MenuSectionOut, MenuItemOut
 
 router = APIRouter(prefix="/menu", tags=["menu"])
 bearer_scheme = HTTPBearer()
@@ -30,15 +31,37 @@ def get_current_cafe(
 
 
 @router.get("", response_model=MenuOut, summary="Pobierz menu kawiarni")
-def get_menu(current_cafe: Cafe = Depends(get_current_cafe), db: Session = Depends(get_db)):
+def get_menu(cafe_id: str = Depends(get_current_cafe_id), db: Session = Depends(get_db)):
     sections = (
         db.query(MenuSection)
         .options(selectinload(MenuSection.items))
-        .filter(MenuSection.cafe_id == current_cafe.id)
+        .filter(MenuSection.cafe_id == cafe_id)
         .order_by(MenuSection.position)
         .all()
     )
-    return MenuOut(cafe_id=current_cafe.id, sections=sections)
+    return MenuOut(cafe_id=cafe_id, sections=sections)
+
+
+@router.patch("/items/{item_id}/availability", response_model=MenuItemOut,
+              summary="Zaznacz pozycję jako dostępną/niedostępną (właściciel lub pracownik)")
+def set_item_availability(
+    item_id: str,
+    is_unavailable: bool,
+    cafe_id: str = Depends(get_current_cafe_id),
+    db: Session = Depends(get_db),
+):
+    item = (
+        db.query(MenuItem)
+        .join(MenuSection, MenuItem.section_id == MenuSection.id)
+        .filter(MenuItem.id == item_id, MenuSection.cafe_id == cafe_id)
+        .first()
+    )
+    if not item:
+        raise HTTPException(404, detail="Pozycja menu nie istnieje.")
+    item.is_unavailable = is_unavailable
+    db.commit()
+    db.refresh(item)
+    return item
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
+from app.core.employee_access import get_current_cafe_id
 from app.models.cafe import Cafe
 from app.models.cafe_profile import CafeProfile
 from app.models.client import Client
@@ -93,12 +94,12 @@ def _find_client_by_code(code: str, db: Session) -> Client:
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/settings", response_model=LoyaltySettingsOut,
-            summary="Pobierz ustawienia programu lojalnościowego")
+            summary="Pobierz ustawienia programu lojalnościowego (odczyt — właściciel/pracownik)")
 def get_settings(
-    current_cafe: Cafe    = Depends(get_current_cafe),
-    db:           Session = Depends(get_db),
+    cafe_id: str = Depends(get_current_cafe_id),
+    db:      Session = Depends(get_db),
 ):
-    return _get_or_create_settings(current_cafe.id, db)
+    return _get_or_create_settings(cafe_id, db)
 
 
 @router.put("/settings", response_model=LoyaltySettingsOut,
@@ -139,17 +140,17 @@ def save_settings(
             summary="Wyszukaj klienta po kodzie lojalnościowym")
 def lookup_client(
     loyalty_code: str,
-    current_cafe: Cafe    = Depends(get_current_cafe),
+    cafe_id:      str = Depends(get_current_cafe_id),
     db:           Session = Depends(get_db),
 ):
-    settings = _get_or_create_settings(current_cafe.id, db)
+    settings = _get_or_create_settings(cafe_id, db)
     if not settings.enabled:
         raise HTTPException(400, detail="Program lojalnościowy jest wyłączony.")
 
     client = _find_client_by_code(loyalty_code, db)
     cl = (
         db.query(ClientLoyalty)
-        .filter(ClientLoyalty.cafe_id == current_cafe.id, ClientLoyalty.client_id == client.id)
+        .filter(ClientLoyalty.cafe_id == cafe_id, ClientLoyalty.client_id == client.id)
         .first()
     )
 
@@ -172,16 +173,16 @@ def lookup_client(
 @router.post("/earn", response_model=LoyaltyBalanceOut,
              summary="Dolicz punkty za kwotę transakcji (10 gr = 3 pkt.)")
 def earn_points(
-    payload:      LoyaltyEarnIn,
-    current_cafe: Cafe    = Depends(get_current_cafe),
-    db:           Session = Depends(get_db),
+    payload: LoyaltyEarnIn,
+    cafe_id: str = Depends(get_current_cafe_id),
+    db:      Session = Depends(get_db),
 ):
-    settings = _get_or_create_settings(current_cafe.id, db)
+    settings = _get_or_create_settings(cafe_id, db)
     if not settings.enabled or settings.mode != "points":
         raise HTTPException(400, detail="Ta kawiarnia nie korzysta z punktowego programu lojalnościowego.")
 
     client = _find_client_by_code(payload.loyalty_code, db)
-    cl = _get_or_create_client_loyalty(current_cafe.id, client.id, db)
+    cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
 
     grosze = round(payload.amount * 100)
     earned = (grosze // 10) * 3
@@ -189,7 +190,7 @@ def earn_points(
     cl.points     += earned
     cl.updated_at  = datetime.utcnow()
     db.add(LoyaltyTransaction(
-        cafe_id=current_cafe.id, client_id=client.id, kind="earn_points",
+        cafe_id=cafe_id, client_id=client.id, kind="earn_points",
         description=f"Transakcja {payload.amount:.2f} zł ({earned} pkt.)",
         points_delta=earned,
     ))
@@ -205,11 +206,11 @@ def earn_points(
 @router.post("/redeem", response_model=LoyaltyBalanceOut,
              summary="Wymień punkty klienta na nagrodę")
 def redeem_reward(
-    payload:      LoyaltyRedeemIn,
-    current_cafe: Cafe    = Depends(get_current_cafe),
-    db:           Session = Depends(get_db),
+    payload: LoyaltyRedeemIn,
+    cafe_id: str = Depends(get_current_cafe_id),
+    db:      Session = Depends(get_db),
 ):
-    settings = _get_or_create_settings(current_cafe.id, db)
+    settings = _get_or_create_settings(cafe_id, db)
     if not settings.enabled or settings.mode != "points":
         raise HTTPException(400, detail="Ta kawiarnia nie korzysta z punktowego programu lojalnościowego.")
 
@@ -218,7 +219,7 @@ def redeem_reward(
         raise HTTPException(404, detail="Nagroda nie istnieje.")
 
     client = _find_client_by_code(payload.loyalty_code, db)
-    cl = _get_or_create_client_loyalty(current_cafe.id, client.id, db)
+    cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
 
     if cl.points < reward.cost_points:
         raise HTTPException(
@@ -229,7 +230,7 @@ def redeem_reward(
     cl.points    -= reward.cost_points
     cl.updated_at = datetime.utcnow()
     db.add(LoyaltyTransaction(
-        cafe_id=current_cafe.id, client_id=client.id, kind="redeem_points",
+        cafe_id=cafe_id, client_id=client.id, kind="redeem_points",
         description=f"Wymiana: {reward.name}",
         points_delta=-reward.cost_points,
     ))
@@ -249,16 +250,16 @@ def redeem_reward(
 @router.post("/stamp/add", response_model=LoyaltyBalanceOut,
              summary="Dodaj kolejną pieczątkę klientowi")
 def add_stamp(
-    payload:      LoyaltyStampActionIn,
-    current_cafe: Cafe    = Depends(get_current_cafe),
-    db:           Session = Depends(get_db),
+    payload: LoyaltyStampActionIn,
+    cafe_id: str = Depends(get_current_cafe_id),
+    db:      Session = Depends(get_db),
 ):
-    settings = _get_or_create_settings(current_cafe.id, db)
+    settings = _get_or_create_settings(cafe_id, db)
     if not settings.enabled or settings.mode != "stamps":
         raise HTTPException(400, detail="Ta kawiarnia nie korzysta z systemu pieczątek.")
 
     client = _find_client_by_code(payload.loyalty_code, db)
-    cl = _get_or_create_client_loyalty(current_cafe.id, client.id, db)
+    cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
 
     if cl.stamps >= settings.stamps_max:
         raise HTTPException(400, detail="Karta jest już zapełniona — użyj opcji „Zeruj”.")
@@ -266,7 +267,7 @@ def add_stamp(
     cl.stamps    += 1
     cl.updated_at = datetime.utcnow()
     db.add(LoyaltyTransaction(
-        cafe_id=current_cafe.id, client_id=client.id, kind="add_stamp",
+        cafe_id=cafe_id, client_id=client.id, kind="add_stamp",
         description="Nowa pieczątka", stamps_delta=1,
     ))
     db.commit()
@@ -281,16 +282,16 @@ def add_stamp(
 @router.post("/stamp/reset", response_model=LoyaltyBalanceOut,
              summary="Wyzeruj kartę pieczątek po odebraniu nagrody")
 def reset_stamps(
-    payload:      LoyaltyStampActionIn,
-    current_cafe: Cafe    = Depends(get_current_cafe),
-    db:           Session = Depends(get_db),
+    payload: LoyaltyStampActionIn,
+    cafe_id: str = Depends(get_current_cafe_id),
+    db:      Session = Depends(get_db),
 ):
-    settings = _get_or_create_settings(current_cafe.id, db)
+    settings = _get_or_create_settings(cafe_id, db)
     if not settings.enabled or settings.mode != "stamps":
         raise HTTPException(400, detail="Ta kawiarnia nie korzysta z systemu pieczątek.")
 
     client = _find_client_by_code(payload.loyalty_code, db)
-    cl = _get_or_create_client_loyalty(current_cafe.id, client.id, db)
+    cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
 
     if cl.stamps < settings.stamps_max:
         raise HTTPException(400, detail="Karta nie jest jeszcze zapełniona.")
@@ -298,7 +299,7 @@ def reset_stamps(
     cl.stamps    = 0
     cl.updated_at = datetime.utcnow()
     db.add(LoyaltyTransaction(
-        cafe_id=current_cafe.id, client_id=client.id, kind="reset_stamps",
+        cafe_id=cafe_id, client_id=client.id, kind="reset_stamps",
         description="Odebrano nagrodę — karta wyzerowana",
     ))
     db.commit()

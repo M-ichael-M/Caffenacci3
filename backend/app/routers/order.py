@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
+from app.core.employee_access import get_current_cafe_id
 from app.models.cafe import Cafe
 from app.models.client import Client
 from app.models.menu import MenuItem, MenuSection
@@ -54,18 +55,6 @@ def _get_or_create_settings(cafe_id: str, db: Session) -> OrderSettings:
         db.refresh(s)
     return s
 
-
-def _validate_order_date(date_str: str) -> None:
-    y, mo, d = date_str.split("-")
-    target = date_cls(int(y), int(mo), int(d))
-    today = date_cls.today()
-    if target < today:
-        raise HTTPException(400, detail="Nie można zamawiać na przeszłą datę.")
-    if target > today + timedelta(days=MAX_ORDER_DAYS_AHEAD):
-        raise HTTPException(
-            400,
-            detail=f"Zamówienia można składać maksymalnie {MAX_ORDER_DAYS_AHEAD} dni do przodu.",
-        )
 
 def _validate_order_date(date_str: str) -> None:
     y, mo, d = date_str.split("-")
@@ -374,72 +363,52 @@ def list_my_orders(
     return ClientOrderListOut(orders=result)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# LISTA ZAMÓWIEŃ (właściciel) — chronologicznie wg daty i godziny
+# LISTA ZAMÓWIEŃ (właściciel/pracownik) — chronologicznie wg daty i godziny
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.get(
-    "",
-    response_model=OrderListOut,
-    summary="Pobierz zamówienia (właściciel)",
-)
+@router.get("", response_model=OrderListOut, summary="Pobierz zamówienia (właściciel/pracownik)")
 def list_orders(
     status_filter: str | None = Query(None, alias="status"),
-    current_cafe:  Cafe    = Depends(get_current_cafe),
-    db:            Session = Depends(get_db),
+    cafe_id: str = Depends(get_current_cafe_id),
+    db: Session = Depends(get_db),
 ):
-    q = (
-        db.query(Order)
-        .options(selectinload(Order.items))
-        .filter(Order.cafe_id == current_cafe.id)
-    )
+    q = db.query(Order).options(selectinload(Order.items)).filter(Order.cafe_id == cafe_id)
     if status_filter:
         try:
             st = OrderStatus(status_filter)
             q = q.filter(Order.status == st)
         except ValueError:
             raise HTTPException(400, detail=f"Nieprawidłowy status: {status_filter}")
-
     rows = q.order_by(Order.date, Order.start_time).all()
     return OrderListOut(orders=rows)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ZMIANA STATUSU — realizacja lub anulowanie (właściciel)
+# ZMIANA STATUSU — realizacja lub anulowanie (właściciel/pracownik)
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.patch(
-    "/{order_id}/status",
-    response_model=OrderOut,
-    summary="Oznacz zamówienie jako zrealizowane lub anuluj",
-)
+@router.patch("/{order_id}/status", response_model=OrderOut,
+              summary="Oznacz zamówienie jako zrealizowane lub anuluj (właściciel/pracownik)")
 def update_order_status(
-    order_id:     str,
-    payload:      OrderStatusUpdate,
-    current_cafe: Cafe    = Depends(get_current_cafe),
-    db:           Session = Depends(get_db),
+    order_id: str,
+    payload: OrderStatusUpdate,
+    cafe_id: str = Depends(get_current_cafe_id),
+    db: Session = Depends(get_db),
 ):
     order = (
-        db.query(Order)
-        .options(selectinload(Order.items))
-        .filter(Order.id == order_id, Order.cafe_id == current_cafe.id)
-        .first()
+        db.query(Order).options(selectinload(Order.items))
+        .filter(Order.id == order_id, Order.cafe_id == cafe_id).first()
     )
     if not order:
         raise HTTPException(404, detail="Zamówienie nie istnieje.")
-
     if order.status != OrderStatus.pending:
-        raise HTTPException(
-            400,
-            detail=f"Zamówienie ma już status '{order.status}' i nie może być zmienione.",
-        )
-
+        raise HTTPException(400, detail=f"Zamówienie ma już status '{order.status}' i nie może być zmienione.")
     from app.schemas.order import OrderStatusEnum
     if payload.status not in (OrderStatusEnum.completed, OrderStatusEnum.cancelled):
         raise HTTPException(400, detail="Dozwolone statusy: completed, cancelled.")
-
-    order.status       = payload.status
+    order.status = payload.status
     order.cancelled_by = "owner" if payload.status == OrderStatusEnum.cancelled else None
-    order.updated_at   = datetime.utcnow()
+    order.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(order)
     return order

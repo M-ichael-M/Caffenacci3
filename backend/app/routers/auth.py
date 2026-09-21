@@ -39,6 +39,9 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     )
     cafe.slug = generate_unique_slug(payload.cafe_name, db)
 
+    from app.routers.employee_auth import _generate_code
+    cafe.staff_code = _generate_code(db, check_employee=False, check_cafe=True)
+
     db.add(cafe)
     db.commit()
     db.refresh(cafe)

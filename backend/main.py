@@ -26,6 +26,8 @@ from app.routers import billing as billing_router
 from app.routers import site as site_router
 from app.routers import loyalty as loyalty_router
 from app.routers import news as news_router
+from app.routers import employee_auth as employee_auth_router
+
 
 
 Base.metadata.create_all(bind=engine)
@@ -61,6 +63,7 @@ app.include_router(billing_router.router)
 app.include_router(site_router.router)
 app.include_router(loyalty_router.router)
 app.include_router(news_router.router)
+app.include_router(employee_auth_router.router)
 
 
 @app.get("/", tags=["health"])

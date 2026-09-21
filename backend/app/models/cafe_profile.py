@@ -153,9 +153,16 @@ class ProfileEmployee(Base):
     visible    = Column(Boolean, nullable=False, default=True)
     position   = Column(Integer, nullable=False, default=0)
 
+    # ── Dostęp do aplikacji mobilnej dla pracowników ─────────────────────
+    # Email NIGDY nie jest zwracany w publicznym /profile/public/{cafe_id}.
+    email                    = Column(String(255), nullable=True)
+    invite_code              = Column(String(8), nullable=True, index=True)
+    invite_code_expires_at   = Column(DateTime, nullable=True)
+    access_enabled           = Column(Boolean, nullable=False, default=False)
+    access_granted_at        = Column(DateTime, nullable=True)
+    invited_at               = Column(DateTime, nullable=True)
+
     profile = relationship("CafeProfile", back_populates="employees")
-
-
 # ── Plakietki ────────────────────────────────────────────────────────────
 # Wybierane przez właściciela — pomagają gościom znaleźć kawiarnię pasującą
 # do ich potrzeb (np. "przyjazna zwierzętom", "idealna do pracy"). Katalog

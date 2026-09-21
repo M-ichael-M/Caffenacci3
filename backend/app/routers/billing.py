@@ -11,6 +11,7 @@ from app.core.security import decode_access_token
 from app.models.cafe import Cafe
 from app.models.billing import Subscription
 from app.schemas.billing import SubscriptionStatusOut, PromoRedeemIn
+from app.routers.employee_auth import ensure_staff_code
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 bearer_scheme = HTTPBearer()
@@ -267,3 +268,15 @@ def resume_subscription(
     db.commit()
     db.refresh(sub)
     return _to_status_out(sub)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# KOD PERSONELU
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/staff-code", summary="Pobierz stały kod kawiarni dla pracowników")
+def get_staff_code(
+    current_cafe: Cafe = Depends(get_current_cafe),
+    db: Session = Depends(get_db),
+):
+    return {"staff_code": ensure_staff_code(current_cafe, db)}

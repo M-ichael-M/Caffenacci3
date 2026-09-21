@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
+from app.core.employee_access import get_current_cafe_id
 from app.models.cafe import Cafe
 from app.models.cafe_profile import CafeProfile
 from app.models.client import Client
@@ -214,12 +215,9 @@ def _validate_slot(
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/settings", response_model=ReservationSettingsOut,
-            summary="Pobierz ustawienia rezerwacji")
-def get_settings(
-    current_cafe: Cafe    = Depends(get_current_cafe),
-    db:           Session = Depends(get_db),
-):
-    return _get_or_create_settings(current_cafe.id, db)
+            summary="Pobierz ustawienia rezerwacji (odczyt — właściciel/pracownik)")
+def get_settings(cafe_id: str = Depends(get_current_cafe_id), db: Session = Depends(get_db)):
+    return _get_or_create_settings(cafe_id, db)
 
 
 @router.put("/settings", response_model=ReservationSettingsOut,
@@ -564,23 +562,23 @@ def list_my_reservations(
     return ClientReservationListOut(reservations=result)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# LISTA REZERWACJI (właściciel)
+# LISTA REZERWACJI (właściciel/pracownik)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get(
     "",
     response_model=ReservationListOut,
-    summary="Pobierz rezerwacje (właściciel)",
+    summary="Pobierz rezerwacje (właściciel/pracownik)",
 )
 def list_reservations(
-    date:         str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    date:          str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
     status_filter: str | None = Query(None, alias="status"),
-    current_cafe: Cafe    = Depends(get_current_cafe),
-    db:           Session = Depends(get_db),
+    cafe_id:       str = Depends(get_current_cafe_id),
+    db:            Session = Depends(get_db),
 ):
     q = (
         db.query(Reservation)
-        .filter(Reservation.cafe_id == current_cafe.id)
+        .filter(Reservation.cafe_id == cafe_id)
     )
     if date:
         q = q.filter(Reservation.date == date)
@@ -602,19 +600,19 @@ def list_reservations(
 @router.patch(
     "/{reservation_id}/status",
     response_model=ReservationOut,
-    summary="Akceptuj lub odrzuć rezerwację (tryb simple)",
+    summary="Akceptuj lub odrzuć rezerwację (tryb simple — właściciel/pracownik)",
 )
 def update_reservation_status(
     reservation_id: str,
     payload:        ReservationStatusUpdate,
-    current_cafe:   Cafe    = Depends(get_current_cafe),
+    cafe_id:        str = Depends(get_current_cafe_id),
     db:             Session = Depends(get_db),
 ):
     r = (
         db.query(Reservation)
         .filter(
             Reservation.id      == reservation_id,
-            Reservation.cafe_id == current_cafe.id,
+            Reservation.cafe_id == cafe_id,
         )
         .first()
     )
@@ -641,21 +639,21 @@ def update_reservation_status(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TWORZENIE przez właściciela (zaawansowane) — bez zmian
+# TWORZENIE przez właściciela/pracownika (zaawansowane)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post(
     "",
     response_model=ReservationOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Utwórz rezerwację (właściciel, advanced mode)",
+    summary="Utwórz rezerwację (właściciel/pracownik, advanced mode)",
 )
 def create_reservation(
-    payload:      ReservationIn,
-    current_cafe: Cafe    = Depends(get_current_cafe),
-    db:           Session = Depends(get_db),
+    payload: ReservationIn,
+    cafe_id: str = Depends(get_current_cafe_id),
+    db:      Session = Depends(get_db),
 ):
-    s = _get_or_create_settings(current_cafe.id, db)
+    s = _get_or_create_settings(cafe_id, db)
     if not s.enabled or s.mode != "advanced":
         raise HTTPException(400, detail="System rezerwacji nie jest aktywny w trybie zaawansowanym.")
 
@@ -670,7 +668,7 @@ def create_reservation(
 
     r = Reservation(
         table_id         = table.id,
-        cafe_id          = current_cafe.id,
+        cafe_id          = cafe_id,
         date             = payload.date,
         start_time       = payload.start_time,
         guests           = payload.guests,
@@ -680,7 +678,7 @@ def create_reservation(
         comment          = payload.comment,
         client_id        = payload.client_id,
         created_by_owner = payload.client_id is None,
-        status           = ReservationStatus.confirmed,  # właściciel = od razu confirmed
+        status           = ReservationStatus.confirmed,  # właściciel/pracownik = od razu confirmed
     )
     db.add(r)
     db.commit()
@@ -696,16 +694,16 @@ def create_reservation(
 @router.delete(
     "/{reservation_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Usuń rezerwację",
+    summary="Usuń rezerwację (właściciel/pracownik)",
 )
 def delete_reservation(
     reservation_id: str,
-    current_cafe: Cafe    = Depends(get_current_cafe),
-    db:           Session = Depends(get_db),
+    cafe_id:        str = Depends(get_current_cafe_id),
+    db:             Session = Depends(get_db),
 ):
     r = db.query(Reservation).filter(
         Reservation.id      == reservation_id,
-        Reservation.cafe_id == current_cafe.id,
+        Reservation.cafe_id == cafe_id,
     ).first()
     if not r:
         raise HTTPException(404, detail="Rezerwacja nie istnieje.")

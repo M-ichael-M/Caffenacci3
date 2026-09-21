@@ -80,15 +80,19 @@ class SocialLinkOut(SocialLinkIn):
 # ── Pracownicy ───────────────────────────────────────────────────────────────
 
 class EmployeeIn(BaseModel):
+    id:        Optional[str] = None
     full_name: str = Field(..., min_length=2, max_length=150)
     role:      str = Field(..., min_length=2, max_length=100)
     bio:       Optional[str] = Field(None, max_length=1000)
     visible:   bool = True
     position:  int  = Field(0, ge=0)
+    email:     Optional[str] = Field(None, max_length=255)
 
 
 class EmployeeOut(EmployeeIn):
     id: str
+    invited_at: Optional[str] = None
+    access_enabled: bool = False
     model_config = {"from_attributes": True}
 
 
