@@ -3,10 +3,15 @@ package com.example.caffenacci.ui.orders
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.caffenacci.data.remote.ApiService
@@ -19,25 +24,46 @@ fun OrdersScreen(api: ApiService, auth: String, modifier: Modifier = Modifier, v
 
     LaunchedEffect(Unit) { viewModel.load(api, auth) }
 
-    Column(modifier.fillMaxSize().padding(16.dp)) {
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text("Zamówienia", style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = { viewModel.load(api, auth) }) { Text("Odśwież") }
+    Column(
+        modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Zamówienia", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+            FilledTonalIconButton(onClick = { viewModel.load(api, auth) }) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Odśwież")
+            }
         }
+        Spacer(Modifier.height(12.dp))
 
-        TabRow(selectedTabIndex = tab) {
-            Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Oczekujące (${state.pending.size})") })
-            Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Historia (${state.history.size})") })
+        val tabTitles = listOf("Oczekujące (${state.pending.size})", "Historia (${state.history.size})")
+        TabRow(
+            selectedTabIndex = tab,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.primary,
+        ) {
+            tabTitles.forEachIndexed { i, title ->
+                Tab(selected = tab == i, onClick = { tab = i }, text = { Text(title) })
+            }
         }
+        Spacer(Modifier.height(12.dp))
 
         if (state.loading) {
             Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else {
             val list = if (tab == 0) state.pending else state.history
-            LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
-                items(list) { order ->
-                    OrderCard(order = order, showActions = tab == 0, onDecide = { status -> viewModel.decide(api, auth, order, status) })
-                    HorizontalDivider()
+            if (list.isEmpty()) {
+                EmptyHint(if (tab == 0) "Brak oczekujących zamówień." else "Brak historii zamówień.")
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
+                    items(list) { order ->
+                        OrderCard(order = order, showActions = tab == 0, onDecide = { status -> viewModel.decide(api, auth, order, status) })
+                    }
                 }
             }
         }
@@ -45,23 +71,54 @@ fun OrdersScreen(api: ApiService, auth: String, modifier: Modifier = Modifier, v
 }
 
 @Composable
-private fun OrderCard(order: OrderDto, showActions: Boolean, onDecide: (String) -> Unit) {
-    Column(Modifier.padding(vertical = 10.dp)) {
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text(order.client_nick, style = MaterialTheme.typography.titleMedium)
-            Text("%.2f zł".format(order.total_value), style = MaterialTheme.typography.titleMedium)
-        }
-        Text("${order.date} ${order.start_time}", style = MaterialTheme.typography.bodySmall)
-        order.items.forEach { Text("${it.quantity}× ${it.name}", style = MaterialTheme.typography.bodySmall) }
+private fun EmptyHint(text: String) {
+    Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
+        Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+    }
+}
 
-        if (showActions) {
-            Row(Modifier.padding(top = 8.dp)) {
-                OutlinedButton(onClick = { onDecide("cancelled") }) { Text("Anuluj") }
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = { onDecide("completed") }) { Text("Zrealizowano") }
+@Composable
+private fun OrderCard(order: OrderDto, showActions: Boolean, onDecide: (String) -> Unit) {
+    ElevatedCard(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text(order.client_nick, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(100)) {
+                    Text(
+                        "%.2f zł".format(order.total_value),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
             }
-        } else {
-            Text("Status: ${order.status}", style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.height(4.dp))
+            Text("${order.date} ${order.start_time}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(6.dp))
+            order.items.forEach {
+                Text("${it.quantity}× ${it.name}", style = MaterialTheme.typography.bodyMedium)
+            }
+
+            if (showActions) {
+                Spacer(Modifier.height(12.dp))
+                Row {
+                    OutlinedButton(shape = RoundedCornerShape(14.dp), onClick = { onDecide("cancelled") }) { Text("Anuluj") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(shape = RoundedCornerShape(14.dp), onClick = { onDecide("completed") }) {
+                        Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Zrealizowano")
+                    }
+                }
+            } else {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Status: ${order.status}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (order.status == "completed") MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                )
+            }
         }
     }
 }

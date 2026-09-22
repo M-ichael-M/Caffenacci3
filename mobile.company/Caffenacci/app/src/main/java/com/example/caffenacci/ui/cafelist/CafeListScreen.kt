@@ -1,25 +1,14 @@
 package com.example.caffenacci.ui.cafelist
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -38,12 +27,12 @@ fun CafeListScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(20.dp),
     ) {
         Text(
             text = "Caffenacci — test połączenia",
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -52,29 +41,34 @@ fun CafeListScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedTextField(
             value = serverUrl,
             onValueChange = viewModel::onServerUrlChanged,
             label = { Text("Adres serwera") },
             placeholder = { Text("http://192.168.1.30:8000/") },
+            leadingIcon = { Icon(Icons.Filled.Wifi, contentDescription = null) },
             singleLine = true,
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         Button(
             onClick = viewModel::connectAndRefresh,
-            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
         ) {
-            Text("Połącz i odśwież")
+            Text("Połącz i odśwież", fontWeight = FontWeight.SemiBold)
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         HorizontalDivider()
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         when (val state = uiState) {
             is CafeListUiState.Loading -> LoadingState()
@@ -95,19 +89,27 @@ private fun LoadingState() {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator()
             Spacer(modifier = Modifier.height(12.dp))
-            Text("Łączenie z serwerem…")
+            Text("Łączenie z serwerem…", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
 private fun ErrorState(message: String) {
-    Text(
-        text = message,
-        color = MaterialTheme.colorScheme.error,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.padding(top = 24.dp),
-    )
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+    ) {
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
 }
 
 @Composable
@@ -116,6 +118,7 @@ private fun CafeList(cafes: List<CafeListItemDto>) {
         Text(
             text = "Brak zarejestrowanych kawiarni w serwisie.",
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 24.dp),
         )
         return
@@ -125,11 +128,12 @@ private fun CafeList(cafes: List<CafeListItemDto>) {
         Text(
             text = "Znaleziono ${cafes.size} ${cafeWord(cafes.size)}:",
             style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(bottom = 8.dp),
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 10.dp),
         )
 
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             items(cafes) { cafe ->
                 CafeRow(cafe)
@@ -140,19 +144,34 @@ private fun CafeList(cafes: List<CafeListItemDto>) {
 
 @Composable
 private fun CafeRow(cafe: CafeListItemDto) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                text = cafe.cafe_name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.LocationOn,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "${cafe.street} ${cafe.building_number}, ${cafe.city}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = cafe.cafe_name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "${cafe.street} ${cafe.building_number}, ${cafe.city}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
