@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { CreditCardIcon } from './icons'
 
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
@@ -37,6 +37,8 @@ interface Props {
 }
 
 const ORDER_BUFFER_MINUTES = 15
+const ORDER_LEAD_MINUTES = 15
+const SLOT_STEP_MINUTES = 15
 const PREVIEW_TITLE = 'Niedostępne w trybie podglądu.'
 
 function dayOfWeekFromDate(dateStr: string): number {
@@ -73,8 +75,15 @@ function money(n: number) {
   return `${n.toFixed(2)} zł`
 }
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 function todayStr() {
-  return new Date().toISOString().slice(0, 10)
+  return toLocalDateStr(new Date())
 }
 
 export default function MenuOrdering({
@@ -102,9 +111,34 @@ export default function MenuOrdering({
     return { min: fromMinutes(openM), max: fromMinutes(closeM) }
   }, [effectiveHours])
 
-  const isTimeValid = orderWindow
-    ? toMinutes(time) >= toMinutes(orderWindow.min) && toMinutes(time) <= toMinutes(orderWindow.max)
-    : false
+  // Dostępne sloty co 15 min w oknie pracy; dla dzisiaj odcinamy to, co jest
+  // wcześniejsze niż "teraz + 15 min". Przeliczane przy zmianie daty i przy
+  // każdym otwarciu okna zamówienia, żeby godziny były aktualne.
+  const slots = useMemo(() => {
+    if (!orderWindow) return []
+    const openM = toMinutes(orderWindow.min)
+    const closeM = toMinutes(orderWindow.max)
+
+    let start = openM
+    if (date === todayStr()) {
+      const now = new Date()
+      start = Math.max(start, now.getHours() * 60 + now.getMinutes() + ORDER_LEAD_MINUTES)
+    }
+    // zaokrąglij w górę do pełnego kroku (np. 12:07 -> 12:15)
+    start = Math.ceil(start / SLOT_STEP_MINUTES) * SLOT_STEP_MINUTES
+
+    const result: string[] = []
+    for (let m = start; m <= closeM; m += SLOT_STEP_MINUTES) result.push(fromMinutes(m))
+    return result
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderWindow, date, checkoutOpen])
+
+  // Jeśli wybrana godzina wypadła ze slotów (np. minął czas) — ustaw pierwszy wolny.
+  useEffect(() => {
+    if (!slots.includes(time)) setTime(slots[0] ?? '')
+  }, [slots, time])
+
+  const isTimeValid = slots.includes(time)
 
   const addToCart = (item: MenuItem) => {
     // Podgląd jest wyłącznie wizualny — nigdy nie dopuszczamy do żadnej
@@ -139,7 +173,7 @@ export default function MenuOrdering({
   const maxDate = (() => {
     const d = new Date()
     d.setDate(d.getDate() + 3)
-    return d.toISOString().slice(0, 10)
+    return toLocalDateStr(d)
   })()
 
   const handleSubmitOrder = async () => {
@@ -149,7 +183,7 @@ export default function MenuOrdering({
       return
     }
     if (!isTimeValid) {
-      setError(`Wybierz godzinę pomiędzy ${orderWindow.min} a ${orderWindow.max}.`)
+      setError('Wybierz dostępną godzinę odbioru.')
       return
     }
     setSubmitting(true)
@@ -277,26 +311,33 @@ export default function MenuOrdering({
                 </div>
                 <div className="field" style={{ flex: 1 }}>
                   <label className="me-label">Godzina</label>
-                  <input
-                    type="time"
+                  <select
                     className="me-input"
+                    style={{ cursor: 'pointer' }}
                     value={time}
-                    min={orderWindow?.min}
-                    max={orderWindow?.max}
                     onChange={e => setTime(e.target.value)}
-                  />
+                    disabled={slots.length === 0}
+                  >
+                    {slots.length === 0 && <option value="">Brak godzin</option>}
+                    {slots.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
-                {orderWindow ? (
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                    Zamówienia na ten dzień przyjmujemy od {orderWindow.min} do {orderWindow.max}
-                    {effectiveHours.isException ? ' (dzień wyjątkowy w godzinach pracy)' : ''}.
-                  </p>
-                ) : (
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>
-                    Kawiarnia jest zamknięta w wybranym dniu — wybierz inną datę.
-                  </p>
-                )}
               </div>
+
+              {!orderWindow ? (
+                <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>
+                  Kawiarnia jest zamknięta w wybranym dniu — wybierz inną datę.
+                </p>
+              ) : slots.length === 0 ? (
+                <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>
+                  Na ten dzień nie ma już wolnych godzin odbioru — wybierz inną datę.
+                </p>
+              ) : (
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                  Zamówienia na ten dzień przyjmujemy od {slots[0]} do {slots[slots.length - 1]}
+                  {effectiveHours.isException ? ' (dzień wyjątkowy w godzinach pracy)' : ''}.
+                </p>
+              )}
 
               <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <CreditCardIcon size={15} className="cp-inline-icon" /> Płatność na miejscu — przy odbiorze zamówienia.

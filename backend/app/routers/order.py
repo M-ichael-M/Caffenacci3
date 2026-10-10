@@ -77,6 +77,7 @@ def _validate_order_date(date_str: str) -> None:
 # pierwszeństwo przed planem tygodniowym.
 
 ORDER_TIME_BUFFER_MINUTES = 15
+ORDER_LEAD_MINUTES = 15  # minimalny odstęp od "teraz" dla zamówień na dzisiaj
 
 
 def _to_minutes(t: str) -> int:
@@ -147,6 +148,22 @@ def _validate_order_time(cafe_id: str, date_str: str, start_time: str, db: Sessi
                 f"do {_from_minutes(close_m)} (kawiarnia czynna {open_time}–{close_time})."
             ),
         )
+
+    # Zamówienie na dzisiaj: najwcześniej "teraz + 15 min".
+    now = datetime.now()
+    if date_str == now.date().isoformat():
+        earliest = now.hour * 60 + now.minute + ORDER_LEAD_MINUTES
+        if earliest > close_m:
+            raise HTTPException(
+                400,
+                detail="Na dzisiaj nie można już złożyć zamówienia — wybierz inną datę.",
+            )
+        if requested < earliest:
+            raise HTTPException(
+                400,
+                detail=f"Na dzisiaj najwcześniejsza możliwa godzina odbioru to {_from_minutes(earliest)}.",
+            )
+
 
 def _resolve_item(cafe_id: str, item_in, db: Session) -> tuple[str, float]:
     """Jeśli klient podał menu_item_id, nadpisz nazwę/cenę aktualnymi danymi
