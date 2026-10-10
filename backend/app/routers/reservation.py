@@ -151,6 +151,26 @@ def _validate_not_in_past(date_str: str, start_time: str) -> None:
             )
 
 
+def _expire_stale_reservations(db: Session) -> None:
+    """Rezerwacje 'pending' (tryb simple), których data już minęła bez
+    decyzji właściciela, są automatycznie anulowane."""
+    today = date_cls.today().isoformat()
+    updated = (
+        db.query(Reservation)
+        .filter(Reservation.status == ReservationStatus.pending, Reservation.date < today)
+        .update(
+            {
+                Reservation.status: ReservationStatus.cancelled,
+                Reservation.owner_note: "Rezerwacja wygasła — kawiarnia nie odpowiedziała przed terminem.",
+                Reservation.updated_at: datetime.utcnow(),
+            },
+            synchronize_session=False,
+        )
+    )
+    if updated:
+        db.commit()
+
+
 def _validate_slot(
     table: CafeTable,
     settings: ReservationSettings,
@@ -538,6 +558,7 @@ def list_my_reservations(
     current_client: Client = Depends(get_current_client),
     db:             Session = Depends(get_db),
 ):
+    _expire_stale_reservations(db)
     rows = (
         db.query(Reservation)
         .options(selectinload(Reservation.table))
@@ -576,6 +597,7 @@ def list_reservations(
     cafe_id:       str = Depends(get_current_cafe_id),
     db:            Session = Depends(get_db),
 ):
+    _expire_stale_reservations(db)
     q = (
         db.query(Reservation)
         .filter(Reservation.cafe_id == cafe_id)
@@ -608,6 +630,7 @@ def update_reservation_status(
     cafe_id:        str = Depends(get_current_cafe_id),
     db:             Session = Depends(get_db),
 ):
+    _expire_stale_reservations(db)
     r = (
         db.query(Reservation)
         .filter(

@@ -227,7 +227,9 @@ function HistoryOrderCard({ o }: { o: OrderOut }) {
           </span>
           {!isCompleted && o.cancelled_by && (
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              anulowane przez {o.cancelled_by === 'owner' ? 'kawiarnię' : 'klienta'}
+              {o.cancelled_by === 'system'
+                ? 'anulowane automatycznie (minął termin)'
+                : `anulowane przez ${o.cancelled_by === 'owner' ? 'kawiarnię' : 'klienta'}`}
             </span>
           )}
         </div>

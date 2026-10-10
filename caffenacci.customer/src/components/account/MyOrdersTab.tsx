@@ -78,7 +78,9 @@ function OrderCard({ o }: { o: ClientOrder }) {
 
           {o.status === 'cancelled' && o.cancelled_by && (
             <div className="entity-card__sub" style={{ marginTop: '0.375rem', fontStyle: 'italic' }}>
-              anulowane przez {o.cancelled_by === 'owner' ? 'kawiarnię' : 'Ciebie'}
+              {o.cancelled_by === 'system'
+                ? 'anulowane automatycznie — kawiarnia nie zrealizowała zamówienia w terminie'
+                : `anulowane przez ${o.cancelled_by === 'owner' ? 'kawiarnię' : 'Ciebie'}`}
             </div>
           )}
         </div>
