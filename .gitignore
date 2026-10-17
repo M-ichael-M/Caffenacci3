@@ -66,3 +66,8 @@ Thumbs.db
 .parcel-cache/
 tmp/
 temp/
+
+$f = '.gitignore'; if (-not (Test-Path $f)) { New-Item $f -ItemType File | Out-Null }
+$have = Get-Content $f
+'.env','.env.local','*.db','uploads/','node_modules/','dist/','__pycache__/','.venv/' |
+  Where-Object { $_ -notin $have } | Add-Content $f -Encoding ascii
