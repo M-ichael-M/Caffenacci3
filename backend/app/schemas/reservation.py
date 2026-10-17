@@ -148,6 +148,7 @@ class ReservationOut(BaseModel):
     status:           ReservationStatusEnum
     owner_note:       Optional[str]
     created_at:       Optional[datetime]
+    cancelled_by:     Optional[str]  = None
     # Denormalizowane dane stolika
     table_seats:      Optional[int]  = None
     table_type:       Optional[str]  = None

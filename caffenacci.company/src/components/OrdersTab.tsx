@@ -239,6 +239,70 @@ function HistoryOrderCard({ o }: { o: OrderOut }) {
   )
 }
 
+// ── Modal: potwierdzenie realizacji kodem klienta ──────────────────────
+
+function CompleteOrderModal({ order, onClose, onSubmit }: {
+  order: OrderOut
+  onClose: () => void
+  onSubmit: (code: string) => Promise<string | null>
+}) {
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubmit = async () => {
+    setError(null)
+    if (code.length !== 8) { setError('Kod lojalnościowy ma dokładnie 8 znaków.'); return }
+    setBusy(true)
+    const err = await onSubmit(code)
+    setBusy(false)
+    if (err) setError(err)
+  }
+
+  return (
+    <div className="menu-editor-overlay" onClick={e => { if (e.target === e.currentTarget && !busy) onClose() }}>
+      <div className="menu-editor" style={{ maxWidth: 440, height: 'auto' }}>
+        <div className="me-header">
+          <div>
+            <div className="me-eyebrow">Realizacja zamówienia</div>
+            <h2 className="me-title">{order.client_nick}</h2>
+          </div>
+          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij"><X size={16} /></button>
+        </div>
+        <div className="me-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            Poproś klienta o jego kod lojalnościowy (pokazuje go w swoim koncie). Zamówienie zostanie
+            zrealizowane dopiero po jego wpisaniu.
+          </p>
+          <div className="field">
+            <label className="me-label">Kod klienta</label>
+            <input
+              className="me-input"
+              value={code}
+              onChange={e => setCode(e.target.value.toUpperCase())}
+              onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
+              maxLength={8}
+              placeholder="np. 7K3P9XQ2"
+              autoFocus
+              style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'monospace' }}
+            />
+          </div>
+          {error && <div className="form-error" role="alert">{error}</div>}
+        </div>
+        <div className="me-footer">
+          <div className="me-footer-actions">
+            <button type="button" className="btn btn--outline-dark" onClick={onClose} disabled={busy}>Anuluj</button>
+            <button type="button" className="btn btn--primary" style={{ width: 'auto', minWidth: 160 }}
+              onClick={handleSubmit} disabled={busy || code.length !== 8}>
+              {busy ? 'Sprawdzanie…' : 'Zrealizuj zamówienie'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════════════════
@@ -252,6 +316,7 @@ export default function OrdersTab({ token, cafeId }: Props) {
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState<string | null>(null)  // id zamówienia w trakcie zapisu
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
+  const [completing, setCompleting] = useState<OrderOut | null>(null)
 
   // ── Fetch ───────────────────────────────────────────────────────────────
 
@@ -315,6 +380,27 @@ export default function OrdersTab({ token, cafeId }: Props) {
     finally { setSaving(null) }
   }
 
+  const handleComplete = async (code: string): Promise<string | null> => {
+    if (!completing) return null
+    setSaving(completing.id)
+    try {
+      const res = await fetch(`http://localhost:8000/orders/${completing.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: 'completed', loyalty_code: code }),
+      })
+      const data = await res.json()
+      if (!res.ok) return typeof data.detail === 'string' ? data.detail : 'Błąd zapisu.'
+      const updated: OrderOut = data
+      setPending(prev => prev.filter(x => x.id !== updated.id))
+      setHistory(prev => [updated, ...prev])
+      setCompleting(null)
+      return null
+    } catch {
+      return 'Wystąpił błąd. Spróbuj ponownie.'
+    } finally { setSaving(null) }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
@@ -333,6 +419,10 @@ export default function OrdersTab({ token, cafeId }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+      {completing && (
+        <CompleteOrderModal order={completing} onClose={() => setCompleting(null)} onSubmit={handleComplete} />
+      )}
 
       {/* ── Nagłówek ──────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
@@ -411,7 +501,8 @@ export default function OrdersTab({ token, cafeId }: Props) {
                     .slice()
                     .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
                     .map(o => (
-                      <PendingOrderCard key={o.id} o={o} onDecide={handleDecide} saving={saving === o.id} />
+                      <PendingOrderCard key={o.id} o={o} saving={saving === o.id}
+                        onDecide={(ord, st) => st === 'completed' ? setCompleting(ord) : handleDecide(ord, st)} />
                     ))}
                 </>
               )}

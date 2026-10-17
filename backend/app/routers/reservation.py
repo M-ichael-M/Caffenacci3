@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date as date_cls, datetime
+from datetime import date as date_cls, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -105,6 +105,7 @@ def _reservation_to_out(r: Reservation) -> ReservationOut:
         created_by_owner = r.created_by_owner,
         status           = r.status,
         owner_note       = r.owner_note,
+        cancelled_by     = r.cancelled_by,
         created_at       = r.created_at,
         table_seats      = r.table.seats      if r.table else None,
         table_type       = str(r.table.table_type) if r.table else None,
@@ -149,6 +150,21 @@ def _validate_not_in_past(date_str: str, start_time: str) -> None:
                 400,
                 detail="Nie można rezerwować na bieżącą ani wcześniejszą godzinę — wybierz późniejszy termin.",
             )
+
+
+CLIENT_CANCEL_DEADLINE_MINUTES = 30
+
+
+def _ensure_client_can_cancel(date_str: str, start_time: str) -> None:
+    """Klient może anulować najpóźniej 30 minut przed terminem rezerwacji."""
+    y, mo, d = date_str.split("-")
+    h, m = start_time.split(":")
+    start_dt = datetime(int(y), int(mo), int(d), int(h), int(m))
+    if datetime.now() > start_dt - timedelta(minutes=CLIENT_CANCEL_DEADLINE_MINUTES):
+        raise HTTPException(
+            400,
+            detail=f"Rezerwację można anulować najpóźniej {CLIENT_CANCEL_DEADLINE_MINUTES} minut przed jej terminem.",
+        )
 
 
 def _expire_stale_reservations(db: Session) -> None:
@@ -545,6 +561,43 @@ def create_advanced_reservation_as_client(
 
     return _reservation_to_out(r)
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ANULOWANIE przez klienta (najpóźniej 30 min przed terminem)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post(
+    "/client/{reservation_id}/cancel",
+    response_model=ReservationOut,
+    summary="Anuluj własną rezerwację (najpóźniej 30 min przed terminem)",
+)
+def cancel_reservation_as_client(
+    reservation_id: str,
+    current_client: Client  = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    _expire_stale_reservations(db)
+    r = (
+        db.query(Reservation)
+        .options(selectinload(Reservation.table))
+        .filter(Reservation.id == reservation_id, Reservation.client_id == current_client.id)
+        .first()
+    )
+    if not r:
+        raise HTTPException(404, detail="Rezerwacja nie istnieje.")
+    if r.status == ReservationStatus.cancelled:
+        raise HTTPException(400, detail="Ta rezerwacja jest już anulowana.")
+
+    _ensure_client_can_cancel(r.date, r.start_time)
+
+    r.status       = ReservationStatus.cancelled
+    r.cancelled_by = "client"
+    r.updated_at   = datetime.utcnow()
+    db.commit()
+    db.refresh(r)
+    return _reservation_to_out(r)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # MOJE REZERWACJE — połączony widok klienta, wszystkie kawiarnie naraz
 # ══════════════════════════════════════════════════════════════════════════════
@@ -581,6 +634,7 @@ def list_my_reservations(
         ))
 
     return ClientReservationListOut(reservations=result)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # LISTA REZERWACJI (właściciel/pracownik)
@@ -730,5 +784,18 @@ def delete_reservation(
     ).first()
     if not r:
         raise HTTPException(404, detail="Rezerwacja nie istnieje.")
+
+    # Rezerwacja zaawansowana klienta z kontem nigdy nie znika — zostaje
+    # w jego historii jako anulowana przez kawiarnię. Rezerwacje
+    # telefoniczne (bez konta) i proste kasowane są jak dotąd.
+    if r.table_id is not None and r.client_id is not None:
+        if r.status != ReservationStatus.cancelled:
+            r.status       = ReservationStatus.cancelled
+            r.cancelled_by = "owner"
+            r.owner_note   = "Rezerwacja została anulowana przez kawiarnię."
+            r.updated_at   = datetime.utcnow()
+            db.commit()
+        return
+
     db.delete(r)
     db.commit()

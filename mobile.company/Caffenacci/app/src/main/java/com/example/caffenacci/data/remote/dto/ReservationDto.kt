@@ -10,6 +10,7 @@ data class ReservationDto(
     val comment: String? = null, val client_id: String? = null, val created_by_owner: Boolean,
     val status: String, val owner_note: String? = null, val created_at: String? = null,
     val table_seats: Int? = null, val table_type: String? = null, val table_label: String? = null,
+    val cancelled_by: String? = null,
 )
 
 @Serializable

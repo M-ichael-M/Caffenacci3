@@ -235,7 +235,7 @@ export default function ReservationTab({ token, cafeId }: Props) {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
-      setReservations(prev => prev.filter(r => r.id !== id))
+      fetchReservations(viewDate)
     } catch { /* ignore */ }
   }
 

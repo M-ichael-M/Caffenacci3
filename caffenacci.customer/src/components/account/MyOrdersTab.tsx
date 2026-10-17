@@ -29,6 +29,14 @@ interface Props { token: string }
 
 function money(n: number) { return `${n.toFixed(2)} zł` }
 
+const CANCEL_DEADLINE_MS = 30 * 60 * 1000
+
+function canCancel(o: ClientOrder): boolean {
+  if (o.status !== 'pending') return false
+  const start = new Date(`${o.date}T${o.start_time}:00`).getTime()
+  return Date.now() <= start - CANCEL_DEADLINE_MS
+}
+
 function statusMeta(status: OrderStatusType): { label: string; cls: string } {
   if (status === 'pending') return { label: 'Oczekuje', cls: 'status-badge--pending' }
   if (status === 'completed') return { label: 'Zrealizowane', cls: 'status-badge--completed' }
@@ -49,7 +57,7 @@ function OrderItemsList({ items }: { items: OrderItemOut[] }) {
   )
 }
 
-function OrderCard({ o }: { o: ClientOrder }) {
+function OrderCard({ o, onCancel, cancelling }: { o: ClientOrder; onCancel: () => void; cancelling: boolean }) {
   const meta = statusMeta(o.status)
   return (
     <div className="entity-card">
@@ -83,6 +91,26 @@ function OrderCard({ o }: { o: ClientOrder }) {
                 : `anulowane przez ${o.cancelled_by === 'owner' ? 'kawiarnię' : 'Ciebie'}`}
             </div>
           )}
+
+          {o.status === 'pending' && (
+            canCancel(o) ? (
+              <div style={{ marginTop: '0.75rem' }}>
+                <button
+                  type="button"
+                  className="btn btn--outline-dark btn--sm"
+                  style={{ width: 'auto', color: 'var(--error)', borderColor: 'rgba(184,50,50,0.4)' }}
+                  onClick={onCancel}
+                  disabled={cancelling}
+                >
+                  {cancelling ? 'Anulowanie…' : 'Anuluj zamówienie'}
+                </button>
+              </div>
+            ) : (
+              <div className="entity-card__sub" style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                Anulowanie było możliwe do 30 min przed godziną odbioru.
+              </div>
+            )
+          )}
         </div>
       </div>
     </div>
@@ -93,6 +121,8 @@ export default function MyOrdersTab({ token }: Props) {
   const [orders, setOrders] = useState<ClientOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [activeSub, setActiveSub] = useState<'current' | 'history'>('current')
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [cancelError, setCancelError] = useState<string | null>(null)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -109,6 +139,23 @@ export default function MyOrdersTab({ token }: Props) {
   }, [token])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  const handleCancel = async (o: ClientOrder) => {
+    if (!confirm('Czy na pewno chcesz anulować to zamówienie?')) return
+    setCancelError(null)
+    setCancellingId(o.id)
+    try {
+      const res = await fetch(`http://localhost:8000/orders/client/${o.id}/cancel`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Nie udało się anulować zamówienia.')
+      setOrders(prev => prev.map(x => x.id === o.id ? { ...x, status: data.status, cancelled_by: data.cancelled_by } : x))
+    } catch (err: unknown) {
+      setCancelError(err instanceof Error ? err.message : 'Nie udało się anulować zamówienia.')
+    } finally { setCancellingId(null) }
+  }
 
   const current = orders
     .filter(o => o.status === 'pending')
@@ -157,6 +204,8 @@ export default function MyOrdersTab({ token }: Props) {
         </button>
       </div>
 
+      {cancelError && <div className="form-error" role="alert">{cancelError}</div>}
+
       {list.length === 0 ? (
         <div className="res-empty-card">
           <div className="res-empty-icon">
@@ -175,7 +224,14 @@ export default function MyOrdersTab({ token }: Props) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-          {list.map(o => <OrderCard key={o.id} o={o} />)}
+          {list.map(o => (
+            <OrderCard
+              key={o.id}
+              o={o}
+              onCancel={() => handleCancel(o)}
+              cancelling={cancellingId === o.id}
+            />
+          ))}
         </div>
       )}
     </div>

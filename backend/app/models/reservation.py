@@ -103,6 +103,7 @@ class Reservation(Base):
     status        = Column(SAEnum(ReservationStatus), nullable=False,
                            default=ReservationStatus.pending)
     owner_note    = Column(Text, nullable=True)   # wiadomość do klienta przy akceptacji/odrzuceniu
+    cancelled_by  = Column(String(10), nullable=True)   # "owner" | "client" | None (np. wygasła automatycznie)
 
     created_at    = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at    = Column(DateTime, nullable=True, onupdate=datetime.utcnow)

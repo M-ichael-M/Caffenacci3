@@ -76,6 +76,8 @@ class ClientOrderIn(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
     status: OrderStatusEnum  # completed | cancelled
+    # Wymagany przy "completed" — kod lojalnościowy klienta, który złożył zamówienie
+    loyalty_code: Optional[str] = Field(None, max_length=8)
 
 
 # ── Output ─────────────────────────────────────────────────────────────────

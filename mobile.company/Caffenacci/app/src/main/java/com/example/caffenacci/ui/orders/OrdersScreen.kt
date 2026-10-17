@@ -16,11 +16,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.caffenacci.data.remote.ApiService
 import com.example.caffenacci.data.remote.dto.OrderDto
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 @Composable
 fun OrdersScreen(api: ApiService, auth: String, modifier: Modifier = Modifier, viewModel: OrdersViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
     var tab by remember { mutableStateOf(0) }
+    var completing by remember { mutableStateOf<OrderDto?>(null) }
 
     LaunchedEffect(Unit) { viewModel.load(api, auth) }
 
@@ -62,12 +65,76 @@ fun OrdersScreen(api: ApiService, auth: String, modifier: Modifier = Modifier, v
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
                     items(list) { order ->
-                        OrderCard(order = order, showActions = tab == 0, onDecide = { status -> viewModel.decide(api, auth, order, status) })
+                        OrderCard(
+                            order = order,
+                            showActions = tab == 0,
+                            onDecide = { status ->
+                                if (status == "completed") completing = order
+                                else viewModel.decide(api, auth, order, status)
+                            },
+                        )
                     }
                 }
             }
         }
     }
+    completing?.let { order ->
+        CompleteOrderDialog(
+            order = order,
+            onDismiss = { completing = null },
+            onConfirm = { code, onError ->
+                viewModel.complete(api, auth, order, code, onSuccess = { completing = null }, onError = onError)
+            },
+        )
+    }
+}
+
+@Composable
+private fun CompleteOrderDialog(
+    order: OrderDto,
+    onDismiss: () -> Unit,
+    onConfirm: (code: String, onError: (String) -> Unit) -> Unit,
+) {
+    var code by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text("Realizacja zamówienia") },
+        text = {
+            Column {
+                Text(
+                    "Poproś klienta (${order.client_nick}) o kod lojalnościowy i wpisz go, aby zrealizować zamówienie.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { code = it.uppercase().take(8); error = null },
+                    label = { Text("Kod klienta (8 znaków)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                error?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = code.length == 8 && !busy,
+                onClick = {
+                    busy = true; error = null
+                    onConfirm(code) { msg -> busy = false; error = msg }
+                },
+            ) { Text(if (busy) "Sprawdzanie…" else "Zrealizuj") }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text("Anuluj") } },
+    )
 }
 
 @Composable

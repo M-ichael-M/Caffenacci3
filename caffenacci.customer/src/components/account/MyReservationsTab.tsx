@@ -26,6 +26,7 @@ interface ClientReservation {
   table_seats: number | null
   table_type: string | null
   table_label: string | null
+  cancelled_by: string | null
 }
 
 interface Props { token: string }
@@ -61,11 +62,28 @@ function isPast(r: ClientReservation): boolean {
   return endTimestamp(r) < Date.now()
 }
 
+const CANCEL_DEADLINE_MS = 30 * 60 * 1000
+
+function startTimestamp(r: ClientReservation): number {
+  const [h, m] = r.start_time.split(':').map(Number)
+  const d = new Date(r.date + 'T00:00:00')
+  d.setHours(h, m, 0, 0)
+  return d.getTime()
+}
+
+function canCancel(r: ClientReservation): boolean {
+  return r.status !== 'cancelled' && Date.now() <= startTimestamp(r) - CANCEL_DEADLINE_MS
+}
+
 function statusMeta(r: ClientReservation): { label: string; cls: string } {
+  if (r.status === 'cancelled') {
+    if (r.cancelled_by === 'client') return { label: 'Anulowana przez Ciebie', cls: 'status-badge--cancelled' }
+    if (r.cancelled_by === 'owner')  return { label: 'Anulowana przez kawiarnię', cls: 'status-badge--cancelled' }
+    return { label: 'Odrzucona', cls: 'status-badge--cancelled' }
+  }
   if (r.is_advanced) return { label: 'Potwierdzona', cls: 'status-badge--confirmed' }
   if (r.status === 'pending') return { label: 'Oczekuje', cls: 'status-badge--pending' }
-  if (r.status === 'confirmed') return { label: 'Potwierdzona', cls: 'status-badge--confirmed' }
-  return { label: 'Odrzucona', cls: 'status-badge--cancelled' }
+  return { label: 'Potwierdzona', cls: 'status-badge--confirmed' }
 }
 
 function tableDescription(r: ClientReservation): string {
@@ -78,7 +96,9 @@ function tableDescription(r: ClientReservation): string {
 
 // ── Karta rezerwacji ──────────────────────────────────────────────────────
 
-function ReservationCard({ r, onClick }: { r: ClientReservation; onClick?: () => void }) {
+function ReservationCard({ r, onClick, onCancel, cancelling }: {
+  r: ClientReservation; onClick?: () => void; onCancel?: () => void; cancelling?: boolean
+}) {
   const meta = statusMeta(r)
   const clickable = !!onClick
   const tableDesc = tableDescription(r)
@@ -122,6 +142,26 @@ function ReservationCard({ r, onClick }: { r: ClientReservation; onClick?: () =>
             <div className="entity-card__sub" style={{ marginTop: '0.25rem', fontStyle: 'italic' }}>
               „{r.comment}"
             </div>
+          )}
+
+          {r.status !== 'cancelled' && !isPast(r) && (
+            canCancel(r) ? (
+              <div style={{ marginTop: '0.75rem' }}>
+                <button
+                  type="button"
+                  className="btn btn--outline-dark btn--sm"
+                  style={{ width: 'auto', color: 'var(--error)', borderColor: 'rgba(184,50,50,0.4)' }}
+                  onClick={e => { e.stopPropagation(); onCancel?.() }}
+                  disabled={cancelling}
+                >
+                  {cancelling ? 'Anulowanie…' : 'Anuluj rezerwację'}
+                </button>
+              </div>
+            ) : (
+              <div className="entity-card__sub" style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                Anulowanie było możliwe do 30 min przed terminem.
+              </div>
+            )
           )}
 
           {clickable && (
@@ -199,6 +239,8 @@ export default function MyReservationsTab({ token }: Props) {
   const [loading, setLoading] = useState(true)
   const [activeSub, setActiveSub] = useState<'current' | 'history'>('current')
   const [detail, setDetail] = useState<ClientReservation | null>(null)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [cancelError, setCancelError] = useState<string | null>(null)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -216,12 +258,29 @@ export default function MyReservationsTab({ token }: Props) {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
+  const handleCancel = async (r: ClientReservation) => {
+    if (!confirm('Czy na pewno chcesz anulować tę rezerwację?')) return
+    setCancelError(null)
+    setCancellingId(r.id)
+    try {
+      const res = await fetch(`http://localhost:8000/reservations/client/${r.id}/cancel`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Nie udało się anulować rezerwacji.')
+      setReservations(prev => prev.map(x => x.id === r.id ? { ...x, status: data.status, cancelled_by: data.cancelled_by } : x))
+    } catch (err: unknown) {
+      setCancelError(err instanceof Error ? err.message : 'Nie udało się anulować rezerwacji.')
+    } finally { setCancellingId(null) }
+  }
+
   const current = reservations
-    .filter(r => !isPast(r))
+    .filter(r => !isPast(r) && r.status !== 'cancelled')
     .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
 
   const history = reservations
-    .filter(r => isPast(r))
+    .filter(r => isPast(r) || r.status === 'cancelled')
     .sort((a, b) => b.date.localeCompare(a.date) || b.start_time.localeCompare(a.start_time))
 
   if (loading) {
@@ -262,6 +321,8 @@ export default function MyReservationsTab({ token }: Props) {
           </button>
         </div>
 
+        {cancelError && <div className="form-error" role="alert">{cancelError}</div>}
+
         {list.length === 0 ? (
           <div className="res-empty-card">
             <div className="res-empty-icon"><CalendarDays size={44} strokeWidth={1.4} /></div>
@@ -277,12 +338,14 @@ export default function MyReservationsTab({ token }: Props) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             {list.map(r => {
-              const clickableDetail = !r.is_advanced && (r.status === 'confirmed' || r.status === 'cancelled')
+              const clickableDetail = !r.is_advanced && !r.cancelled_by && (r.status === 'confirmed' || r.status === 'cancelled')
               return (
                 <ReservationCard
                   key={r.id}
                   r={r}
                   onClick={clickableDetail ? () => setDetail(r) : undefined}
+                  onCancel={() => handleCancel(r)}
+                  cancelling={cancellingId === r.id}
                 />
               )
             })}

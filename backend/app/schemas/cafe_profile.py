@@ -91,7 +91,7 @@ class EmployeeIn(BaseModel):
 
 class EmployeeOut(EmployeeIn):
     id: str
-    invited_at: Optional[str] = None
+    invited_at: Optional[datetime] = None
     access_enabled: bool = False
     model_config = {"from_attributes": True}
 

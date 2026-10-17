@@ -251,6 +251,7 @@ export default function ProfileTab({ token }: Props) {
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
   const [saveMsg, setSaveMsg]   = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Draft state — edytowalna kopia profilu
   const [ownerName, setOwnerName]   = useState('')
@@ -305,6 +306,7 @@ export default function ProfileTab({ token }: Props) {
 
   const fetchProfile = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const res = await fetch('http://localhost:8000/profile', {
         headers: { Authorization: `Bearer ${token}` },
@@ -349,8 +351,12 @@ export default function ProfileTab({ token }: Props) {
         setLocationShowGmapsLink(data.location_show_gmaps_link)
         setGalleryVisible(data.gallery_visible)
         setGalleryImages(data.gallery_images ?? [])
+      } else {
+        setLoadError(`Nie udało się wczytać profilu (błąd ${res.status}). Spróbuj ponownie lub sprawdź logi serwera.`)
       }
-    } catch { /* ignore */ }
+    } catch {
+      setLoadError('Brak połączenia z serwerem — nie udało się wczytać profilu.')
+    }
     finally { setLoading(false) }
   }, [token])
 
@@ -742,6 +748,13 @@ export default function ProfileTab({ token }: Props) {
       {saveMsg && (
         <div className={saveMsg.type === 'ok' ? 'form-success' : 'form-error'}>
           {saveMsg.text}
+        </div>
+      )}
+
+      {loadError && (
+        <div className="form-error" role="alert">
+          {loadError}{' '}
+          <button type="button" className="link-btn" onClick={fetchProfile}>Spróbuj ponownie</button>
         </div>
       )}
 
@@ -1282,7 +1295,7 @@ export default function ProfileTab({ token }: Props) {
         <button
           type="button" className="btn btn--primary"
           style={{ width: 'auto', minWidth: 200 }}
-          onClick={handleSave} disabled={saving}
+          onClick={handleSave} disabled={saving || !profile}
         >
           {saving ? 'Zapisywanie…' : 'Zapisz profil kawiarni'}
         </button>

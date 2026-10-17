@@ -17,4 +17,4 @@ data class OrderDto(
 data class OrderListDto(val orders: List<OrderDto>)
 
 @Serializable
-data class OrderStatusUpdateDto(val status: String)
+data class OrderStatusUpdateDto(val status: String, val loyalty_code: String? = null)

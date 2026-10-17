@@ -202,6 +202,21 @@ def _resolve_item(cafe_id: str, item_in, db: Session) -> tuple[str, float]:
     return item_in.name, item_in.price
 
 
+CLIENT_CANCEL_DEADLINE_MINUTES = 30
+
+
+def _ensure_client_can_cancel(date_str: str, start_time: str) -> None:
+    """Klient może anulować najpóźniej 30 minut przed godziną odbioru."""
+    y, mo, d = date_str.split("-")
+    h, m = start_time.split(":")
+    start_dt = datetime(int(y), int(mo), int(d), int(h), int(m))
+    if datetime.now() > start_dt - timedelta(minutes=CLIENT_CANCEL_DEADLINE_MINUTES):
+        raise HTTPException(
+            400,
+            detail=f"Zamówienie można anulować najpóźniej {CLIENT_CANCEL_DEADLINE_MINUTES} minut przed godziną odbioru.",
+        )
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # USTAWIENIA
 # ══════════════════════════════════════════════════════════════════════════════
@@ -360,12 +375,15 @@ def cancel_order_public(
     if order.client_id and order.client_id != payload.client_id:
         raise HTTPException(403, detail="Brak uprawnień do anulowania tego zamówienia.")
 
+    _ensure_client_can_cancel(order.date, order.start_time)
+
     order.status       = OrderStatus.cancelled
     order.cancelled_by = "client"
     order.updated_at   = datetime.utcnow()
     db.commit()
     db.refresh(order)
     return order
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MOJE ZAMÓWIENIA — połączony widok klienta, wszystkie kawiarnie naraz
@@ -400,6 +418,45 @@ def list_my_orders(
         for o in rows
     ]
     return ClientOrderListOut(orders=result)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ANULOWANIE przez klienta (najpóźniej 30 min przed odbiorem)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post(
+    "/client/{order_id}/cancel",
+    response_model=OrderOut,
+    summary="Anuluj własne zamówienie (najpóźniej 30 min przed odbiorem)",
+)
+def cancel_order_as_client(
+    order_id: str,
+    current_client: Client  = Depends(get_current_client),
+    db:             Session = Depends(get_db),
+):
+    _expire_stale_orders(db)
+    order = (
+        db.query(Order).options(selectinload(Order.items))
+        .filter(Order.id == order_id, Order.client_id == current_client.id)
+        .first()
+    )
+    if not order:
+        raise HTTPException(404, detail="Zamówienie nie istnieje.")
+    if order.status != OrderStatus.pending:
+        raise HTTPException(
+            400,
+            detail=f"Zamówienie ma już status '{order.status}' i nie może być anulowane.",
+        )
+
+    _ensure_client_can_cancel(order.date, order.start_time)
+
+    order.status       = OrderStatus.cancelled
+    order.cancelled_by = "client"
+    order.updated_at   = datetime.utcnow()
+    db.commit()
+    db.refresh(order)
+    return order
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # LISTA ZAMÓWIEŃ (właściciel/pracownik) — chronologicznie wg daty i godziny
@@ -447,6 +504,15 @@ def update_order_status(
     from app.schemas.order import OrderStatusEnum
     if payload.status not in (OrderStatusEnum.completed, OrderStatusEnum.cancelled):
         raise HTTPException(400, detail="Dozwolone statusy: completed, cancelled.")
+
+    if payload.status == OrderStatusEnum.completed and order.client_id:
+        code = (payload.loyalty_code or "").strip().upper()
+        if not code:
+            raise HTTPException(400, detail="Aby zrealizować zamówienie, podaj kod klienta.")
+        client = db.query(Client).filter(Client.loyalty_code == code).first()
+        if not client or client.id != order.client_id:
+            raise HTTPException(400, detail="Podany kod nie należy do klienta, który złożył to zamówienie.")
+
     order.status = payload.status
     order.cancelled_by = "owner" if payload.status == OrderStatusEnum.cancelled else None
     order.updated_at = datetime.utcnow()
