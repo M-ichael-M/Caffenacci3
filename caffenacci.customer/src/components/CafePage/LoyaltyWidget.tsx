@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { CoinIcon, StampIcon, GiftIcon, CoffeeIcon } from './icons'
+import { API_URL } from '../../config'
 
 interface RewardItem {
   id: string
@@ -57,7 +58,7 @@ export default function LoyaltyWidget({
     if (!authToken || previewMode) { setBalance(null); return }
     setLoading(true)
     try {
-      const res = await fetch(`http://localhost:8000/loyalty/client/${cafeId}/mine`, {
+      const res = await fetch(`${API_URL}/loyalty/client/${cafeId}/mine`, {
         headers: { Authorization: `Bearer ${authToken}` },
       })
       if (res.ok) setBalance(await res.json())

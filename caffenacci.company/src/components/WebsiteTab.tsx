@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { PALETTES } from '../palettes'
 import { extractPaletteFromImageUrl } from '../utils/paletteFromImage'
+import { API_URL, CUSTOMER_URL } from '../config'
 
 interface Props {
   token: string
@@ -133,13 +134,13 @@ export default function WebsiteTab({ token, cafeId }: Props) {
     setLoading(true)
     try {
       const [siteRes, profileRes, publishRes] = await Promise.all([
-        fetch('http://localhost:8000/site/settings', {
+        fetch(`${API_URL}/site/settings`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch('http://localhost:8000/profile', {
+        fetch(`${API_URL}/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch('http://localhost:8000/site/publish-status', {
+        fetch(`${API_URL}/site/publish-status`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ])
@@ -172,7 +173,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
     setGeneratingPalette(true)
     setPaletteGenError(null)
     try {
-      const vars = await extractPaletteFromImageUrl(`http://localhost:8000${logoUrl}`)
+      const vars = await extractPaletteFromImageUrl(`${API_URL}${logoUrl}`)
       setCustomPaletteVars(vars)
       setPalette('custom')
     } catch (err: unknown) {
@@ -188,7 +189,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
     setSaving(true)
     setSaveMsg(null)
     try {
-      const res = await fetch('http://localhost:8000/site/settings', {
+      const res = await fetch(`${API_URL}/site/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -207,8 +208,8 @@ export default function WebsiteTab({ token, cafeId }: Props) {
     } finally { setSaving(false) }
   }
 
-  const previewUrl = `http://localhost:5174/preview/${cafeId}?token=${encodeURIComponent(token)}`
-  const liveUrl = publishInfo?.slug ? `http://localhost:5174/cafe/${publishInfo.slug}` : null
+  const previewUrl = `${CUSTOMER_URL}/preview/${cafeId}?token=${encodeURIComponent(token)}`
+  const liveUrl = publishInfo?.slug ? `${CUSTOMER_URL}/cafe/${publishInfo.slug}` : null
 
   if (loading) {
     return (
@@ -393,7 +394,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
             }}>
               {logoUrl ? (
                 <img
-                  src={`http://localhost:8000${logoUrl}`}
+                  src={`${API_URL}${logoUrl}`}
                   alt="Logo kawiarni"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />

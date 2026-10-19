@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NewspaperIcon} from './icons'
 import { X } from 'lucide-react'
+import { API_URL } from '../../config'
 
 interface NewsPostItem {
   id: string
@@ -38,7 +39,7 @@ export default function NewsWidget({ posts }: Props) {
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setOpenId(post.id) }}
           >
             {post.image_url ? (
-              <img className="cp-news-card__image" src={`http://localhost:8000${post.image_url}`} alt={post.title} loading="lazy" />
+              <img className="cp-news-card__image" src={`${API_URL}${post.image_url}`} alt={post.title} loading="lazy" />
             ) : (
               <div className="cp-news-card__image-fallback"><NewspaperIcon size={30} /></div>
             )}
@@ -65,7 +66,7 @@ export default function NewsWidget({ posts }: Props) {
             <div className="me-body">
               <div className="cp-news-modal-date">{formatDate(openPost.created_at)}</div>
               {openPost.image_url && (
-                <img className="cp-news-modal-image" src={`http://localhost:8000${openPost.image_url}`} alt={openPost.title} />
+                <img className="cp-news-modal-image" src={`${API_URL}${openPost.image_url}`} alt={openPost.title} />
               )}
               <p className="cp-news-modal-content">{openPost.content}</p>
             </div>

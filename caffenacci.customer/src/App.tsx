@@ -10,6 +10,7 @@ import { loadClientAuth, saveClientAuth, clearClientAuth } from './authStorage'
 import type { ClientAuthState } from './authStorage'
 import logoCircle from './assets/logo/logo_circle.png'
 import './index.css'
+import { API_URL, COMPANY_URL } from './config'
 
 type View = 'home' | 'login' | 'register' | 'account'
 
@@ -56,7 +57,7 @@ export default function App() {
       return
     }
 
-    fetch('http://localhost:8000/client-auth/me', {
+    fetch(`${API_URL}/client-auth/me`, {
       headers: { Authorization: `Bearer ${stored.token}` },
     })
       .then(res => {
@@ -237,7 +238,7 @@ export default function App() {
             style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}
           >
             Prowadzisz kawiarnię?{' '}
-            <a href="http://localhost:5173" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+            <a href={COMPANY_URL} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
               Przejdź do panelu właściciela <ArrowRight size={14} />
             </a>
           </p>

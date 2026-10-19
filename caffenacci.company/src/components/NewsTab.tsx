@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Newspaper, X } from 'lucide-react'
+import { API_URL } from '../config'
 
 interface NewsPostOut {
   id: string
@@ -19,7 +20,7 @@ interface Props {
   token: string
 }
 
-const API = 'http://localhost:8000'
+const API = API_URL
 const MAX_NEWS_POSTS = 3
 
 function formatDate(s: string) {

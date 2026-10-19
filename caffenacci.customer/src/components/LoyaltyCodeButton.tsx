@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { QrCode, X } from 'lucide-react'
+import { API_URL } from '../config'
 
 interface Props {
   token: string
 }
 
-const API = 'http://localhost:8000'
+const API = API_URL
 
 export default function LoyaltyCodeButton({ token }: Props) {
   const [code, setCode] = useState<string | null>(null)

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Star, Pencil } from 'lucide-react'
+import { API_URL } from '../../config'
 
 interface ReviewItem {
   id: string
@@ -150,7 +151,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
     if (!authToken || previewMode) { setMyReview(null); return }
     setLoadingMine(true)
     try {
-      const res = await fetch(`http://localhost:8000/reviews/client/${cafeId}/mine`, {
+      const res = await fetch(`${API_URL}/reviews/client/${cafeId}/mine`, {
         headers: { Authorization: `Bearer ${authToken}` },
       })
       if (res.ok) {
@@ -173,7 +174,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch(`http://localhost:8000/reviews/client/${cafeId}`, {
+      const res = await fetch(`${API_URL}/reviews/client/${cafeId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ rating, comment: comment.trim() || null }),
@@ -202,7 +203,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch(`http://localhost:8000/reviews/client/${myReview.id}`, {
+      const res = await fetch(`${API_URL}/reviews/client/${myReview.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ rating, comment: comment.trim() || null }),
@@ -230,7 +231,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
     if (!confirm('Czy na pewno chcesz usunąć swoją opinię?')) return
     setDeleting(true)
     try {
-      const res = await fetch(`http://localhost:8000/reviews/client/${myReview.id}`, {
+      const res = await fetch(`${API_URL}/reviews/client/${myReview.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${authToken}` },
       })

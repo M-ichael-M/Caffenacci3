@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { MessageCircle } from 'lucide-react'
+import { API_URL } from '../../config'
 
 interface ClientReview {
   id: string
@@ -48,7 +49,7 @@ export default function MyReviewsTab({ token }: Props) {
   const fetchReviews = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:8000/reviews/client/mine', {
+      const res = await fetch(`${API_URL}/reviews/client/mine`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Check } from 'lucide-react'
+import { API_URL } from '../config'
 
 interface FormData {
   full_name: string
@@ -62,7 +63,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
     nickCheckTimer.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `http://localhost:8000/client-auth/nick-available?nick=${encodeURIComponent(nick)}`
+          `${API_URL}/client-auth/nick-available?nick=${encodeURIComponent(nick)}`
         )
         if (!res.ok) throw new Error()
         const data = await res.json()
@@ -98,7 +99,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
     setLoading(true)
 
     try {
-      const res = await fetch('http://localhost:8000/client-auth/register', {
+      const res = await fetch(`${API_URL}/client-auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

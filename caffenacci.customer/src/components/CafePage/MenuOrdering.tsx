@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { CreditCardIcon } from './icons'
+import { API_URL } from '../../config'
 
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
 interface HourException { date: string; is_closed: boolean; open_time: string | null; close_time: string | null }
@@ -189,7 +190,7 @@ export default function MenuOrdering({
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch(`http://localhost:8000/orders/client/${cafeId}`, {
+      const res = await fetch(`${API_URL}/orders/client/${cafeId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CalendarIcon } from './icons'
+import { API_URL } from '../../config'
 
 interface Props {
   cafeId: string
@@ -31,7 +32,7 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken,
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch(`http://localhost:8000/reservations/client/${cafeId}`, {
+      const res = await fetch(`${API_URL}/reservations/client/${cafeId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({

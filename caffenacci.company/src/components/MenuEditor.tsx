@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Leaf, Flame, Ban, X, Plus } from 'lucide-react'
+import { API_URL } from '../config'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -123,7 +124,7 @@ export default function MenuEditor({ token, onClose }: Props) {
   useState(() => {
     ;(async () => {
       try {
-        const res = await fetch('http://localhost:8000/menu', {
+        const res = await fetch(`${API_URL}/menu`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (res.ok) {
@@ -225,7 +226,7 @@ export default function MenuEditor({ token, onClose }: Props) {
           })),
         })),
       }
-      const res = await fetch('http://localhost:8000/menu', {
+      const res = await fetch(`${API_URL}/menu`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

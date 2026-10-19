@@ -17,6 +17,7 @@ import { Eye, X, ExternalLink } from 'lucide-react'
 import CafeLocationMap from './CafeLocationMap'
 import { BADGE_CATALOG } from '../../badges'
 import InfoTooltip from './InfoTooltip'
+import { API_URL } from '../../config'
 
 // ── Typy (odpowiadają backendowemu PublicSiteOut) ───────────────────────────
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
@@ -197,8 +198,8 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
     setLoading(true)
     try {
       const url = mode === 'preview'
-        ? `http://localhost:8000/site/preview/${identifier}?token=${encodeURIComponent(previewToken ?? '')}`
-        : `http://localhost:8000/site/public/by-slug/${identifier}`
+        ? `${API_URL}/site/preview/${identifier}?token=${encodeURIComponent(previewToken ?? '')}`
+        : `${API_URL}/site/public/by-slug/${identifier}`
       const res = await fetch(url)
       if (!res.ok) { setNotFound(true); return }
       setData(await res.json())
@@ -379,7 +380,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
       {/* Hero */}
       <header className="cp-hero">
         {data.logo_url ? (
-          <img className="cp-hero__logo" src={`http://localhost:8000${data.logo_url}`} alt={data.cafe_name} />
+          <img className="cp-hero__logo" src={`${API_URL}${data.logo_url}`} alt={data.cafe_name} />
         ) : (
           <div className="cp-hero__logo"><CoffeeIcon size={40} /></div>
         )}

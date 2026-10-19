@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { CalendarDays, Users, X, RefreshCw, ArrowRight } from 'lucide-react'
+import { API_URL } from '../../config'
 
 // ── Typy ──────────────────────────────────────────────────────────────────
 
@@ -245,7 +246,7 @@ export default function MyReservationsTab({ token }: Props) {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:8000/reservations/client/mine', {
+      const res = await fetch(`${API_URL}/reservations/client/mine`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -263,7 +264,7 @@ export default function MyReservationsTab({ token }: Props) {
     setCancelError(null)
     setCancellingId(r.id)
     try {
-      const res = await fetch(`http://localhost:8000/reservations/client/${r.id}/cancel`, {
+      const res = await fetch(`${API_URL}/reservations/client/${r.id}/cancel`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })

@@ -29,6 +29,7 @@ import {
   Flame,
   Ban,
 } from 'lucide-react'
+import { API_URL } from '../config'
 
 interface AuthState {
   token: string
@@ -112,7 +113,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
   async function fetchMenu() {
     setLoadingMenu(true)
     try {
-      const res = await fetch('http://localhost:8000/menu', {
+      const res = await fetch(`${API_URL}/menu`, {
         headers: { Authorization: `Bearer ${auth.token}` },
       })
       if (res.ok) {
@@ -126,7 +127,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
   async function fetchReviewSummary() {
     setLoadingReviews(true)
     try {
-      const res = await fetch('http://localhost:8000/reviews/summary', {
+      const res = await fetch(`${API_URL}/reviews/summary`, {
         headers: { Authorization: `Bearer ${auth.token}` },
       })
       if (res.ok) {

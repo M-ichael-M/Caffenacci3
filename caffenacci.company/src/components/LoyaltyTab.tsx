@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Gift, Receipt, Coins, Bookmark, X } from 'lucide-react'
+import { API_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ interface Props {
   token: string
 }
 
-const API = 'http://localhost:8000'
+const API = API_URL
 
 function uid() {
   return Math.random().toString(36).slice(2)

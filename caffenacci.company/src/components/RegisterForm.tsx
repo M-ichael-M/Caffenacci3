@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { API_URL } from '../config'
 
 interface FormData {
   owner_name: string
@@ -75,7 +76,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
     setLoading(true)
 
     try {
-      const res = await fetch('http://localhost:8000/auth/register', {
+      const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

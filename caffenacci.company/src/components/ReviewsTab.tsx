@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MessageCircle, Link as LinkIcon, RefreshCw } from 'lucide-react'
+import { MessageCircle, Link as RefreshCw } from 'lucide-react'
+import { API_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -65,14 +66,14 @@ function ReviewCard({ r }: { r: ReviewOut }) {
 // MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════════════════
 
-export default function ReviewsTab({ token, cafeId }: Props) {
+export default function ReviewsTab({ token }: Props) {
   const [data, setData]       = useState<ReviewListOut | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchReviews = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:8000/reviews', {
+      const res = await fetch(`${API_URL}/reviews`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) setData(await res.json())

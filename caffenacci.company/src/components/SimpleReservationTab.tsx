@@ -9,6 +9,7 @@ import {
   Link as LinkIcon,
   RefreshCw,
 } from 'lucide-react'
+import { API_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -429,10 +430,10 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
     setLoading(true)
     try {
       const [pendingRes, historyRes] = await Promise.all([
-        fetch('http://localhost:8000/reservations?status=pending', {
+        fetch(`${API_URL}/reservations?status=pending`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch('http://localhost:8000/reservations', {
+        fetch(`${API_URL}/reservations`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ])
@@ -459,7 +460,7 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
     setSaving(true)
     try {
       const res = await fetch(
-        `http://localhost:8000/reservations/${deciding.r.id}/status`,
+        `${API_URL}/reservations/${deciding.r.id}/status`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -479,7 +480,7 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
   const handleDelete = async (id: string) => {
     if (!confirm('Usunąć tę rezerwację z historii?')) return
     try {
-      await fetch(`http://localhost:8000/reservations/${id}`, {
+      await fetch(`${API_URL}/reservations/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })

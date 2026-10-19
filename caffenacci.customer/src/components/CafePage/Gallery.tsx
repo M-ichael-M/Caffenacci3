@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { API_URL } from '../../config'
 
 interface GalleryImageItem {
   url: string
@@ -39,7 +40,7 @@ export default function Gallery({ images }: Props) {
               tabIndex={0}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setLightboxIndex(i) }}
             >
-              <img src={`http://localhost:8000${img.url}`} alt={`Zdjęcie z galerii ${i + 1}`} loading="lazy" />
+              <img src={`${API_URL}${img.url}`} alt={`Zdjęcie z galerii ${i + 1}`} loading="lazy" />
             </div>
           ))}
         </div>
@@ -55,7 +56,7 @@ export default function Gallery({ images }: Props) {
 
           <img
             className="cp-lightbox__image"
-            src={`http://localhost:8000${images[lightboxIndex].url}`}
+            src={`${API_URL}${images[lightboxIndex].url}`}
             alt={`Powiększone zdjęcie z galerii ${lightboxIndex + 1}`}
             onClick={e => e.stopPropagation()}
           />

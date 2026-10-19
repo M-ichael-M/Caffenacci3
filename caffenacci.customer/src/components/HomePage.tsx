@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Search, Coffee, Clock, ChevronRight, Star } from 'lucide-react'
 import { BADGE_CATALOG } from '../badges'
+import { API_URL } from '../config'
 
 interface TodayHours {
   is_closed: boolean
@@ -81,7 +82,7 @@ export default function HomePage() {
     setLoading(true)
     try {
       const params = q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''
-      const res = await fetch(`http://localhost:8000/cafes/search${params}`)
+      const res = await fetch(`${API_URL}/cafes/search${params}`)
       if (res.ok) {
         const data = await res.json()
         setResults(data.results ?? [])
@@ -149,7 +150,7 @@ export default function HomePage() {
               >
                 <div className="cafe-card__logo">
                   {cafe.logo_url ? (
-                    <img src={`http://localhost:8000${cafe.logo_url}`} alt={cafe.cafe_name} />
+                    <img src={`${API_URL}${cafe.logo_url}`} alt={cafe.cafe_name} />
                   ) : (
                     <Coffee size={24} />
                   )}
