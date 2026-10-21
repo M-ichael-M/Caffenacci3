@@ -179,6 +179,7 @@ class SiteNewsPostOut(BaseModel):
 
 class PublicSiteOut(BaseModel):
     cafe_id:   str
+    slug:      Optional[str] = None
     cafe_name: str
     template:  str
     palette:   str

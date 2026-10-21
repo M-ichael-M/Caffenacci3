@@ -145,7 +145,7 @@ export default function HomePage() {
               <a
                 key={cafe.cafe_id}
                 className="cafe-card"
-                href={`/cafe/${cafe.slug}`}
+                href={`/kawiarnia/${encodeURIComponent(cafe.slug)}`}
                 style={{ textDecoration: 'none', color: 'inherit' }}
               >
                 <div className="cafe-card__logo">

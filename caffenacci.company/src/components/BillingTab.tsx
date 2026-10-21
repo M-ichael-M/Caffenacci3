@@ -338,7 +338,7 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
                 caffenacci.com{pub.public_path}
               </code>
               {pub.is_published && (
-                <a href={`${CUSTOMER_URL}/cafe/${pub.slug}`} target="_blank" rel="noreferrer" className="link" style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <a href={`${CUSTOMER_URL}/kawiarnia/${pub.slug}`} target="_blank" rel="noreferrer" className="link" style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                   Otwórz <ExternalLink size={13} />
                 </a>
               )}

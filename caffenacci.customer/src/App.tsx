@@ -15,7 +15,7 @@ import { API_URL, COMPANY_URL } from './config'
 type View = 'home' | 'login' | 'register' | 'account'
 
 function getCafeIdFromPath(): string | null {
-  const m = window.location.pathname.match(/^\/cafe\/([^/]+)/)
+  const m = window.location.pathname.match(/^\/(?:kawiarnia|cafe)\/([^/]+)/)
   return m ? decodeURIComponent(m[1]) : null
 }
 

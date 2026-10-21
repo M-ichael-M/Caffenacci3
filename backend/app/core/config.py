@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     COMPANY_APP_URL: str = "http://localhost:5173"   # caffenacci.company (panel)
     API_PUBLIC_URL: str = "http://localhost:8000"
     PLAY_STORE_URL: str | None = None
+    # Ścieżka do zbudowanego klienta (caffenacci.customer/dist). Źródło szablonu
+    # HTML dla /kawiarnia/{slug}; jeśli ustawione, backend serwuje też /assets.
+    CUSTOMER_DIST_DIR: str | None = None
 
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587

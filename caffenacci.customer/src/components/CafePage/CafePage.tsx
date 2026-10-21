@@ -49,6 +49,7 @@ type SiteTemplate =
 
 interface PublicSiteData {
   cafe_id: string
+  slug?: string | null
   cafe_name: string
   template: SiteTemplate
   palette: string
@@ -83,6 +84,18 @@ interface PublicSiteData {
   news_enabled: boolean
   news_posts: NewsPostItem[]
   badges: BadgeItem[]
+}
+
+declare global {
+  interface Window { __SITE_DATA__?: PublicSiteData }
+}
+
+// Dane wstrzyknięte przez backend (/kawiarnia/{slug}). Tylko odczyt - usuwamy w efekcie.
+function readSeedData(identifier: string, mode: 'public' | 'preview'): PublicSiteData | null {
+  if (mode !== 'public') return null
+  const seed = window.__SITE_DATA__
+  if (!seed) return null
+  return seed.slug === identifier || seed.cafe_id === identifier ? seed : null
 }
 
 interface Props {
@@ -183,8 +196,10 @@ function BadgeDisplay({ item }: { item: BadgeItem }) {
 
 export default function CafePage({ identifier, mode = 'public', previewToken }: Props) {
   const isPreview = mode === 'preview'
-  const [data, setData] = useState<PublicSiteData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [seed] = useState(() => readSeedData(identifier, mode))
+  const seededFor = useRef<string | null>(seed ? identifier : null)
+  const [data, setData] = useState<PublicSiteData | null>(seed)
+  const [loading, setLoading] = useState(seed === null)
   const [notFound, setNotFound] = useState(false)
   // W trybie podglądu nigdy nie ma sensu wczytywać zapisanej sesji klienta —
   // podgląd ma pokazywać stronę tak, jak widzi ją niezalogowany gość.
@@ -210,8 +225,24 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
     }
   }, [identifier, mode, previewToken])
 
-  useEffect(() => { fetchSite() }, [fetchSite])
+  useEffect(() => {
+    if (mode === 'public' && seededFor.current === identifier) {
+      delete window.__SITE_DATA__   // dane zużyte; kolejne wejście pobierze świeże z API
+      return
+    }
+    fetchSite()
+  }, [fetchSite, identifier, mode])
 
+  // Podgląd właściciela nigdy nie trafia do indeksu
+  useEffect(() => {
+    if (!isPreview) return
+    const meta = document.createElement('meta')
+    meta.name = 'robots'
+    meta.content = 'noindex, nofollow'
+    document.head.appendChild(meta)
+    return () => { meta.remove() }
+  }, [isPreview])
+  
   // Iskry – tylko motyw magic
   useEffect(() => {
     if (data?.template !== 'magic') return

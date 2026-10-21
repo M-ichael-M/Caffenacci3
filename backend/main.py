@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.core.config import settings
 from app.core.database import Base, engine
@@ -28,6 +31,7 @@ from app.routers import site as site_router
 from app.routers import loyalty as loyalty_router
 from app.routers import news as news_router
 from app.routers import employee_auth as employee_auth_router
+from app.routers import seo as seo_router
 
 
 
@@ -61,6 +65,18 @@ app.include_router(site_router.router)
 app.include_router(loyalty_router.router)
 app.include_router(news_router.router)
 app.include_router(employee_auth_router.router)
+app.include_router(seo_router.router)
+
+# Tylko do lokalnych testów; na produkcji /assets serwuje nginx.
+if settings.CUSTOMER_DIST_DIR:
+    _assets_dir = Path(settings.CUSTOMER_DIST_DIR) / "assets"
+    if _assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="customer-assets")
+
+    # Tylko lokalne testy: strona główna klienta (na produkcji robi to nginx).
+    @app.get("/", include_in_schema=False)
+    def local_customer_home():
+        return FileResponse(Path(settings.CUSTOMER_DIST_DIR) / "index.html")
 
 
 @app.get("/", tags=["health"])

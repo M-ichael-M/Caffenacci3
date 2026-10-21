@@ -209,7 +209,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
   }
 
   const previewUrl = `${CUSTOMER_URL}/preview/${cafeId}?token=${encodeURIComponent(token)}`
-  const liveUrl = publishInfo?.slug ? `${CUSTOMER_URL}/cafe/${publishInfo.slug}` : null
+  const liveUrl = publishInfo?.slug ? `${CUSTOMER_URL}/kawiarnia/${publishInfo.slug}` : null
 
   if (loading) {
     return (

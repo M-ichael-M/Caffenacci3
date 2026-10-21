@@ -307,6 +307,7 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
 
     return PublicSiteOut(
         cafe_id=cafe.id,
+        slug=cafe.slug,
         cafe_name=cafe.cafe_name,
         template=site.template,
         palette=site.palette,
