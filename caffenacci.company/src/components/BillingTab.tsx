@@ -98,6 +98,10 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
   }, [token])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+    useEffect(() => {
+    window.addEventListener('caffenacci:profile-saved', fetchAll)
+    return () => window.removeEventListener('caffenacci:profile-saved', fetchAll)
+  }, [fetchAll])
 
   async function call(path: string, body?: object) {
     setBusy(true)

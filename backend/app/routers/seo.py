@@ -5,8 +5,6 @@ import json
 import logging
 import re
 import threading
-import time
-from collections import OrderedDict
 from pathlib import Path
 from urllib.parse import quote
 from xml.sax.saxutils import escape as xml_escape
@@ -18,6 +16,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.page_cache import page_cache
+from app.core.slugs import resolve_slug
 from app.models.cafe import Cafe
 from app.models.site import CafeSite
 from app.routers.site import _build_public_site
@@ -29,49 +29,10 @@ router = APIRouter(tags=["seo"])
 HEAD_MARKER = "<!--SEO_HEAD-->"
 BODY_MARKER = "<!--SEO_BODY-->"
 
-CACHE_TTL = 60          # sekundy
-CACHE_MAX = 500         # wpisów
 CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
 
 DAYS_PL = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]
 DAYS_SCHEMA = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
-
-# ── Cache in-memory (TTL + limit, thread-safe) ──────────────────────────────
-
-class _TTLCache:
-    def __init__(self, ttl: float, maxsize: int):
-        self._ttl = ttl
-        self._max = maxsize
-        self._data: OrderedDict[tuple, tuple[float, bytes, str]] = OrderedDict()
-        self._lock = threading.Lock()
-
-    def get(self, key: tuple) -> tuple[bytes, str] | None:
-        now = time.monotonic()
-        with self._lock:
-            item = self._data.get(key)
-            if item is None:
-                return None
-            expires, body, etag = item
-            if expires <= now:
-                del self._data[key]
-                return None
-            self._data.move_to_end(key)
-            return body, etag
-
-    def set(self, key: tuple, body: bytes, etag: str) -> None:
-        now = time.monotonic()
-        with self._lock:
-            self._data[key] = (now + self._ttl, body, etag)
-            self._data.move_to_end(key)
-            if len(self._data) > self._max:
-                for k in [k for k, v in self._data.items() if v[0] <= now]:
-                    del self._data[k]
-                while len(self._data) > self._max:
-                    self._data.popitem(last=False)
-
-
-_cache = _TTLCache(CACHE_TTL, CACHE_MAX)
 
 
 # ── Szablon: zbudowany index.html klienta (przeładowywany po zmianie mtime) ─
@@ -313,8 +274,63 @@ def _etag_matches(header: str | None, etag: str) -> bool:
 
 # ── Endpointy ───────────────────────────────────────────────────────────────
 
+def _not_found_response() -> Response:
+    loaded = _load_index()
+    if loaded is None:
+        return PlainTextResponse(
+            "Błąd konfiguracji serwera: brak zbudowanego klienta (sprawdź CUSTOMER_DIST_DIR).",
+            status_code=500,
+        )
+    index_html, _ = loaded
+    head = _HEAD_TPL.render(
+        title="Nie znaleziono kawiarni | Caffenacci",
+        description="Ta strona nie jest dostępna.",
+        robots="noindex",
+        canonical=None, image=None, jsonld=None,
+    )
+    return Response(
+        content=_inject(index_html, head, ""),
+        status_code=404,
+        media_type="text/html; charset=utf-8",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+def _redirect_to_current(current_slug: str) -> RedirectResponse:
+    # Krótki max-age: 301 bywa cache'owany przez przeglądarki "na zawsze",
+    # a slug może jeszcze wrócić (powrót do starej nazwy).
+    return RedirectResponse(
+        f"/kawiarnia/{quote(current_slug, safe='')}",
+        status_code=301,
+        headers={"Cache-Control": "public, max-age=300"},
+    )
+
+
+def _resolve_published(slug: str, db: Session) -> tuple[Cafe | None, bool]:
+    """(cafe, is_current) tylko dla OPUBLIKOWANEJ kawiarni. Nieopublikowana
+    => None, więc stary slug nie przekierowuje na 404 (brak łańcucha)."""
+    cafe, is_current = resolve_slug(slug, db)
+    if cafe is None or not cafe.slug:
+        return None, False
+    published = (
+        db.query(CafeSite.id)
+        .filter(CafeSite.cafe_id == cafe.id, CafeSite.is_published.is_(True))
+        .first()
+        is not None
+    )
+    return (cafe, is_current) if published else (None, False)
+
+
 @router.get("/kawiarnia/{slug}", include_in_schema=False)
 def cafe_page(slug: str, request: Request, db: Session = Depends(get_db)):
+    # Publikacja sprawdzana przy każdym żądaniu — cache nie przedłuża życia
+    # wycofanej strony.
+    cafe, is_current = _resolve_published(slug, db)
+    if cafe is None:
+        return _not_found_response()
+    if not is_current:
+        return _redirect_to_current(cafe.slug)
+
     loaded = _load_index()
     if loaded is None:
         return PlainTextResponse(
@@ -323,35 +339,13 @@ def cafe_page(slug: str, request: Request, db: Session = Depends(get_db)):
         )
     index_html, mtime = loaded
 
-    # Publikacja sprawdzana przy każdym żądaniu (lekkie zapytanie) - cache
-    # nigdy nie przedłuża życia wycofanej strony.
-    cafe = (
-        db.query(Cafe)
-        .join(CafeSite, CafeSite.cafe_id == Cafe.id)
-        .filter(Cafe.slug == slug, CafeSite.is_published.is_(True))
-        .first()
-    )
-    if cafe is None:
-        head = _HEAD_TPL.render(
-            title="Nie znaleziono kawiarni | Caffenacci",
-            description="Ta strona nie jest dostępna.",
-            robots="noindex",
-            canonical=None, image=None, jsonld=None,
-        )
-        return Response(
-            content=_inject(index_html, head, ""),
-            status_code=404,
-            media_type="text/html; charset=utf-8",
-            headers={"Cache-Control": "no-cache"},
-        )
-
-    key = (slug, mtime)
-    cached = _cache.get(key)
+    key = (cafe.id, mtime)
+    cached = page_cache.get(key)
     if cached is None:
         site = _build_public_site(cafe, db)
         body = _render(index_html, site).encode("utf-8")
         etag = '"' + hashlib.sha1(body).hexdigest()[:32] + '"'
-        _cache.set(key, body, etag)
+        page_cache.set(key, body, etag)
     else:
         body, etag = cached
 
@@ -362,8 +356,12 @@ def cafe_page(slug: str, request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/cafe/{slug}", include_in_schema=False)
-def legacy_cafe_redirect(slug: str):
-    return RedirectResponse(f"/kawiarnia/{quote(slug, safe='')}", status_code=301)
+def legacy_cafe_redirect(slug: str, db: Session = Depends(get_db)):
+    # Jeden skok: /cafe/{dowolny-slug} -> /kawiarnia/{AKTUALNY-slug} (bez 301->301).
+    cafe, _ = _resolve_published(slug, db)
+    if cafe is None:
+        return _not_found_response()
+    return _redirect_to_current(cafe.slug)
 
 
 @router.get("/sitemap.xml", include_in_schema=False)

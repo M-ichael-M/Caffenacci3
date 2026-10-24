@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, selectinload
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.core.employee_access import get_current_cafe_id
+from app.core.page_cache import invalidate_cafe
 from app.models.cafe import Cafe
 from app.models.cafe_profile import CafeProfile
 from app.models.client import Client
@@ -129,6 +131,7 @@ def save_settings(
         ))
 
     db.commit()
+    invalidate_cafe(current_cafe.id)
     return _get_or_create_settings(current_cafe.id, db)
 
 

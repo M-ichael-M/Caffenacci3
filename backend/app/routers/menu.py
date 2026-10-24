@@ -8,6 +8,7 @@ from app.core.employee_access import get_current_cafe_id
 from app.models.cafe import Cafe
 from app.models.menu import MenuSection, MenuItem
 from app.schemas.menu import MenuSaveIn, MenuOut, MenuSectionOut, MenuItemOut
+from app.core.page_cache import invalidate_cafe
 
 router = APIRouter(prefix="/menu", tags=["menu"])
 bearer_scheme = HTTPBearer()
@@ -60,6 +61,7 @@ def set_item_availability(
         raise HTTPException(404, detail="Pozycja menu nie istnieje.")
     item.is_unavailable = is_unavailable
     db.commit()
+    invalidate_cafe(cafe_id)
     db.refresh(item)
     return item
 
@@ -119,6 +121,8 @@ def save_menu(
         new_sections.append(section)
 
     db.commit()
+    invalidate_cafe(current_cafe.id)
+
     for s in new_sections:
         db.refresh(s)
 

@@ -167,6 +167,22 @@ export default function WebsiteTab({ token, cafeId }: Props) {
   }, [token])
 
   useEffect(() => { fetchSettings() }, [fetchSettings])
+    const refreshPublishInfo = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/site/publish-status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const pub = await res.json()
+        setPublishInfo({ slug: pub.slug, is_published: pub.is_published, public_path: pub.public_path })
+      }
+    } catch { /* ignore */ }
+  }, [token])
+
+  useEffect(() => {
+    window.addEventListener('caffenacci:profile-saved', refreshPublishInfo)
+    return () => window.removeEventListener('caffenacci:profile-saved', refreshPublishInfo)
+  }, [refreshPublishInfo])
 
   const handleGenerateFromLogo = async () => {
     if (!logoUrl) return

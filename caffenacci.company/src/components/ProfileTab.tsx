@@ -703,6 +703,7 @@ export default function ProfileTab({ token }: Props) {
       setGalleryVisible(data.gallery_visible)
       setGalleryImages(data.gallery_images)
       setSaveMsg({ type: 'ok', text: 'Profil kawiarni został zapisany.' })
+      window.dispatchEvent(new Event('caffenacci:profile-saved'))
     } catch (err: unknown) {
       setSaveMsg({ type: 'err', text: err instanceof Error ? err.message : 'Błąd zapisu.' })
     } finally { setSaving(false) }
@@ -793,6 +794,9 @@ export default function ProfileTab({ token }: Props) {
           <div className="field">
             <label className="field__label">Nazwa</label>
             <input className="field__input" value={cafeName} onChange={e => setCafeName(e.target.value)} />
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: '0.25rem 0 0' }}>
+              Zmiana nazwy lub miasta zmienia adres strony; stary adres będzie przekierowywał.
+            </p>
           </div>
           <div className="field">
             <label className="field__label">Identyfikator</label>
@@ -827,6 +831,9 @@ export default function ProfileTab({ token }: Props) {
             <div className="field field--grow">
               <label className="field__label">Miasto</label>
               <input className="field__input" value={city} onChange={e => setCity(e.target.value)} />
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: '0.25rem 0 0' }}>
+                Zmiana nazwy lub miasta zmienia adres strony; stary adres będzie przekierowywał.
+              </p>
             </div>
           </div>
           <div className="field">

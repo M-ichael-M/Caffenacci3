@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
-from app.core.slugs import generate_unique_slug
+from app.core.slugs import generate_unique_slug, resolve_slug
+from app.core.page_cache import invalidate_cafe
 from app.models.cafe import Cafe
 from app.models.site import CafeSite
 from app.models.cafe_profile import CafeProfile
@@ -93,7 +94,7 @@ def _ensure_slug(cafe: Cafe, db: Session) -> None:
     """Zabezpieczenie dla kawiarni sprzed wprowadzenia slugów — generuje go
     leniwie przy pierwszym zapytaniu, jeśli z jakiegoś powodu go brakuje."""
     if not cafe.slug:
-        cafe.slug = generate_unique_slug(cafe.cafe_name, db, exclude_cafe_id=cafe.id)
+        cafe.slug = generate_unique_slug(cafe.cafe_name, cafe.city, db, exclude_cafe_id=cafe.id)
         db.commit()
         db.refresh(cafe)
 
@@ -137,6 +138,7 @@ def save_settings(
     s.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(s)
+    invalidate_cafe(current_cafe.id)
     return _site_to_out(s)
 
 
@@ -161,7 +163,7 @@ def _publish_status_out(cafe: Cafe, site: CafeSite, reasons: list[str]) -> Publi
         can_publish=len(reasons) == 0,
         missing_reasons=reasons,
         slug=cafe.slug,
-        public_path=f"/{cafe.slug}" if cafe.slug else None,
+        public_path=f"/kawiarnia/{cafe.slug}" if cafe.slug else None,
         published_at=site.published_at,
     )
 
@@ -195,6 +197,7 @@ def publish_site(
     site.published_at = datetime.utcnow()
     db.commit()
     db.refresh(site)
+    invalidate_cafe(current_cafe.id)
     return _publish_status_out(current_cafe, site, [])
 
 
@@ -207,6 +210,7 @@ def unpublish_site(
     site.is_published = False
     db.commit()
     db.refresh(site)
+    invalidate_cafe(current_cafe.id)
 
     profile = db.query(CafeProfile).filter(CafeProfile.cafe_id == current_cafe.id).first()
     reasons = _publish_requirements(current_cafe, profile, db)
@@ -364,7 +368,7 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
 @router.get("/public/by-slug/{slug}", response_model=PublicSiteOut,
             summary="Publiczna strona kawiarni po adresie (slug) — wymaga publikacji")
 def get_public_site_by_slug(slug: str, db: Session = Depends(get_db)):
-    cafe = db.query(Cafe).filter(Cafe.slug == slug).first()
+    cafe, _is_current = resolve_slug(slug, db)
     if not cafe:
         raise HTTPException(404, detail="Kawiarnia nie istnieje.")
     site = db.query(CafeSite).filter(CafeSite.cafe_id == cafe.id).first()

@@ -18,6 +18,7 @@ import CafeLocationMap from './CafeLocationMap'
 import { BADGE_CATALOG } from '../../badges'
 import InfoTooltip from './InfoTooltip'
 import { API_URL } from '../../config'
+import { syncCafeSlugInUrl } from '../../utils/slugUrl'
 
 // ── Typy (odpowiadają backendowemu PublicSiteOut) ───────────────────────────
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
@@ -232,6 +233,12 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
     }
     fetchSite()
   }, [fetchSite, identifier, mode])
+  
+  useEffect(() => {
+    if (mode === 'public') {
+      syncCafeSlugInUrl(data?.slug)
+    }
+  }, [mode, data?.slug])
 
   // Podgląd właściciela nigdy nie trafia do indeksu
   useEffect(() => {

@@ -13,6 +13,8 @@ import io
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
+from app.core.slugs import apply_slug_change
+from app.core.page_cache import invalidate_cafe
 from app.core.config import settings as app_settings
 from app.models.cafe import Cafe
 from app.models.cafe_profile import (
@@ -202,6 +204,7 @@ def save_profile(
     db:           Session = Depends(get_db),
 ):
     profile = _get_or_create_profile(current_cafe.id, db)
+    old_name, old_city = current_cafe.cafe_name, current_cafe.city
 
     # ── Aktualizacja danych z rejestracji (Cafe) ────────────────────────────
     current_cafe.owner_name      = payload.owner_name
@@ -212,7 +215,10 @@ def save_profile(
     current_cafe.street          = payload.street
     current_cafe.building_number = payload.building_number
     current_cafe.postal_code     = payload.postal_code
-
+    # Zmiana nazwy/miasta => nowy slug; stary ląduje w cafe_slug_history.
+    # Bez commitu — wszystko idzie w jednej transakcji z resztą zapisu.
+    if payload.cafe_name != old_name or payload.city != old_city:
+        apply_slug_change(current_cafe, db)
     # ── Aktualizacja profilu ────────────────────────────────────────────────
     profile.contact_email         = payload.contact_email
     profile.contact_email_visible = payload.contact_email_visible if payload.contact_email else False
@@ -303,7 +309,7 @@ def save_profile(
         ))
 
     db.commit()
-
+    invalidate_cafe(current_cafe.id)
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
 
