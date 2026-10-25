@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
-import { API_URL } from '../../config'
+import ResponsiveImage, { imageUrl } from '../ResponsiveImage'
 
 interface GalleryImageItem {
   url: string
+  width?: number | null
+  height?: number | null
 }
 
 interface Props {
@@ -40,7 +42,13 @@ export default function Gallery({ images }: Props) {
               tabIndex={0}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setLightboxIndex(i) }}
             >
-              <img src={`${API_URL}${img.url}`} alt={`Zdjęcie z galerii ${i + 1}`} loading="lazy" />
+              <ResponsiveImage
+                src={img.url}
+                alt={`Zdjęcie z galerii ${i + 1}`}
+                sizes="(max-width: 700px) 200px, 260px"
+                width={img.width}
+                height={img.height}
+              />
             </div>
           ))}
         </div>
@@ -56,7 +64,9 @@ export default function Gallery({ images }: Props) {
 
           <img
             className="cp-lightbox__image"
-            src={`${API_URL}${images[lightboxIndex].url}`}
+            src={imageUrl(images[lightboxIndex].url, 1600)}
+            width={images[lightboxIndex].width ?? undefined}
+            height={images[lightboxIndex].height ?? undefined}
             alt={`Powiększone zdjęcie z galerii ${lightboxIndex + 1}`}
             onClick={e => e.stopPropagation()}
           />

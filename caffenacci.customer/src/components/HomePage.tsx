@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Search, Coffee, Clock, ChevronRight, Star } from 'lucide-react'
 import { BADGE_CATALOG } from '../badges'
 import { API_URL } from '../config'
+import ResponsiveImage from './ResponsiveImage'
+
+const THUMB_WIDTHS = [128, 256] as const
 
 interface TodayHours {
   is_closed: boolean
@@ -150,7 +153,8 @@ export default function HomePage() {
               >
                 <div className="cafe-card__logo">
                   {cafe.logo_url ? (
-                    <img src={`${API_URL}${cafe.logo_url}`} alt={cafe.cafe_name} />
+                    /* sizes = realna szerokość .cafe-card__logo z index.css (zakładam 64px) */
+                    <ResponsiveImage src={cafe.logo_url} alt={cafe.cafe_name} widths={THUMB_WIDTHS} sizes="64px" />
                   ) : (
                     <Coffee size={24} />
                   )}

@@ -4,6 +4,7 @@ import { Coffee, AlertTriangle, X, Star } from 'lucide-react'
 import { BADGE_CATALOG, MAX_FEATURED_BADGES } from '../badges'
 import InfoTooltip from './InfoTooltip'
 import { API_URL } from '../config'
+import { thumbUrl } from '../utils/imageUrl'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -900,7 +901,7 @@ export default function ProfileTab({ token }: Props) {
             <div className="pf-logo-circle">
               {logoUrl ? (
                 <img
-                  src={`${API_URL}${logoUrl}`}
+                  src={thumbUrl(logoUrl, 256)}
                   alt="Logo kawiarni"
                 />
               ) : (
@@ -1113,7 +1114,7 @@ export default function ProfileTab({ token }: Props) {
           <div className="pf-gallery-grid">
             {galleryImages.map((img, idx) => (
               <div key={img.id} className="pf-gallery-item">
-                <img src={`${API_URL}${img.url}`} alt={`Zdjęcie ${idx + 1} z galerii`} />
+                <img src={thumbUrl(img.url, 480)} alt={`Zdjęcie ${idx + 1} z galerii`} loading="lazy" decoding="async" />
                 <div className="pf-gallery-item__actions">
                   <button
                     type="button"

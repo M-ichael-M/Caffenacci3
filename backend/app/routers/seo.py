@@ -18,9 +18,10 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.page_cache import page_cache
 from app.core.slugs import resolve_slug
+from app.core.images import LOGO_TIERS
 from app.models.cafe import Cafe
 from app.models.site import CafeSite
-from app.routers.site import _build_public_site
+from app.routers.site import _build_public_site, PUBLIC_REVIEWS_PAGE
 from app.schemas.site import PublicSiteOut
 
 log = logging.getLogger("caffenacci.seo")
@@ -89,6 +90,7 @@ _HEAD_TPL = _env.from_string("""\
 <meta property="og:title" content="{{ title }}">
 <meta property="og:description" content="{{ description }}">
 {% if image %}<meta property="og:image" content="{{ image }}">
+{% endif %}{% if logo_srcset %}<link rel="preload" as="image" imagesrcset="{{ logo_srcset }}" imagesizes="112px" fetchpriority="high">
 {% endif %}<meta name="twitter:card" content="summary">
 {% if jsonld %}<script type="application/ld+json">{{ jsonld|safe }}</script>
 {% endif %}""")
@@ -214,7 +216,7 @@ def _body_context(site: PublicSiteOut) -> dict:
     ]
     reviews = [
         {"nick": r.nick, "rating": r.rating, "comment": r.comment, "date": r.created_at.strftime("%Y-%m-%d")}
-        for r in site.reviews[:10]
+        for r in site.reviews[:PUBLIC_REVIEWS_PAGE]
     ]
     return {
         "name": site.cafe_name,
@@ -249,12 +251,15 @@ def _inject(index_html: str, head_html: str, body_html: str, data_script: str = 
 
 def _render(index_html: str, site: PublicSiteOut) -> str:
     url = _public_url(site.slug or "")
+    logo = _abs_api(site.logo_url)
+    logo_srcset = ", ".join(f"{logo}&w={w} {w}w" for w in LOGO_TIERS) if logo else None
     head = _HEAD_TPL.render(
         title=_title(site),
         description=_meta_description(site),
         robots="index,follow",
         canonical=url,
-        image=_abs_api(site.logo_url),
+        image=logo,
+        logo_srcset=logo_srcset,
         jsonld=_safe_json(_json_ld(site, url)),
     )
     body = _BODY_TPL.render(c=_body_context(site))
@@ -286,7 +291,7 @@ def _not_found_response() -> Response:
         title="Nie znaleziono kawiarni | Caffenacci",
         description="Ta strona nie jest dostępna.",
         robots="noindex",
-        canonical=None, image=None, jsonld=None,
+        canonical=None, image=None, logo_srcset=None, jsonld=None,
     )
     return Response(
         content=_inject(index_html, head, ""),

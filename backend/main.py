@@ -33,7 +33,7 @@ from app.routers import loyalty as loyalty_router
 from app.routers import news as news_router
 from app.routers import employee_auth as employee_auth_router
 from app.routers import seo as seo_router
-
+from app.core.compression import SelectiveGZipMiddleware
 
 
 Base.metadata.create_all(bind=engine)
@@ -43,6 +43,9 @@ app = FastAPI(
     description="Backend dla aplikacji webowej kawiarni Caffenacci.",
     version="1.0.0",
 )
+
+
+app.add_middleware(SelectiveGZipMiddleware, minimum_size=500)
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,6 +70,7 @@ app.include_router(loyalty_router.router)
 app.include_router(news_router.router)
 app.include_router(employee_auth_router.router)
 app.include_router(seo_router.router)
+app.add_middleware(SelectiveGZipMiddleware, minimum_size=500)
 
 # Tylko do lokalnych testów; na produkcji /assets serwuje nginx.
 if settings.CUSTOMER_DIST_DIR:

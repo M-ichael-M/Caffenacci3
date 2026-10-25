@@ -1,6 +1,8 @@
-import SimpleReservationForm from './SimpleReservationForm'
-import AdvancedReservationForm from './AdvancedReservationForm'
+import { lazy, Suspense } from 'react'
 import { CalendarIcon } from './icons'
+
+const SimpleReservationForm   = lazy(() => import('./SimpleReservationForm'))
+const AdvancedReservationForm = lazy(() => import('./AdvancedReservationForm'))
 
 interface Props {
   cafeId: string
@@ -22,10 +24,10 @@ export default function ReservationWidget({ cafeId, enabled, mode, requireLogin,
     )
   }
 
-  // Dwa całkowicie niezależne mechanizmy — bez wspólnego formularza ani statusu.
-  if (mode === 'advanced') {
-    return <AdvancedReservationForm cafeId={cafeId} requireLogin={requireLogin} authToken={authToken} previewMode={previewMode} />
-  }
-
-  return <SimpleReservationForm cafeId={cafeId} requireLogin={requireLogin} authToken={authToken} previewMode={previewMode} />
+  const formProps = { cafeId, requireLogin, authToken, previewMode }
+  return (
+    <Suspense fallback={<p className="cp-muted-note" style={{ minHeight: 44 }}>Ładowanie formularza…</p>}>
+      {mode === 'advanced' ? <AdvancedReservationForm {...formProps} /> : <SimpleReservationForm {...formProps} />}
+    </Suspense>
+  )
 }

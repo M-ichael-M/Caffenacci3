@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer
 from sqlalchemy.dialects.sqlite import TEXT
 
 from app.core.database import Base
@@ -30,6 +30,9 @@ class NewsPost(Base):
 
     title   = Column(String(200), nullable=False)
     content = Column(Text, nullable=False)
+
+    image_width = Column(Integer, nullable=True)
+    image_height = Column(Integer, nullable=True)
 
     # Ścieżka względna w /uploads/news — opcjonalna grafika, przeskalowana
     # i skompresowana w momencie zapisu (patrz routers/news.py).

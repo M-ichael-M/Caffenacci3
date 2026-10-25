@@ -13,6 +13,7 @@ from app.schemas.cafe_search import (
     CafeSearchResultOut, CafeSearchListOut, TodayHoursOut,
     CafeListItemOut, CafeListOut,
 )
+from app.core.images import logo_url
 
 router = APIRouter(prefix="/cafes", tags=["cafe-search"])
 
@@ -45,9 +46,7 @@ def list_all_cafes(db: Session = Depends(get_db)):
 
 
 def _logo_url(cafe_id: str, profile: CafeProfile | None) -> str | None:
-    if profile and profile.logo_path:
-        return f"/profile/logo/{cafe_id}"
-    return None
+    return logo_url(cafe_id, profile.logo_path) if profile else None
 
 
 def _today_hours(profile: CafeProfile | None) -> TodayHoursOut | None:

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, Integer, Text, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, Integer, Text, DateTime, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.dialects.sqlite import TEXT
 
 from app.core.database import Base
@@ -30,4 +30,5 @@ class Review(Base):
 
     __table_args__ = (
         UniqueConstraint("cafe_id", "client_id", name="uq_review_cafe_client"),
+        Index("ix_reviews_cafe_created", "cafe_id", "created_at"),
     )

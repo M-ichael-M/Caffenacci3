@@ -1,22 +1,24 @@
 from __future__ import annotations
 
-import io
 import os
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, UploadFile, File, Form
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
-from PIL import Image, ImageOps
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
+from app.core.page_cache import invalidate_cafe
+from app.core.images import (
+    GALLERY_TIERS, save_image_variants_async, delete_image_files,
+    image_response, news_image_url,
+)
 from app.models.cafe import Cafe
 from app.models.news import NewsSettings, NewsPost
 from app.schemas.news import (
     NewsSettingsIn, NewsSettingsOut, NewsPostOut, NewsPostListOut,
     MAX_NEWS_POSTS, MAX_NEWS_IMAGE_BYTES, ALLOWED_NEWS_IMAGE_CONTENT_TYPES,
-    NEWS_IMAGE_MAX_DIMENSION, NEWS_IMAGE_JPEG_QUALITY,
 )
 
 router = APIRouter(prefix="/news", tags=["news"])
@@ -54,9 +56,7 @@ def _get_or_create_settings(cafe_id: str, db: Session) -> NewsSettings:
 
 
 def _image_url(cafe_id: str, post: NewsPost) -> str | None:
-    if not post.image_path:
-        return None
-    return f"/news/image/{cafe_id}/{post.id}"
+    return news_image_url(cafe_id, post.id, post.image_path)
 
 
 def _post_to_out(cafe_id: str, post: NewsPost) -> NewsPostOut:
@@ -65,30 +65,10 @@ def _post_to_out(cafe_id: str, post: NewsPost) -> NewsPostOut:
         title=post.title,
         content=post.content,
         image_url=_image_url(cafe_id, post),
+        image_width=post.image_width,
+        image_height=post.image_height,
         created_at=post.created_at,
     )
-
-
-def _process_news_image(raw: bytes) -> Image.Image:
-    try:
-        img = Image.open(io.BytesIO(raw))
-        img.verify()
-        img = Image.open(io.BytesIO(raw))
-    except Exception:
-        raise HTTPException(400, detail="Plik nie jest prawidłowym obrazem.")
-
-    img = ImageOps.exif_transpose(img)
-
-    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
-        img = img.convert("RGBA")
-        background = Image.new("RGB", img.size, (255, 255, 255))
-        background.paste(img, mask=img.split()[-1])
-        img = background
-    else:
-        img = img.convert("RGB")
-
-    img.thumbnail((NEWS_IMAGE_MAX_DIMENSION, NEWS_IMAGE_MAX_DIMENSION), Image.Resampling.LANCZOS)
-    return img
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -113,6 +93,7 @@ def save_settings(
     s.enabled = payload.enabled
     db.commit()
     db.refresh(s)
+    invalidate_cafe(current_cafe.id)
     return s
 
 
@@ -161,28 +142,29 @@ async def create_news(
     if len(content) < 2 or len(content) > 5000:
         raise HTTPException(400, detail="Treść musi mieć od 2 do 5000 znaków.")
 
-    image_path = None
+    image_path = image_w = image_h = None
     if file is not None and file.filename:
         if file.content_type not in ALLOWED_NEWS_IMAGE_CONTENT_TYPES:
             raise HTTPException(400, detail="Dozwolone formaty grafiki: PNG, JPEG, WEBP.")
         raw = await file.read()
         if len(raw) > MAX_NEWS_IMAGE_BYTES:
             raise HTTPException(400, detail="Plik jest za duży. Maksymalny rozmiar to 10 MB.")
-        img = _process_news_image(raw)
-        filename = f"{current_cafe.id}_{uuid.uuid4().hex[:10]}.jpg"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        img.save(filepath, "JPEG", quality=NEWS_IMAGE_JPEG_QUALITY, optimize=True)
-        image_path = filename
+        base  = f"{current_cafe.id}_{uuid.uuid4().hex[:10]}"
+        saved = await save_image_variants_async(raw, base, UPLOAD_DIR, GALLERY_TIERS)
+        image_path, image_w, image_h = base, saved.width, saved.height
 
     post = NewsPost(
         cafe_id=current_cafe.id,
         title=title,
         content=content,
         image_path=image_path,
+        image_width=image_w,
+        image_height=image_h,
     )
     db.add(post)
     db.commit()
     db.refresh(post)
+    invalidate_cafe(current_cafe.id)
     return _post_to_out(current_cafe.id, post)
 
 
@@ -199,12 +181,11 @@ def delete_news(
     post = db.query(NewsPost).filter(NewsPost.id == post_id, NewsPost.cafe_id == current_cafe.id).first()
     if not post:
         raise HTTPException(404, detail="Aktualność nie istnieje.")
-    if post.image_path:
-        filepath = os.path.join(UPLOAD_DIR, post.image_path)
-        if os.path.exists(filepath):
-            os.remove(filepath)
+    old_path = post.image_path
     db.delete(post)
     db.commit()
+    delete_image_files(UPLOAD_DIR, old_path)
+    invalidate_cafe(current_cafe.id)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -212,13 +193,9 @@ def delete_news(
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/image/{cafe_id}/{post_id}", summary="Pobierz grafikę aktualności (publiczne)")
-def get_news_image(cafe_id: str, post_id: str, db: Session = Depends(get_db)):
-    from fastapi.responses import FileResponse
-
+def get_news_image(cafe_id: str, post_id: str, request: Request,
+                   w: int | None = Query(None), db: Session = Depends(get_db)):
     post = db.query(NewsPost).filter(NewsPost.id == post_id, NewsPost.cafe_id == cafe_id).first()
     if not post or not post.image_path:
         raise HTTPException(404, detail="Grafika nie istnieje.")
-    filepath = os.path.join(UPLOAD_DIR, post.image_path)
-    if not os.path.exists(filepath):
-        raise HTTPException(404, detail="Plik grafiki nie istnieje.")
-    return FileResponse(filepath)
+    return image_response(request, UPLOAD_DIR, post.image_path, w, GALLERY_TIERS)

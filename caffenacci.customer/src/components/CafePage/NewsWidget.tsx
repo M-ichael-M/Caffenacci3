@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { NewspaperIcon} from './icons'
 import { X } from 'lucide-react'
-import { API_URL } from '../../config'
+import ResponsiveImage from '../ResponsiveImage'
 
 interface NewsPostItem {
   id: string
   title: string
   content: string
   image_url: string | null
+  image_width?: number | null
+  image_height?: number | null
   created_at: string
 }
 
@@ -39,7 +41,14 @@ export default function NewsWidget({ posts }: Props) {
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setOpenId(post.id) }}
           >
             {post.image_url ? (
-              <img className="cp-news-card__image" src={`${API_URL}${post.image_url}`} alt={post.title} loading="lazy" />
+              <ResponsiveImage
+                className="cp-news-card__image"
+                src={post.image_url}
+                alt={post.title}
+                sizes="(max-width: 700px) 100vw, 360px"
+                width={post.image_width}
+                height={post.image_height}
+              />
             ) : (
               <div className="cp-news-card__image-fallback"><NewspaperIcon size={30} /></div>
             )}
@@ -66,7 +75,14 @@ export default function NewsWidget({ posts }: Props) {
             <div className="me-body">
               <div className="cp-news-modal-date">{formatDate(openPost.created_at)}</div>
               {openPost.image_url && (
-                <img className="cp-news-modal-image" src={`${API_URL}${openPost.image_url}`} alt={openPost.title} />
+                <ResponsiveImage
+                  className="cp-news-modal-image"
+                  src={openPost.image_url}
+                  alt={openPost.title}
+                  sizes="(max-width: 600px) 100vw, 520px"
+                  width={openPost.image_width}
+                  height={openPost.image_height}
+                />
               )}
               <p className="cp-news-modal-content">{openPost.content}</p>
             </div>

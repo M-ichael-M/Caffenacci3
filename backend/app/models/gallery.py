@@ -20,9 +20,13 @@ class CafeGalleryImage(Base):
     cafe_id = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
                       nullable=False, index=True)
 
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+
     # Ścieżka względna w /uploads/gallery — plik jest już przeskalowany
     # i skompresowany w momencie zapisu (patrz routers/cafe_profile.py).
     image_path = Column(String(500), nullable=False)
     position   = Column(Integer, nullable=False, default=0)
-
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

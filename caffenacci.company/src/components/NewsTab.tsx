@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Newspaper, X } from 'lucide-react'
 import { API_URL } from '../config'
+import { thumbUrl } from '../utils/imageUrl'
 
 interface NewsPostOut {
   id: string
@@ -65,7 +66,13 @@ function NewsCard({ post, onDelete, deleting }: {
   return (
     <div className="nw-card">
       {post.image_url ? (
-        <img src={`${API}${post.image_url}`} alt={post.title} className="nw-card__image" />
+        <img
+          src={thumbUrl(post.image_url, 480)}
+          alt={post.title}
+          className="nw-card__image"
+          loading="lazy"
+          decoding="async"
+        />
       ) : (
         <div className="nw-card__image nw-card__image--fallback">
           <Newspaper size={38} strokeWidth={1.5} />

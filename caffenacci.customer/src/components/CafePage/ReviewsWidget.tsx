@@ -21,6 +21,7 @@ interface Props {
 }
 
 const PREVIEW_TITLE = 'Niedostępne w trybie podglądu.'
+const REVIEWS_PAGE = 10
 
 function Stars({ rating, size = 16 }: { rating: number; size?: number }) {
   return (
@@ -135,6 +136,9 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
   const [list, setList] = useState(reviews)
   const [avg, setAvg] = useState(average)
   const [cnt, setCnt] = useState(count)
+  const [serverOffset, setServerOffset] = useState(reviews.length)
+  const [exhausted, setExhausted] = useState(reviews.length >= count)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const [myReview, setMyReview] = useState<ReviewItem | null>(null)
   const [loadingMine, setLoadingMine] = useState(false)
@@ -167,6 +171,28 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
   // Lista bez własnej opinii (żeby się nie dublowała z kartą "Twoja opinia")
   const otherReviews = myReview ? list.filter(r => r.id !== myReview.id) : list
 
+  // ── Paginacja – dociąganie kolejnych opinii ────────────────────────────
+
+  const loadMore = async () => {
+    setLoadingMore(true)
+    setError(null)
+    try {
+      const res = await fetch(`${API_URL}/reviews/public/${cafeId}?offset=${serverOffset}&limit=${REVIEWS_PAGE}`)
+      if (!res.ok) throw new Error('Nie udało się pobrać kolejnych opinii.')
+      const data: { reviews: ReviewItem[]; count: number } = await res.json()
+      setList(prev => {
+        const seen = new Set(prev.map(r => r.id))
+        return [...prev, ...data.reviews.filter(r => !seen.has(r.id))]
+      })
+      setServerOffset(o => o + data.reviews.length)
+      setExhausted(serverOffset + data.reviews.length >= data.count || data.reviews.length === 0)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Błąd pobierania opinii.')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   // ── Dodanie nowej opinii ───────────────────────────────────────────────
 
   const handleCreate = async (rating: number, comment: string) => {
@@ -185,6 +211,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       }
       const created: ReviewItem = await res.json()
       setList(prev => [created, ...prev])
+      setServerOffset(o => o + 1)
       setAvg(a => Math.round(((a * cnt) + rating) / (cnt + 1) * 100) / 100)
       setCnt(c => c + 1)
       setMyReview(created)
@@ -239,6 +266,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
         const e = await res.json()
         throw new Error(e.detail || 'Błąd usuwania opinii.')
       }
+      if (list.some(r => r.id === myReview.id)) setServerOffset(o => Math.max(0, o - 1))
       setList(prev => prev.filter(r => r.id !== myReview.id))
       setAvg(a => cnt > 1 ? Math.round(((a * cnt) - myReview.rating) / (cnt - 1) * 100) / 100 : 0)
       setCnt(c => Math.max(0, c - 1))
@@ -323,6 +351,17 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
               <div className="rv-card__date">{formatDate(r.created_at)}</div>
             </div>
           ))}
+          {!exhausted && (
+            <button
+              type="button"
+              className="btn btn--outline-dark"
+              style={{ alignSelf: 'center', width: 'auto' }}
+              onClick={loadMore}
+              disabled={loadingMore}
+            >
+              {loadingMore ? 'Wczytywanie…' : 'Pokaż więcej opinii'}
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.core.slugs import generate_unique_slug, resolve_slug
 from app.core.page_cache import invalidate_cafe
+from app.core.images import logo_url as _logo_url_v, gallery_url, news_image_url
 from app.models.cafe import Cafe
 from app.models.site import CafeSite
 from app.models.cafe_profile import CafeProfile
@@ -34,6 +35,8 @@ from app.routers.billing import has_active_access
 
 router = APIRouter(prefix="/site", tags=["site"])
 bearer_scheme = HTTPBearer()
+
+PUBLIC_REVIEWS_PAGE = 10   # F1; seo.py używa tej samej stałej
 
 
 # ── Auth helper (właściciel) ─────────────────────────────────────────────────
@@ -85,9 +88,7 @@ def _site_to_out(s: CafeSite) -> CafeSiteSettingsOut:
 
 
 def _logo_url(cafe_id: str, profile: CafeProfile | None) -> str | None:
-    if profile and profile.logo_path:
-        return f"/profile/logo/{cafe_id}"
-    return None
+    return _logo_url_v(cafe_id, profile.logo_path) if profile else None
 
 
 def _ensure_slug(cafe: Cafe, db: Session) -> None:
@@ -265,6 +266,7 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
         db.query(Review)
         .filter(Review.cafe_id == cafe.id)
         .order_by(Review.created_at.desc())
+        .limit(PUBLIC_REVIEWS_PAGE)
         .all()
     )
     agg = (
@@ -284,7 +286,7 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
             .all()
         )
         gallery_images = [
-            PublicGalleryImageOut(url=f"/profile/gallery/{cafe.id}/{g.id}")
+            PublicGalleryImageOut(url=gallery_url(cafe.id, g.id, g.image_path), width=g.width, height=g.height)
             for g in gallery_rows
         ]
 
@@ -303,7 +305,9 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
                 id=p.id,
                 title=p.title,
                 content=p.content,
-                image_url=(f"/news/image/{cafe.id}/{p.id}" if p.image_path else None),
+                image_url=news_image_url(cafe.id, p.id, p.image_path),
+                image_width=p.image_width,
+                image_height=p.image_height,
                 created_at=p.created_at,
             )
             for p in news_rows

@@ -174,6 +174,8 @@ class SiteNewsPostOut(BaseModel):
     title: str
     content: str
     image_url: Optional[str] = None
+    image_width: Optional[int] = None
+    image_height: Optional[int] = None
     created_at: datetime
 
 
