@@ -4,6 +4,7 @@ from datetime import date as date_cls
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import func, literal, or_
 
 from app.core.database import get_db
 from app.models.cafe import Cafe
@@ -106,16 +107,31 @@ def search_cafes(
     )
 
     term = (q or "").strip()
+    postgres_rank = None
     if term:
-        like = f"%{term}%"
-        query = query.filter(
-            (Cafe.cafe_name.ilike(like))
-            | (Cafe.city.ilike(like))
-            | (Cafe.street.ilike(like))
-            | (Cafe.postal_code.ilike(like))
-        )
+        if db.get_bind().dialect.name == "postgresql":
+            fields = (Cafe.cafe_name, Cafe.city, Cafe.street, Cafe.postal_code)
+            normalized_term = func.unaccent(func.lower(literal(term)))
+            normalized_fields = [func.unaccent(func.lower(field)) for field in fields]
+            contains = [field.ilike(func.concat("%", normalized_term, "%")) for field in normalized_fields]
+            similarities = [func.similarity(field, normalized_term) for field in normalized_fields]
+            postgres_rank = func.greatest(*similarities)
+            query = query.filter(
+                or_(*contains, *[similarity > 0.25 for similarity in similarities])
+            )
+        else:
+            like = f"%{term}%"
+            query = query.filter(
+                (Cafe.cafe_name.ilike(like))
+                | (Cafe.city.ilike(like))
+                | (Cafe.street.ilike(like))
+                | (Cafe.postal_code.ilike(like))
+            )
 
-    cafes = query.order_by(Cafe.cafe_name).limit(MAX_RESULTS).all()
+    if postgres_rank is not None:
+        cafes = query.order_by(postgres_rank.desc(), Cafe.cafe_name).limit(MAX_RESULTS).all()
+    else:
+        cafes = query.order_by(Cafe.cafe_name).limit(MAX_RESULTS).all()
 
     profiles: dict[str, CafeProfile] = {}
     cafe_ids = [c.id for c in cafes]

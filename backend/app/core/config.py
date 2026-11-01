@@ -7,7 +7,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 log = logging.getLogger("caffenacci.config")
 
-_DEV_ORIGINS = ["http://localhost:3000", "http://localhost:5173", "http://localhost:5174"]
+_DEV_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
 _WEAK_KEYS = ("zmien-to", "dev-secret", "changeme")
 
 
@@ -18,6 +24,8 @@ class Settings(BaseSettings):
     ENV: Literal["development", "production"] = "production"
 
     DATABASE_URL: str = "sqlite:///./caffenacci.db"
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
@@ -45,11 +53,13 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         explicit = [o.strip().rstrip("/") for o in self.CORS_ORIGINS.split(",") if o.strip()]
-        if explicit:
-            return explicit
         if self.is_production:
+            if explicit:
+                return explicit
             return [self.PUBLIC_SITE_URL.rstrip("/"), self.COMPANY_APP_URL.rstrip("/")]
-        return _DEV_ORIGINS
+        # In development, retain explicit frontend origins and allow the local
+        # host/port variants used when serving the customer build from FastAPI.
+        return list(dict.fromkeys([*explicit, *_DEV_ORIGINS]))
 
     @model_validator(mode="after")
     def _validate(self):

@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean
-from sqlalchemy.dialects.sqlite import TEXT
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean, Index
+from app.core.types import ID
 
 from app.core.database import Base
 
@@ -16,9 +16,10 @@ class CafeSite(Base):
     strony automatycznie (patrz routers/site.py: /publish, /unpublish)."""
 
     __tablename__ = "cafe_sites"
+    __table_args__ = (Index("ix_cafe_sites_is_published", "is_published"),)
 
-    id      = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    id      = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                       nullable=False, unique=True, index=True)
 
     template = Column(String(20), nullable=False, default="classic")

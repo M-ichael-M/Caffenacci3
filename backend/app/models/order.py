@@ -3,9 +3,9 @@ from datetime import datetime
 
 from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime, Float,
-    ForeignKey, Enum as SAEnum,
+    ForeignKey, Enum as SAEnum, Index,
 )
-from sqlalchemy.dialects.sqlite import TEXT
+from app.core.types import ID
 from sqlalchemy.orm import relationship
 import enum
 
@@ -24,8 +24,8 @@ class OrderSettings(Base):
     """Jeden wiersz na kawiarnię – czy przyjmuje zamówienia online."""
     __tablename__ = "order_settings"
 
-    id      = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    id      = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                       nullable=False, unique=True, index=True)
     enabled = Column(Boolean, nullable=False, default=False)
 
@@ -34,16 +34,17 @@ class OrderSettings(Base):
 
 class Order(Base):
     __tablename__ = "orders"
+    __table_args__ = (Index("ix_orders_cafe_status_date", "cafe_id", "status", "date"),)
 
-    id      = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    id      = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                       nullable=False, index=True)
 
     # Klient — brak systemu kont. Nick jest widoczny właścicielowi,
     # client_id NIGDY nie jest zwracane w API (przygotowane na przyszłe konta,
     # służy tylko do autoryzacji anulowania przez klienta).
     client_nick = Column(String(60), nullable=False)
-    client_id   = Column(TEXT, nullable=True)
+    client_id   = Column(ID, nullable=True)
 
     # Na kiedy zamówienie (max 3 dni do przodu — egzekwowane w routerze)
     date       = Column(String(10), nullable=False, index=True)  # YYYY-MM-DD
@@ -54,7 +55,7 @@ class Order(Base):
     # karta lojalnościowa) — na razie total_value = kwota "z cennika".
     total_value = Column(Float, nullable=False, default=0.0)
 
-    status       = Column(SAEnum(OrderStatus), nullable=False, default=OrderStatus.pending)
+    status       = Column(SAEnum(OrderStatus, name="OrderStatus"), nullable=False, default=OrderStatus.pending)
     cancelled_by = Column(String(10), nullable=True)  # "owner" | "client"
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -69,13 +70,13 @@ class Order(Base):
 class OrderItem(Base):
     __tablename__ = "order_items"
 
-    id       = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id = Column(TEXT, ForeignKey("orders.id", ondelete="CASCADE"),
+    id       = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    order_id = Column(ID, ForeignKey("orders.id", ondelete="CASCADE"),
                        nullable=False, index=True)
 
     # Poglądowa referencja do pozycji menu — bez twardego FK, bo menu
     # może się zmienić/zniknąć, a zamówienie ma zachować snapshot.
-    menu_item_id = Column(TEXT, nullable=True)
+    menu_item_id = Column(ID, nullable=True)
     name         = Column(String(200), nullable=False)   # snapshot nazwy
     price        = Column(Float, nullable=False)         # snapshot ceny jednostkowej
     quantity     = Column(Integer, nullable=False, default=1)

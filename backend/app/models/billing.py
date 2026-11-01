@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
-from sqlalchemy.dialects.sqlite import TEXT
+from app.core.types import ID
 
 from app.core.database import Base
 
@@ -22,8 +22,8 @@ class Subscription(Base):
 
     __tablename__ = "subscriptions"
 
-    id      = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    id      = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                       nullable=False, unique=True, index=True)
 
     kind       = Column(String(20), nullable=False)   # subscription | promo

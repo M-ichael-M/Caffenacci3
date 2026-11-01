@@ -5,7 +5,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from app.core.config import settings
-from app.core.database import Base, engine
+from app.core.database import Base, engine, get_db
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from fastapi import Depends, HTTPException
 from app.models import cafe         # noqa: F401
 from app.models import menu         # noqa: F401
 from app.models import reservation  # noqa: F401
@@ -36,7 +39,8 @@ from app.routers import seo as seo_router
 from app.core.compression import SelectiveGZipMiddleware
 
 
-Base.metadata.create_all(bind=engine)
+if settings.ENV == "development" and engine.dialect.name == "sqlite":
+    Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Caffenacci API",
@@ -87,3 +91,12 @@ if settings.CUSTOMER_DIST_DIR:
 @app.get("/", tags=["health"])
 def root():
     return {"status": "ok", "service": "Caffenacci API"}
+
+
+@app.get("/health", tags=["health"])
+def health(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "ok"}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="database unavailable") from exc

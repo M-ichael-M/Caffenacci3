@@ -5,7 +5,7 @@ from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime, ForeignKey, Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.sqlite import TEXT
+from app.core.types import ID
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -18,8 +18,8 @@ class LoyaltySettings(Base):
 
     __tablename__ = "loyalty_settings"
 
-    id      = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    id      = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                       nullable=False, unique=True, index=True)
 
     enabled = Column(Boolean, nullable=False, default=False)
@@ -45,8 +45,8 @@ class LoyaltyReward(Base):
 
     __tablename__ = "loyalty_rewards"
 
-    id          = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    settings_id = Column(TEXT, ForeignKey("loyalty_settings.id", ondelete="CASCADE"),
+    id          = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    settings_id = Column(ID, ForeignKey("loyalty_settings.id", ondelete="CASCADE"),
                           nullable=False, index=True)
     name        = Column(String(200), nullable=False)
     cost_points = Column(Integer, nullable=False)
@@ -62,10 +62,10 @@ class ClientLoyalty(Base):
 
     __tablename__ = "client_loyalty"
 
-    id        = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id   = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    id        = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id   = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                         nullable=False, index=True)
-    client_id = Column(TEXT, ForeignKey("clients.id", ondelete="CASCADE"),
+    client_id = Column(ID, ForeignKey("clients.id", ondelete="CASCADE"),
                         nullable=False, index=True)
 
     points = Column(Integer, nullable=False, default=0)
@@ -85,10 +85,10 @@ class LoyaltyTransaction(Base):
 
     __tablename__ = "loyalty_transactions"
 
-    id        = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id   = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    id        = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id   = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                         nullable=False, index=True)
-    client_id = Column(TEXT, ForeignKey("clients.id", ondelete="CASCADE"),
+    client_id = Column(ID, ForeignKey("clients.id", ondelete="CASCADE"),
                         nullable=False, index=True)
 
     # earn_points | redeem_points | add_stamp | reset_stamps

@@ -3,9 +3,9 @@ from datetime import datetime
 
 from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime,
-    ForeignKey, Text, Enum as SAEnum,
+    ForeignKey, Text, Enum as SAEnum, Index,
 )
-from sqlalchemy.dialects.sqlite import TEXT
+from app.core.types import ID
 from sqlalchemy.orm import relationship
 import enum
 
@@ -30,8 +30,8 @@ class ReservationSettings(Base):
     """Jeden wiersz na kawiarnię – globalne ustawienia."""
     __tablename__ = "reservation_settings"
 
-    id                    = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id               = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    id                    = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id               = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                                    nullable=False, unique=True, index=True)
     enabled               = Column(Boolean, nullable=False, default=False)
     mode                  = Column(String(20), nullable=False, default="simple")
@@ -47,8 +47,8 @@ class DayHours(Base):
     """Godziny rezerwacji dla każdego dnia tygodnia (0=pon … 6=nd)."""
     __tablename__ = "reservation_day_hours"
 
-    id          = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    settings_id = Column(TEXT, ForeignKey("reservation_settings.id", ondelete="CASCADE"),
+    id          = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    settings_id = Column(ID, ForeignKey("reservation_settings.id", ondelete="CASCADE"),
                          nullable=False, index=True)
     day_of_week = Column(Integer, nullable=False)
     open_time   = Column(String(5), nullable=True)
@@ -62,10 +62,10 @@ class DayHours(Base):
 class CafeTable(Base):
     __tablename__ = "cafe_tables"
 
-    id          = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    settings_id = Column(TEXT, ForeignKey("reservation_settings.id", ondelete="CASCADE"),
+    id          = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    settings_id = Column(ID, ForeignKey("reservation_settings.id", ondelete="CASCADE"),
                          nullable=False, index=True)
-    table_type  = Column(SAEnum(TableType), nullable=False, default=TableType.standard)
+    table_type  = Column(SAEnum(TableType, name="TableType"), nullable=False, default=TableType.standard)
     seats       = Column(Integer, nullable=False)
     quantity    = Column(Integer, nullable=False, default=1)
     label       = Column(String(200), nullable=True)
@@ -79,11 +79,12 @@ class CafeTable(Base):
 
 class Reservation(Base):
     __tablename__ = "reservations"
+    __table_args__ = (Index("ix_reservations_cafe_date_status", "cafe_id", "date", "status"),)
 
-    id            = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    table_id      = Column(TEXT, ForeignKey("cafe_tables.id", ondelete="SET NULL"),
+    id            = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    table_id      = Column(ID, ForeignKey("cafe_tables.id", ondelete="SET NULL"),
                            nullable=True, index=True)   # NULL dla simple mode
-    cafe_id       = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    cafe_id       = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                            nullable=False, index=True)
 
     # Dane rezerwacji (prosty formularz klienta)
@@ -96,11 +97,11 @@ class Reservation(Base):
     comment       = Column(Text, nullable=True)
 
     # Tryb i źródło
-    client_id        = Column(TEXT, nullable=True)
+    client_id        = Column(ID, nullable=True)
     created_by_owner = Column(Boolean, nullable=False, default=False)
 
     # Status + odpowiedź właściciela
-    status        = Column(SAEnum(ReservationStatus), nullable=False,
+    status        = Column(SAEnum(ReservationStatus, name="ReservationStatus"), nullable=False,
                            default=ReservationStatus.pending)
     owner_note    = Column(Text, nullable=True)   # wiadomość do klienta przy akceptacji/odrzuceniu
     cancelled_by  = Column(String(10), nullable=True)   # "owner" | "client" | None (np. wygasła automatycznie)

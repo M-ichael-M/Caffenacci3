@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Column, String, Integer, Text, DateTime, ForeignKey, UniqueConstraint, Index
-from sqlalchemy.dialects.sqlite import TEXT
+from app.core.types import ID
 
 from app.core.database import Base
 
@@ -10,8 +10,8 @@ from app.core.database import Base
 class Review(Base):
     __tablename__ = "reviews"
 
-    id      = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"), nullable=False, index=True)
+    id      = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Widoczne dla właściciela (i w przyszłości publicznie)
     nick    = Column(String(60), nullable=False)
@@ -24,7 +24,7 @@ class Review(Base):
     # każdy NULL jako odrębny w UNIQUE, więc wiele opinii bez client_id
     # nie koliduje ze sobą — ograniczenie zadziała dopiero gdy pole
     # zacznie być wypełniane.
-    client_id = Column(TEXT, nullable=True)
+    client_id = Column(ID, nullable=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 

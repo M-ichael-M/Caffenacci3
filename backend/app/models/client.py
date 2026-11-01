@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Column, String, Boolean, DateTime
-from sqlalchemy.dialects.sqlite import TEXT
+from app.core.types import ID
 
 from app.core.database import Base
 
@@ -17,7 +17,7 @@ class Client(Base):
 
     __tablename__ = "clients"
 
-    id = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
 
     full_name = Column(String(150), nullable=False)
     nick      = Column(String(40), nullable=False, unique=True, index=True)
