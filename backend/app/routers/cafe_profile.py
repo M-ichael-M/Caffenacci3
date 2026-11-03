@@ -19,6 +19,7 @@ from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.core.slugs import apply_slug_change
 from app.core.page_cache import invalidate_cafe
+from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings as app_settings
 from app.models.cafe import Cafe
 from app.models.cafe_profile import (
@@ -42,8 +43,7 @@ bearer_scheme = HTTPBearer()
 
 # ── Konfiguracja uploadu logo ────────────────────────────────────────────────
 
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "logos")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = "logos"
 
 MAX_LOGO_BYTES = 10 * 1024 * 1024  # 10 MB
 MIN_LOGO_DIMENSION = 512
@@ -51,8 +51,7 @@ ALLOWED_LOGO_CONTENT_TYPES = {"image/png", "image/jpeg", "image/webp"}
 
 # ── Konfiguracja uploadu galerii ─────────────────────────────────────────────
 
-GALLERY_UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "gallery")
-os.makedirs(GALLERY_UPLOAD_DIR, exist_ok=True)
+GALLERY_UPLOAD_DIR = "gallery"
 
 
 # ── Auth helper ────────────────────────────────────────────────────────────
@@ -203,7 +202,7 @@ def save_profile(
     db:           Session = Depends(get_db),
 ):
     profile = _get_or_create_profile(current_cafe.id, db)
-    old_name, old_city = current_cafe.cafe_name, current_cafe.city
+    old_name, old_city, old_slug = current_cafe.cafe_name, current_cafe.city, current_cafe.slug
 
     # ── Aktualizacja danych z rejestracji (Cafe) ────────────────────────────
     current_cafe.owner_name      = payload.owner_name
@@ -309,6 +308,7 @@ def save_profile(
 
     db.commit()
     invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(old_slug, app_settings.API_PUBLIC_URL) + cafe_page_urls(current_cafe.slug, app_settings.API_PUBLIC_URL))
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
 
@@ -358,6 +358,7 @@ async def upload_logo(
     db.commit()
     delete_image_files(UPLOAD_DIR, old_path)      # dopiero po commicie
     invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.API_PUBLIC_URL))
 
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
@@ -370,11 +371,13 @@ def delete_logo(
 ):
     profile = _get_or_create_profile(current_cafe.id, db)
     if profile.logo_path:
-        delete_image_files(UPLOAD_DIR, profile.logo_path)
+        old_path = profile.logo_path
         profile.logo_path  = None
         profile.updated_at = datetime.utcnow()
         db.commit()
+        delete_image_files(UPLOAD_DIR, old_path)
         invalidate_cafe(current_cafe.id)
+        purge_urls(cafe_page_urls(current_cafe.slug, app_settings.API_PUBLIC_URL))
 
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
@@ -426,6 +429,7 @@ async def upload_gallery_image(
     ))
     db.commit()
     invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.API_PUBLIC_URL))
 
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
@@ -463,6 +467,7 @@ def delete_gallery_image(
     db.commit()
     delete_image_files(GALLERY_UPLOAD_DIR, old_path)
     invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.API_PUBLIC_URL))
 
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)

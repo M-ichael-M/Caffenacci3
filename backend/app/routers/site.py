@@ -12,6 +12,8 @@ from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.core.slugs import generate_unique_slug, resolve_slug
 from app.core.page_cache import invalidate_cafe
+from app.core.cache_purge import purge_urls, cafe_page_urls
+from app.core.config import settings
 from app.core.images import logo_url as _logo_url_v, gallery_url, news_image_url
 from app.models.cafe import Cafe
 from app.models.site import CafeSite
@@ -140,6 +142,7 @@ def save_settings(
     db.commit()
     db.refresh(s)
     invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
     return _site_to_out(s)
 
 
@@ -199,6 +202,7 @@ def publish_site(
     db.commit()
     db.refresh(site)
     invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
     return _publish_status_out(current_cafe, site, [])
 
 
@@ -212,6 +216,7 @@ def unpublish_site(
     db.commit()
     db.refresh(site)
     invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
 
     profile = db.query(CafeProfile).filter(CafeProfile.cafe_id == current_cafe.id).first()
     reasons = _publish_requirements(current_cafe, profile, db)

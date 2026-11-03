@@ -5,7 +5,7 @@ Idempotentny: pomija wiersze już przekonwertowane. Stare pliki są PRZENOSZONE 
 uploads/_legacy/<katalog>/ (nie kasowane) — usuń je ręcznie po weryfikacji.
 """
 from __future__ import annotations
-import argparse, os, shutil, sqlite3, sys
+import argparse, io, os, sqlite3, sys
 from collections import Counter
 from datetime import datetime
 
@@ -14,13 +14,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PIL import Image
 from app.core.database import SessionLocal, engine
 from app.core.images import GALLERY_TIERS, LOGO_TIERS, is_variant_base, save_image_variants
+from app.core.storage import get_storage
 from app.models.cafe_profile import CafeProfile
 from app.models.gallery import CafeGalleryImage
 from app.models.news import NewsPost
-from app.routers.cafe_profile import GALLERY_UPLOAD_DIR, UPLOAD_DIR as LOGO_DIR
-from app.routers.news import UPLOAD_DIR as NEWS_DIR
-
-LEGACY_DIR = os.path.join(os.path.dirname(LOGO_DIR), "_legacy")
+LOGO_DIR, GALLERY_UPLOAD_DIR, NEWS_DIR = "logos", "gallery", "news"
 
 # (etykieta, model, kolumna ścieżki, kolumny wymiarów | None, katalog, kafelki, zachowaj alfę)
 SPECS = [
@@ -43,10 +41,11 @@ def backup_db() -> str:
 
 
 def largest_variant_dims(directory, base, tiers):
+    storage = get_storage()
     for t in sorted(tiers, reverse=True):
-        p = os.path.join(directory, f"{base}_{t}.webp")
-        if os.path.isfile(p):
-            with Image.open(p) as im:
+        key = f"{directory}/{base}_{t}.webp"
+        if storage.exists(key):
+            with Image.open(io.BytesIO(storage.get_bytes(key))) as im:
                 return im.size
     return None
 
@@ -78,19 +77,19 @@ def main():
                     stats["skip"] += 1
                 continue
 
-            src = os.path.join(directory, old)
-            if not os.path.isfile(src):
+            src = f"{directory}/{old}"
+            storage = get_storage()
+            if not storage.exists(src):
                 print(f"  [BRAK PLIKU] {old}"); stats["missing"] += 1; continue
 
             base = os.path.splitext(old)[0]
             if not apply:
-                with Image.open(src) as im:
+                with Image.open(io.BytesIO(storage.get_bytes(src))) as im:
                     print(f"  [DRY] {old} {im.size[0]}x{im.size[1]} -> {base}_*.webp")
                 stats["would_convert"] += 1
                 continue
             try:
-                with open(src, "rb") as f:
-                    saved = save_image_variants(f.read(), base, directory, tiers, keep_alpha=alpha)
+                saved = save_image_variants(storage.get_bytes(src), base, directory, tiers, keep_alpha=alpha)
             except Exception as e:
                 print(f"  [BŁĄD] {old}: {e}"); stats["error"] += 1; continue
 
@@ -104,9 +103,9 @@ def main():
     if apply:
         db.commit()
         for directory, old in moves:
-            dest = os.path.join(LEGACY_DIR, os.path.basename(directory))
-            os.makedirs(dest, exist_ok=True)
-            shutil.move(os.path.join(directory, old), os.path.join(dest, old))
+            storage = get_storage()
+            storage.put(f"_legacy/{directory}/{old}", storage.get_bytes(f"{directory}/{old}"))
+            storage.delete(f"{directory}/{old}")
         print("\nZrestartuj serwer (cache stron SEO jest w pamięci).")
     db.close()
     print("\nPodsumowanie:", dict(stats))

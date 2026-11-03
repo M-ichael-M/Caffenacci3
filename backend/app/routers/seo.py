@@ -30,7 +30,7 @@ router = APIRouter(tags=["seo"])
 HEAD_MARKER = "<!--SEO_HEAD-->"
 BODY_MARKER = "<!--SEO_BODY-->"
 
-CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+CACHE_CONTROL = f"public, max-age=60, s-maxage={settings.PUBLIC_CACHE_S_MAXAGE}, stale-while-revalidate=600"
 
 DAYS_PL = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]
 DAYS_SCHEMA = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -297,7 +297,7 @@ def _not_found_response() -> Response:
         content=_inject(index_html, head, ""),
         status_code=404,
         media_type="text/html; charset=utf-8",
-        headers={"Cache-Control": "no-cache"},
+        headers={"Cache-Control": "public, max-age=30"},
     )
 
 

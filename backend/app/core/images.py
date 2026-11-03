@@ -2,22 +2,27 @@
 from __future__ import annotations
 
 import glob
+import asyncio
 import hashlib
 import io
 import mimetypes
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 from fastapi import HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
 from PIL import Image, ImageOps
+from app.core.config import settings
+from app.core.storage import get_storage
 
 GALLERY_TIERS: tuple[int, ...] = (480, 960, 1600)   # galeria + aktualności
 LOGO_TIERS:    tuple[int, ...] = (128, 256, 512)
 
 WEBP_QUALITY = 80
 WEBP_METHOD  = 4
+_image_semaphore = asyncio.Semaphore(max(1, settings.IMAGE_PROCESSING_CONCURRENCY))
 MAX_PIXELS   = 50_000_000          # ochrona przed "decompression bomb"
 
 CC_IMMUTABLE = "public, max-age=31536000, immutable"
@@ -111,12 +116,14 @@ def save_image_variants(
                 (target_w, max(1, round(img.height * target_w / img.width))),
                 Image.Resampling.LANCZOS,
             )
-            path = os.path.join(directory, f"{base_name}_{tier}.webp")
-            v.save(path, "WEBP", quality=WEBP_QUALITY, method=WEBP_METHOD)
-            written.append(path)
+            buf = io.BytesIO()
+            v.save(buf, "WEBP", quality=WEBP_QUALITY, method=WEBP_METHOD)
+            key = f"{directory}/{base_name}_{tier}.webp"
+            get_storage().put(key, buf.getvalue(), "image/webp")
+            written.append(key)
     except Exception:
         for p in written:
-            try: os.remove(p)
+            try: get_storage().delete(p)
             except OSError: pass
         raise HTTPException(500, detail="Nie udało się zapisać obrazu.")
 
@@ -124,20 +131,18 @@ def save_image_variants(
 
 
 async def save_image_variants_async(*args, **kwargs) -> SavedImage:
-    return await run_in_threadpool(save_image_variants, *args, **kwargs)
+    async with _image_semaphore:
+        return await run_in_threadpool(save_image_variants, *args, **kwargs)
 
 
 def delete_image_files(directory: str, image_path: str | None) -> None:
     if not image_path:
         return
+    storage = get_storage()
     if is_variant_base(image_path):
-        pattern = os.path.join(directory, f"{glob.escape(image_path)}_*.webp")
-        files = glob.glob(pattern)
+        storage.delete_prefix(f"{directory}/{image_path}_")
     else:
-        files = [os.path.join(directory, image_path)]
-    for f in files:
-        try: os.remove(f)
-        except OSError: pass
+        storage.delete(f"{directory}/{image_path}")
 
 
 # ── Serwowanie ───────────────────────────────────────────────────────────────
@@ -151,20 +156,25 @@ def normalise_width(w: int | None, tiers: tuple[int, ...]) -> int:
 
 
 def resolve_file(directory: str, image_path: str, w: int | None, tiers: tuple[int, ...]) -> str | None:
+    storage = get_storage()
     if not is_variant_base(image_path):                       # fallback: stary plik
-        p = os.path.join(directory, image_path)
-        return p if os.path.isfile(p) else None
+        key = f"{directory}/{image_path}"
+        return str(storage.local_path(key)) if storage.exists(key) else None
     target = normalise_width(w, tiers)
     for t in sorted((t for t in tiers if t <= target), reverse=True):
-        p = os.path.join(directory, f"{image_path}_{t}.webp")
-        if os.path.isfile(p):
-            return p
+        key = f"{directory}/{image_path}_{t}.webp"
+        if storage.exists(key): return str(storage.local_path(key))
     return None
 
 
 def _etag(path: str) -> str:
-    st = os.stat(path)
-    key = f"{os.path.basename(path)}:{st.st_size}:{st.st_mtime_ns}"
+    root = get_storage().root
+    key_path = Path(path).resolve().relative_to(root).as_posix()
+    st = get_storage().stat(key_path)
+    if st is None:
+        raise HTTPException(404, detail="Plik grafiki nie istnieje.")
+    size, mtime = st
+    key = f"{os.path.basename(path)}:{size}:{mtime}"
     return '"' + hashlib.sha1(key.encode()).hexdigest()[:24] + '"'
 
 

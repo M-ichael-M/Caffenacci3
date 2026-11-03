@@ -167,26 +167,6 @@ def _ensure_client_can_cancel(date_str: str, start_time: str) -> None:
         )
 
 
-def _expire_stale_reservations(db: Session) -> None:
-    """Rezerwacje 'pending' (tryb simple), których data już minęła bez
-    decyzji właściciela, są automatycznie anulowane."""
-    today = date_cls.today().isoformat()
-    updated = (
-        db.query(Reservation)
-        .filter(Reservation.status == ReservationStatus.pending, Reservation.date < today)
-        .update(
-            {
-                Reservation.status: ReservationStatus.cancelled,
-                Reservation.owner_note: "Rezerwacja wygasła — kawiarnia nie odpowiedziała przed terminem.",
-                Reservation.updated_at: datetime.utcnow(),
-            },
-            synchronize_session=False,
-        )
-    )
-    if updated:
-        db.commit()
-
-
 def _validate_slot(
     table: CafeTable,
     settings: ReservationSettings,
@@ -253,7 +233,11 @@ def _validate_slot(
 @router.get("/settings", response_model=ReservationSettingsOut,
             summary="Pobierz ustawienia rezerwacji (odczyt — właściciel/pracownik)")
 def get_settings(cafe_id: str = Depends(get_current_cafe_id), db: Session = Depends(get_db)):
-    return _get_or_create_settings(cafe_id, db)
+    return db.query(ReservationSettings).options(
+        selectinload(ReservationSettings.tables), selectinload(ReservationSettings.hours)
+    ).filter(ReservationSettings.cafe_id == cafe_id).first() or ReservationSettings(
+        id=f"default-{cafe_id}", cafe_id=cafe_id, enabled=False, mode="simple", slot_duration_minutes=60
+    )
 
 
 @router.put("/settings", response_model=ReservationSettingsOut,
@@ -576,7 +560,6 @@ def cancel_reservation_as_client(
     current_client: Client  = Depends(get_current_client),
     db:             Session = Depends(get_db),
 ):
-    _expire_stale_reservations(db)
     r = (
         db.query(Reservation)
         .options(selectinload(Reservation.table))
@@ -611,7 +594,6 @@ def list_my_reservations(
     current_client: Client = Depends(get_current_client),
     db:             Session = Depends(get_db),
 ):
-    _expire_stale_reservations(db)
     rows = (
         db.query(Reservation)
         .options(selectinload(Reservation.table))
@@ -651,7 +633,6 @@ def list_reservations(
     cafe_id:       str = Depends(get_current_cafe_id),
     db:            Session = Depends(get_db),
 ):
-    _expire_stale_reservations(db)
     q = (
         db.query(Reservation)
         .filter(Reservation.cafe_id == cafe_id)
@@ -684,7 +665,6 @@ def update_reservation_status(
     cafe_id:        str = Depends(get_current_cafe_id),
     db:             Session = Depends(get_db),
 ):
-    _expire_stale_reservations(db)
     r = (
         db.query(Reservation)
         .filter(

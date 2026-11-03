@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.core.page_cache import invalidate_cafe
+from app.core.cache_purge import purge_urls, cafe_page_urls
+from app.core.config import settings
 from app.core.images import (
     GALLERY_TIERS, save_image_variants_async, delete_image_files,
     image_response, news_image_url,
@@ -24,8 +26,7 @@ from app.schemas.news import (
 router = APIRouter(prefix="/news", tags=["news"])
 bearer_scheme = HTTPBearer()
 
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "news")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = "news"
 
 
 def get_current_cafe(
@@ -80,7 +81,9 @@ def get_settings(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    return _get_or_create_settings(current_cafe.id, db)
+    return db.query(NewsSettings).filter(NewsSettings.cafe_id == current_cafe.id).first() or NewsSettings(
+        id=f"default-{current_cafe.id}", cafe_id=current_cafe.id, enabled=False
+    )
 
 
 @router.put("/settings", response_model=NewsSettingsOut, summary="Włącz / wyłącz sekcję aktualności")
@@ -94,6 +97,7 @@ def save_settings(
     db.commit()
     db.refresh(s)
     invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
     return s
 
 
@@ -165,6 +169,7 @@ async def create_news(
     db.commit()
     db.refresh(post)
     invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
     return _post_to_out(current_cafe.id, post)
 
 
@@ -186,6 +191,7 @@ def delete_news(
     db.commit()
     delete_image_files(UPLOAD_DIR, old_path)
     invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -40,11 +40,26 @@ class Settings(BaseSettings):
     # HTML dla /kawiarnia/{slug}; jeśli ustawione, backend serwuje też /assets.
     CUSTOMER_DIST_DIR: str | None = None
 
-    SMTP_HOST: str | None = None
+    SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_FROM: str | None = None
+    SMTP_STARTTLS: bool = True
+    EMAIL_BACKEND: Literal["console", "smtp"] = "console"
+    EMAIL_FROM_NAME: str = "Caffenacci"
+    EMAIL_FROM_ADDRESS: str = "noreply@localhost"
+    STORAGE_BACKEND: Literal["local"] = "local"
+    STORAGE_LOCAL_DIR: str = "uploads/"
+    IMAGE_PROCESSING_CONCURRENCY: int = 2
+    RUN_SCHEDULER: bool = True
+    ENABLE_APP_GZIP: bool | None = None
+    PUBLIC_CACHE_S_MAXAGE: int = 120
+    PAGE_CACHE_TTL: int = 60
+
+    @property
+    def app_gzip_enabled(self) -> bool:
+        return self.ENABLE_APP_GZIP if self.ENABLE_APP_GZIP is not None else not self.is_production
 
     @property
     def is_production(self) -> bool:

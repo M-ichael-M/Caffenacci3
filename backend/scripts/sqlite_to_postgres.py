@@ -12,7 +12,6 @@ Id to teksty UUID, więc nie ma sekwencji do resetowania.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -40,10 +39,6 @@ def main() -> int:
     for prefix in ("postgres://", "postgresql://"):
         if pg_url.startswith(prefix):
             pg_url = "postgresql+psycopg://" + pg_url[len(prefix):]
-    # app.core.* tworzy engine przy imporcie: kierujemy go na cel i omijamy walidację produkcyjną
-    os.environ["ENV"] = "development"
-    os.environ["DATABASE_URL"] = pg_url
-
     from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum
     from sqlalchemy import create_engine, event, func, inspect, literal, select
 

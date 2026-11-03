@@ -52,7 +52,10 @@ class _TTLCache:
             return len(keys)
 
 
-page_cache = _TTLCache(CACHE_TTL, CACHE_MAX)
+# Każdy proces ma własny cache; bez Redis nie ma wspólnego invalidation.
+# TTL ogranicza czas, przez jaki proces może podawać starą stronę po zmianie.
+from app.core.config import settings
+page_cache = _TTLCache(settings.PAGE_CACHE_TTL, CACHE_MAX)
 
 
 def invalidate_cafe(cafe_id: str) -> None:
