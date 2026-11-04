@@ -60,14 +60,17 @@ def get_current_cafe(
     return cafe
 
 
-def _get_or_create_site(cafe_id: str, db: Session) -> CafeSite:
+def _get_or_create_site(cafe_id: str, db: Session, *, create: bool = True) -> CafeSite:
     s = db.query(CafeSite).filter(CafeSite.cafe_id == cafe_id).first()
-    if not s:
+    if not s and create:
         s = CafeSite(cafe_id=cafe_id)
         db.add(s)
         db.commit()
         db.refresh(s)
-    return s
+    return s or CafeSite(
+        id=f"default-{cafe_id}", cafe_id=cafe_id,
+        template="classic", palette="espresso-gold", is_published=False,
+    )
 
 
 def _parse_custom_palette(raw: str | None) -> dict[str, str] | None:
@@ -121,7 +124,7 @@ def get_settings(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    s = _get_or_create_site(current_cafe.id, db)
+    s = _get_or_create_site(current_cafe.id, db, create=False)
     return _site_to_out(s)
 
 
@@ -142,7 +145,7 @@ def save_settings(
     db.commit()
     db.refresh(s)
     invalidate_cafe(current_cafe.id)
-    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
     return _site_to_out(s)
 
 
@@ -178,8 +181,7 @@ def get_publish_status(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    _ensure_slug(current_cafe, db)
-    site = _get_or_create_site(current_cafe.id, db)
+    site = _get_or_create_site(current_cafe.id, db, create=False)
     profile = db.query(CafeProfile).filter(CafeProfile.cafe_id == current_cafe.id).first()
     reasons = _publish_requirements(current_cafe, profile, db)
     return _publish_status_out(current_cafe, site, reasons)
@@ -202,7 +204,7 @@ def publish_site(
     db.commit()
     db.refresh(site)
     invalidate_cafe(current_cafe.id)
-    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
     return _publish_status_out(current_cafe, site, [])
 
 
@@ -216,7 +218,7 @@ def unpublish_site(
     db.commit()
     db.refresh(site)
     invalidate_cafe(current_cafe.id)
-    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
 
     profile = db.query(CafeProfile).filter(CafeProfile.cafe_id == current_cafe.id).first()
     reasons = _publish_requirements(current_cafe, profile, db)
@@ -228,7 +230,7 @@ def unpublish_site(
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
-    site = _get_or_create_site(cafe.id, db)
+    site = _get_or_create_site(cafe.id, db, create=False)
     custom_palette = _parse_custom_palette(site.custom_palette_colors)
 
     profile = (

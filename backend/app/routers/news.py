@@ -97,7 +97,7 @@ def save_settings(
     db.commit()
     db.refresh(s)
     invalidate_cafe(current_cafe.id)
-    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
     return s
 
 
@@ -169,7 +169,7 @@ async def create_news(
     db.commit()
     db.refresh(post)
     invalidate_cafe(current_cafe.id)
-    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
     return _post_to_out(current_cafe.id, post)
 
 
@@ -191,7 +191,7 @@ def delete_news(
     db.commit()
     delete_image_files(UPLOAD_DIR, old_path)
     invalidate_cafe(current_cafe.id)
-    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -27,18 +27,14 @@ def expire_stale_entries(db: Session) -> tuple[int, int]:
 
 def run_expiration_job() -> tuple[int, int] | None:
     db = SessionLocal()
-    locked = False
     try:
         if engine.dialect.name == "postgresql":
-            locked = bool(db.execute(text("SELECT pg_try_advisory_lock(:id)"), {"id": _LOCK_ID}).scalar())
-            if not locked:
+            if not db.execute(text("SELECT pg_try_advisory_xact_lock(:id)"), {"id": _LOCK_ID}).scalar():
+                db.rollback()
                 log.info("Expiration job skipped: advisory lock held by another process")
                 return None
         counts = expire_stale_entries(db)
         log.info("Expiration job completed: orders=%s reservations=%s", *counts)
         return counts
     finally:
-        if locked:
-            try: db.execute(text("SELECT pg_advisory_unlock(:id)"), {"id": _LOCK_ID})
-            except Exception: log.exception("Could not release expiration job lock")
         db.close()

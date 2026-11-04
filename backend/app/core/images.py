@@ -168,13 +168,11 @@ def resolve_file(directory: str, image_path: str, w: int | None, tiers: tuple[in
 
 
 def _etag(path: str) -> str:
-    root = get_storage().root
-    key_path = Path(path).resolve().relative_to(root).as_posix()
-    st = get_storage().stat(key_path)
-    if st is None:
+    try:
+        st = Path(path).stat()
+    except FileNotFoundError:
         raise HTTPException(404, detail="Plik grafiki nie istnieje.")
-    size, mtime = st
-    key = f"{os.path.basename(path)}:{size}:{mtime}"
+    key = f"{os.path.basename(path)}:{st.st_size}:{st.st_mtime_ns}"
     return '"' + hashlib.sha1(key.encode()).hexdigest()[:24] + '"'
 
 

@@ -11,6 +11,8 @@ from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.core.employee_access import get_current_cafe_id
 from app.core.page_cache import invalidate_cafe
+from app.core.cache_purge import purge_urls, cafe_page_urls
+from app.core.config import settings
 from app.models.cafe import Cafe
 from app.models.cafe_profile import CafeProfile
 from app.models.client import Client
@@ -49,14 +51,14 @@ def get_current_cafe(
     return cafe
 
 
-def _get_or_create_settings(cafe_id: str, db: Session) -> LoyaltySettings:
+def _get_or_create_settings(cafe_id: str, db: Session, *, create: bool = True) -> LoyaltySettings:
     s = (
         db.query(LoyaltySettings)
         .options(selectinload(LoyaltySettings.rewards))
         .filter(LoyaltySettings.cafe_id == cafe_id)
         .first()
     )
-    if not s:
+    if not s and create:
         s = LoyaltySettings(cafe_id=cafe_id)
         db.add(s)
         db.commit()
@@ -67,7 +69,10 @@ def _get_or_create_settings(cafe_id: str, db: Session) -> LoyaltySettings:
             .filter(LoyaltySettings.id == s.id)
             .first()
         )
-    return s
+    return s or LoyaltySettings(
+        id=f"default-{cafe_id}", cafe_id=cafe_id,
+        enabled=False, mode="points", stamps_max=10, rewards=[],
+    )
 
 
 def _get_or_create_client_loyalty(cafe_id: str, client_id: str, db: Session) -> ClientLoyalty:
@@ -101,7 +106,7 @@ def get_settings(
     cafe_id: str = Depends(get_current_cafe_id),
     db:      Session = Depends(get_db),
 ):
-    return _get_or_create_settings(cafe_id, db)
+    return _get_or_create_settings(cafe_id, db, create=False)
 
 
 @router.put("/settings", response_model=LoyaltySettingsOut,
@@ -132,6 +137,7 @@ def save_settings(
 
     db.commit()
     invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
     return _get_or_create_settings(current_cafe.id, db)
 
 
@@ -146,7 +152,7 @@ def lookup_client(
     cafe_id:      str = Depends(get_current_cafe_id),
     db:           Session = Depends(get_db),
 ):
-    settings = _get_or_create_settings(cafe_id, db)
+    settings = _get_or_create_settings(cafe_id, db, create=False)
     if not settings.enabled:
         raise HTTPException(400, detail="Program lojalnościowy jest wyłączony.")
 

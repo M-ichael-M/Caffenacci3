@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import ssl
 import smtplib
 from email.message import EmailMessage
 from typing import Protocol
@@ -28,7 +29,7 @@ class SmtpEmailProvider:
         msg.set_content(text)
         if html: msg.add_alternative(html, subtype="html")
         with smtplib.SMTP(settings.SMTP_HOST or "smtp.gmail.com", settings.SMTP_PORT, timeout=20) as server:
-            if settings.SMTP_STARTTLS: server.starttls()
+            if settings.SMTP_STARTTLS: server.starttls(context=ssl.create_default_context())
             if settings.SMTP_USER: server.login(settings.SMTP_USER, settings.SMTP_PASSWORD or "")
             server.send_message(msg)
 

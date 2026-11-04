@@ -80,7 +80,7 @@ def _default_weekly_hours(profile_id: str) -> list[ProfileWeeklyHours]:
     ]
 
 
-def _get_or_create_profile(cafe_id: str, db: Session) -> CafeProfile:
+def _get_or_create_profile(cafe_id: str, db: Session, *, create: bool = True) -> CafeProfile:
     p = (
         db.query(CafeProfile)
         .options(
@@ -93,7 +93,7 @@ def _get_or_create_profile(cafe_id: str, db: Session) -> CafeProfile:
         .filter(CafeProfile.cafe_id == cafe_id)
         .first()
     )
-    if not p:
+    if not p and create:
         p = CafeProfile(cafe_id=cafe_id)
         db.add(p)
         db.flush()
@@ -113,7 +113,17 @@ def _get_or_create_profile(cafe_id: str, db: Session) -> CafeProfile:
             .filter(CafeProfile.id == p.id)
             .first()
         )
-    return p
+    if p:
+        return p
+    profile = CafeProfile(
+        id=f"default-{cafe_id}", cafe_id=cafe_id,
+        contact_email_visible=False, contact_phone_visible=False,
+        description_visible=False, location_visible=False,
+        location_show_map=False, location_show_gmaps_link=False,
+        gallery_visible=False,
+    )
+    profile.weekly_hours = _default_weekly_hours(profile.id)
+    return profile
 
 
 def _logo_url(cafe_id: str, profile: CafeProfile) -> str | None:
@@ -191,7 +201,7 @@ def get_profile(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    profile = _get_or_create_profile(current_cafe.id, db)
+    profile = _get_or_create_profile(current_cafe.id, db, create=False)
     return _profile_to_out(current_cafe, profile, db)
 
 
@@ -308,7 +318,7 @@ def save_profile(
 
     db.commit()
     invalidate_cafe(current_cafe.id)
-    purge_urls(cafe_page_urls(old_slug, app_settings.API_PUBLIC_URL) + cafe_page_urls(current_cafe.slug, app_settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(old_slug, app_settings.PUBLIC_SITE_URL) + cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
 
@@ -358,7 +368,7 @@ async def upload_logo(
     db.commit()
     delete_image_files(UPLOAD_DIR, old_path)      # dopiero po commicie
     invalidate_cafe(current_cafe.id)
-    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
 
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
@@ -377,7 +387,7 @@ def delete_logo(
         db.commit()
         delete_image_files(UPLOAD_DIR, old_path)
         invalidate_cafe(current_cafe.id)
-        purge_urls(cafe_page_urls(current_cafe.slug, app_settings.API_PUBLIC_URL))
+        purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
 
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
@@ -429,7 +439,7 @@ async def upload_gallery_image(
     ))
     db.commit()
     invalidate_cafe(current_cafe.id)
-    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
 
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
@@ -467,7 +477,7 @@ def delete_gallery_image(
     db.commit()
     delete_image_files(GALLERY_UPLOAD_DIR, old_path)
     invalidate_cafe(current_cafe.id)
-    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
 
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
@@ -493,7 +503,7 @@ def list_hour_exceptions(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    profile = _get_or_create_profile(current_cafe.id, db)
+    profile = _get_or_create_profile(current_cafe.id, db, create=False)
     return profile.hour_exceptions
 
 
@@ -539,6 +549,8 @@ def set_hour_exception(
     profile.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(existing)
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
     return existing
 
 
@@ -556,6 +568,8 @@ def delete_hour_exception(
     db.delete(existing)
     profile.updated_at = datetime.utcnow()
     db.commit()
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
 
 
 # ══════════════════════════════════════════════════════════════════════════════

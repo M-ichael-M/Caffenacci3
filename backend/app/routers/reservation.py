@@ -7,6 +7,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
+from app.core.page_cache import invalidate_cafe
+from app.core.cache_purge import purge_urls, cafe_page_urls
+from app.core.config import settings
 from app.core.security import decode_access_token
 from app.core.employee_access import get_current_cafe_id
 from app.models.cafe import Cafe
@@ -286,6 +289,8 @@ def save_settings(
             ))
 
     db.commit()
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
 
     return (
         db.query(ReservationSettings)

@@ -64,7 +64,7 @@ def set_item_availability(
     item.is_unavailable = is_unavailable
     db.commit()
     invalidate_cafe(cafe_id)
-    purge_urls(cafe_page_urls(db.query(Cafe).filter(Cafe.id == cafe_id).first().slug, settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(db.query(Cafe).filter(Cafe.id == cafe_id).first().slug, settings.PUBLIC_SITE_URL))
     db.refresh(item)
     return item
 
@@ -125,7 +125,7 @@ def save_menu(
 
     db.commit()
     invalidate_cafe(current_cafe.id)
-    purge_urls(cafe_page_urls(current_cafe.slug, settings.API_PUBLIC_URL))
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
 
     for s in new_sections:
         db.refresh(s)

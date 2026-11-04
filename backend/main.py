@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from apscheduler.schedulers.background import BackgroundScheduler
 import hashlib
 from starlette.responses import Response
+from datetime import datetime, timezone
 
 from app.core.config import settings
 from app.core.database import Base, engine, get_db
@@ -48,7 +49,9 @@ async def lifespan(app: FastAPI):
     scheduler = None
     if settings.RUN_SCHEDULER:
         scheduler = BackgroundScheduler()
-        scheduler.add_job(run_expiration_job, "interval", minutes=5, id="expire-stale", next_run_time=None)
+        scheduler.add_job(run_expiration_job, "interval", minutes=5, id="expire-stale",
+            next_run_time = datetime.now(timezone.utc),  # pierwszy bieg od razu, w wątku schedulera
+            max_instances = 1, coalesce = True)
         scheduler.start()
         run_expiration_job()
     yield

@@ -44,7 +44,6 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str | None = None
     SMTP_PASSWORD: str | None = None
-    SMTP_FROM: str | None = None
     SMTP_STARTTLS: bool = True
     EMAIL_BACKEND: Literal["console", "smtp"] = "console"
     EMAIL_FROM_NAME: str = "Caffenacci"

@@ -3,13 +3,13 @@ from __future__ import annotations
 import threading
 import time
 from collections import OrderedDict
+from app.core.config import settings
 
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app.models.cafe import Cafe
 
-CACHE_TTL = 60   # sekundy
 CACHE_MAX = 500  # wpisów
 
 
@@ -52,9 +52,9 @@ class _TTLCache:
             return len(keys)
 
 
-# Każdy proces ma własny cache; bez Redis nie ma wspólnego invalidation.
-# TTL ogranicza czas, przez jaki proces może podawać starą stronę po zmianie.
-from app.core.config import settings
+# Każdy proces ma własny cache, więc bez Redis invalidacja nie jest wspólna.
+# Na teraz proponuję pozostać przy cache per proces z krótkim TTL; Redis warto
+# dodać dopiero, gdy potrzebna będzie natychmiastowa spójność między workerami.
 page_cache = _TTLCache(settings.PAGE_CACHE_TTL, CACHE_MAX)
 
 
