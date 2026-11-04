@@ -53,7 +53,6 @@ async def lifespan(app: FastAPI):
             next_run_time = datetime.now(timezone.utc),  # pierwszy bieg od razu, w wątku schedulera
             max_instances = 1, coalesce = True)
         scheduler.start()
-        run_expiration_job()
     yield
     if scheduler:
         scheduler.shutdown(wait=False)
