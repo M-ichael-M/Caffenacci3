@@ -3,7 +3,7 @@
    Plik: caffenacci.customer/src/components/CafePage/cafePage.css
 
    Struktura pliku:
-   1. Fonty dodatkowe (motywy magic / usa80s / expressive)
+   1. Fonty: self-hosted, patrz src/fonts/
    2. Bazowy layout strony (nav, hero, sekcje) — wspólny dla wszystkich motywów
    3. Elementy, których wcześniej brakowało w CSS (modal, pola formularzy,
       karty pustych stanów, opinie, pozycje zamówienia, odznaki menu)
@@ -23,10 +23,6 @@
    17. Motyw: futurystyczny
    18. Motyw: kafelkowy (tiles)
    ════════════════════════════════════════════════════════════════════════ */
-
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Bungee&family=Fredoka:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Space+Mono:wght@400;700&family=Outfit:wght@400;500;600;700&family=Orbitron:wght@500;700;800&display=swap');
 
 
 /* ════════════════════════════════════════════════
@@ -1575,6 +1571,8 @@ select.me-input { cursor: pointer; }
   border-radius: 8px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
   cursor: default;
+  width: auto;
+  height: auto;
 }
 
 .cp-lightbox__close {
@@ -1745,6 +1743,7 @@ select.me-input { cursor: pointer; }
 .cp-news-modal-image {
   width: 100%;
   max-height: 320px;
+  height: auto;        
   object-fit: cover;
   border-radius: 8px;
   margin-bottom: 1rem;
@@ -3380,4 +3379,86 @@ select.me-input { cursor: pointer; }
   transform: translateX(-50%);
   border: 5px solid transparent;
   border-top-color: var(--espresso);
+}
+
+/* ════════════════════════════════════════════════
+   20. TANI TRYB DLA CIĘŻKICH MOTYWÓW (mobile / reduced-motion)
+   ════════════════════════════════════════════════ */
+
+@media (max-width: 700px), (prefers-reduced-motion: reduce) {
+
+  .cafe-page .menu-editor-overlay {
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    background: rgba(17,10,4,0.72);
+  }
+
+  /* ── MAGIC: statyczne tło zamiast fixed + blur(38px) + animacji ── */
+  .cafe-page--magic {
+    background:
+      radial-gradient(ellipse 60% 45% at 18% 15%, rgba(181,114,10,0.2), transparent 62%),
+      radial-gradient(ellipse 55% 40% at 82% 75%, rgba(240,228,204,0.1), transparent 62%),
+      var(--espresso);
+  }
+  .cafe-page--magic::before { display: none; }
+  .cafe-page--magic::after  { animation: none; opacity: 0.4; }
+  .cafe-page--magic .cp-hero::before { animation: none; opacity: 0.6; }
+  .cafe-page--magic .cp-hero::after  { display: none; }                  /* blur(26px) */
+  .cafe-page--magic .cp-hero__name   { animation: none; }
+  .cafe-page--magic .cp-nav {
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    background: rgba(17,10,4,0.97);
+  }
+  .cafe-page--magic .cp-home-fab,
+  .cafe-page--magic .cp-gallery__item { animation: none; }
+
+  /* ── GLASS: bez fixed blur(60px) i bez backdrop-filter ── */
+  .cafe-page--glass {
+    background:
+      radial-gradient(circle at 15% 20%, rgba(181,114,10,0.22), transparent 55%),
+      radial-gradient(circle at 85% 15%, rgba(120,180,255,0.2), transparent 55%),
+      radial-gradient(circle at 75% 85%, rgba(255,140,200,0.16), transparent 55%),
+      linear-gradient(160deg, #eef2ff 0%, var(--cream) 45%, #fdf2f8 100%);
+  }
+  .cafe-page--glass::before { display: none; }
+
+  /* !important: backdrop-filter jest rozsiany po kilkudziesięciu selektorach glass */
+  .cafe-page--glass *, .cafe-page--glass *::before, .cafe-page--glass *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* …a zamiast szkła: jednolite, mniej przezroczyste tło (czytelność bez rozmycia) */
+  .cafe-page--glass .cp-nav  { background: rgba(255,255,255,0.92); }
+  .cafe-page--glass .cp-hero { background: rgba(255,255,255,0.78); }
+  .cafe-page--glass :is(.info-card, .res-table-row, .rv-card, .cp-team-card, .res-empty-card,
+                        .cp-menu-item, .cp-news-card, .rv-summary, .cp-hours-row--exception) {
+    background: rgba(255,255,255,0.82) !important;
+  }
+  .cafe-page--glass :is(.info-card, .rv-card, .cp-team-card, .cp-menu-item):hover {
+    background: rgba(255,255,255,0.9) !important;
+  }
+  .cafe-page--glass .cp-cart-bar    { background: rgba(255,255,255,0.9) !important; }
+  .cafe-page--glass .menu-editor    { background: rgba(255,255,255,0.95) !important; }
+  .cafe-page--glass .menu-editor-overlay { background: rgba(220,225,245,0.85); }
+  .cafe-page--glass .cp-info-grid > div  { background: rgba(255,255,255,0.8); }
+  .cafe-page--glass .cp-gallery__item    { background: rgba(255,255,255,0.7); }
+  .cafe-page--glass :is(.btn--primary, .btn--outline-dark, .cp-add-btn, .cp-social-links a,
+                        .cp-qty-stepper, .cp-hero__status, .cp-hero__logo) {
+    background: rgba(255,255,255,0.75);
+  }
+
+  /* ── FUTURISTIC ── */
+  .cafe-page--futuristic .cp-nav {
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    background: rgba(5,6,8,0.97);
+  }
+  .cafe-page--futuristic .cp-nav::after { animation: none; }
+  .cafe-page--futuristic::after         { display: none; }   /* fixed pełnoekranowy skan */
+  .cafe-page--futuristic .cp-hero__status::before { animation: none; }
+  .cafe-page--futuristic .cp-location-map { filter: none; }  /* filter na canvasie WebGL */
+
+  /* ── poza listą: animacje malujące warstwę co klatkę ── */
+  .cafe-page--usa80s .cp-hero::after,
+  .cafe-page--usa80s .cp-hero__name,
+  .cafe-page--expressive .cp-hero::before,
+  .cafe-page--industrial .cp-home-fab::before { animation: none; }
 }

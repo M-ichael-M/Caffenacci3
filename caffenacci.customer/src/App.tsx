@@ -1,8 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
-import LoginForm from './components/LoginForm'
-import RegisterForm from './components/RegisterForm'
-import AccountDashboard from './components/AccountDashboard'
 import HomePage from './components/HomePage'
 import TopBar from './components/TopBar'
 import CafePage from './components/CafePage/CafePage'
@@ -10,11 +7,19 @@ import { loadClientAuth, saveClientAuth, clearClientAuth } from './authStorage'
 import type { ClientAuthState } from './authStorage'
 import logoCircle from './assets/logo/logo_circle.png'
 import './index.css'
+import { API_URL, COMPANY_URL } from './config'
+
+
+const LoginForm        = lazy(() => import('./components/LoginForm'))
+const RegisterForm     = lazy(() => import('./components/RegisterForm'))
+const AccountDashboard = lazy(() => import('./components/AccountDashboard'))
+
+const Spinner = () => <div className="session-check"><div className="loading-spinner" /></div>
 
 type View = 'home' | 'login' | 'register' | 'account'
 
 function getCafeIdFromPath(): string | null {
-  const m = window.location.pathname.match(/^\/cafe\/([^/]+)/)
+  const m = window.location.pathname.match(/^\/(?:kawiarnia|cafe)\/([^/]+)/)
   return m ? decodeURIComponent(m[1]) : null
 }
 
@@ -56,7 +61,7 @@ export default function App() {
       return
     }
 
-    fetch('http://localhost:8000/client-auth/me', {
+    fetch(`${API_URL}/client-auth/me`, {
       headers: { Authorization: `Bearer ${stored.token}` },
     })
       .then(res => {
@@ -149,11 +154,11 @@ export default function App() {
 
         <main className="auth-form-panel">
           <div className="auth-form-container">
-            <LoginForm
+            <Suspense fallback={<Spinner />}><LoginForm
               onSuccess={handleLoginSuccess}
               onSwitchToRegister={() => { setRegisterSuccess(false); setView('register') }}
               registerSuccess={registerSuccess}
-            />
+            /></Suspense>
             <p className="cross-app-link" style={{ display: 'flex', justifyContent: 'center' }}>
               <button
                 type="button"
@@ -191,10 +196,10 @@ export default function App() {
 
         <main className="auth-form-panel">
           <div className="auth-form-container">
-            <RegisterForm
+            <Suspense fallback={<Spinner />}><RegisterForm
               onSuccess={handleRegisterSuccess}
               onSwitchToLogin={() => setView('login')}
-            />
+            /></Suspense>
             <p className="cross-app-link" style={{ display: 'flex', justifyContent: 'center' }}>
               <button
                 type="button"
@@ -228,7 +233,7 @@ export default function App() {
       />
 
       {showAccount ? (
-        <AccountDashboard auth={auth as ClientAuthState} />
+        <Suspense fallback={<Spinner />}><AccountDashboard auth={auth as ClientAuthState} /></Suspense>
       ) : (
         <>
           <HomePage />
@@ -237,7 +242,7 @@ export default function App() {
             style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}
           >
             Prowadzisz kawiarnię?{' '}
-            <a href="http://localhost:5173" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+            <a href={COMPANY_URL} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
               Przejdź do panelu właściciela <ArrowRight size={14} />
             </a>
           </p>

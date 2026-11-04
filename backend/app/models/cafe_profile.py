@@ -5,7 +5,7 @@ from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime,
     ForeignKey, Text, Float,
 )
-from sqlalchemy.dialects.sqlite import TEXT
+from app.core.types import ID
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -19,8 +19,8 @@ from app.core.database import Base
 class CafeProfile(Base):
     __tablename__ = "cafe_profiles"
 
-    id      = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    id      = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                       nullable=False, unique=True, index=True)
 
     # ── Kontakt kawiarni (osobny od kontaktu właściciela) ──────────────────
@@ -89,8 +89,8 @@ class CafeProfile(Base):
 class ProfileWeeklyHours(Base):
     __tablename__ = "profile_weekly_hours"
 
-    id          = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    profile_id  = Column(TEXT, ForeignKey("cafe_profiles.id", ondelete="CASCADE"),
+    id          = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    profile_id  = Column(ID, ForeignKey("cafe_profiles.id", ondelete="CASCADE"),
                           nullable=False, index=True)
     day_of_week = Column(Integer, nullable=False)
     open_time   = Column(String(5), nullable=True)
@@ -108,8 +108,8 @@ class ProfileWeeklyHours(Base):
 class ProfileHourException(Base):
     __tablename__ = "profile_hour_exceptions"
 
-    id          = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    profile_id  = Column(TEXT, ForeignKey("cafe_profiles.id", ondelete="CASCADE"),
+    id          = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    profile_id  = Column(ID, ForeignKey("cafe_profiles.id", ondelete="CASCADE"),
                           nullable=False, index=True)
     date        = Column(String(10), nullable=False, index=True)  # YYYY-MM-DD
     is_closed   = Column(Boolean, nullable=False, default=False)
@@ -125,8 +125,8 @@ class ProfileHourException(Base):
 class ProfileSocialLink(Base):
     __tablename__ = "profile_social_links"
 
-    id         = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    profile_id = Column(TEXT, ForeignKey("cafe_profiles.id", ondelete="CASCADE"),
+    id         = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    profile_id = Column(ID, ForeignKey("cafe_profiles.id", ondelete="CASCADE"),
                          nullable=False, index=True)
     platform   = Column(String(30), nullable=False)   # instagram | facebook | x | tiktok | other
     url        = Column(String(500), nullable=False)
@@ -144,8 +144,8 @@ class ProfileSocialLink(Base):
 class ProfileEmployee(Base):
     __tablename__ = "profile_employees"
 
-    id         = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    profile_id = Column(TEXT, ForeignKey("cafe_profiles.id", ondelete="CASCADE"),
+    id         = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    profile_id = Column(ID, ForeignKey("cafe_profiles.id", ondelete="CASCADE"),
                          nullable=False, index=True)
     full_name  = Column(String(150), nullable=False)
     role       = Column(String(100), nullable=False)
@@ -175,8 +175,8 @@ class ProfileEmployee(Base):
 class CafeProfileBadge(Base):
     __tablename__ = "cafe_profile_badges"
 
-    id         = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    profile_id = Column(TEXT, ForeignKey("cafe_profiles.id", ondelete="CASCADE"),
+    id         = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    profile_id = Column(ID, ForeignKey("cafe_profiles.id", ondelete="CASCADE"),
                          nullable=False, index=True)
     key        = Column(String(50), nullable=False)
     featured   = Column(Boolean, nullable=False, default=False)

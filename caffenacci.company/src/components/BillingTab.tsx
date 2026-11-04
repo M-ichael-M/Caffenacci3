@@ -12,13 +12,14 @@ import {
   ExternalLink,
   Users,
 } from 'lucide-react'
+import { API_URL, CUSTOMER_URL } from '../config'
 
 interface Props {
   token: string
   cafeId: string
 }
 
-const API = 'http://localhost:8000'
+const API = API_URL
 
 type SubStatus = 'none' | 'active' | 'cancelling' | 'expired'
 
@@ -97,6 +98,10 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
   }, [token])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+    useEffect(() => {
+    window.addEventListener('caffenacci:profile-saved', fetchAll)
+    return () => window.removeEventListener('caffenacci:profile-saved', fetchAll)
+  }, [fetchAll])
 
   async function call(path: string, body?: object) {
     setBusy(true)
@@ -337,7 +342,7 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
                 caffenacci.com{pub.public_path}
               </code>
               {pub.is_published && (
-                <a href={`http://localhost:5174/cafe/${pub.slug}`} target="_blank" rel="noreferrer" className="link" style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <a href={`${CUSTOMER_URL}/kawiarnia/${pub.slug}`} target="_blank" rel="noreferrer" className="link" style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                   Otwórz <ExternalLink size={13} />
                 </a>
               )}

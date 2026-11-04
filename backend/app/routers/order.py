@@ -7,6 +7,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
+from app.core.page_cache import invalidate_cafe
+from app.core.cache_purge import purge_urls, cafe_page_urls
+from app.core.config import settings
 from app.core.security import decode_access_token
 from app.core.employee_access import get_current_cafe_id
 from app.models.cafe import Cafe
@@ -67,26 +70,6 @@ def _validate_order_date(date_str: str) -> None:
             400,
             detail=f"Zamówienia można składać maksymalnie {MAX_ORDER_DAYS_AHEAD} dni do przodu.",
         )
-
-
-def _expire_stale_orders(db: Session) -> None:
-    """Zamówienia 'pending', których data już minęła, są automatycznie
-    anulowane (cancelled_by='system'). Wywoływane leniwie przy odczycie."""
-    today = date_cls.today().isoformat()
-    updated = (
-        db.query(Order)
-        .filter(Order.status == OrderStatus.pending, Order.date < today)
-        .update(
-            {
-                Order.status: OrderStatus.cancelled,
-                Order.cancelled_by: "system",
-                Order.updated_at: datetime.utcnow(),
-            },
-            synchronize_session=False,
-        )
-    )
-    if updated:
-        db.commit()
 
 
 # ── Walidacja godzin pracy kawiarni (z uwzględnieniem wyjątków) ─────────────
@@ -227,7 +210,9 @@ def get_settings(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    return _get_or_create_settings(current_cafe.id, db)
+    return db.query(OrderSettings).filter(OrderSettings.cafe_id == current_cafe.id).first() or OrderSettings(
+        id=f"default-{current_cafe.id}", cafe_id=current_cafe.id, enabled=False
+    )
 
 
 @router.put("/settings", response_model=OrderSettingsOut,
@@ -241,6 +226,8 @@ def save_settings(
     s.enabled = payload.enabled
     db.commit()
     db.refresh(s)
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
     return s
 
 
@@ -363,7 +350,6 @@ def cancel_order_public(
     payload:  PublicOrderCancelIn,
     db:       Session = Depends(get_db),
 ):
-    _expire_stale_orders(db)
     order = db.query(Order).options(selectinload(Order.items)).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(404, detail="Zamówienie nie istnieje.")
@@ -398,7 +384,6 @@ def list_my_orders(
     current_client: Client = Depends(get_current_client),
     db:             Session = Depends(get_db),
 ):
-    _expire_stale_orders(db)
     rows = (
         db.query(Order)
         .options(selectinload(Order.items))
@@ -434,7 +419,6 @@ def cancel_order_as_client(
     current_client: Client  = Depends(get_current_client),
     db:             Session = Depends(get_db),
 ):
-    _expire_stale_orders(db)
     order = (
         db.query(Order).options(selectinload(Order.items))
         .filter(Order.id == order_id, Order.client_id == current_client.id)
@@ -468,7 +452,6 @@ def list_orders(
     cafe_id: str = Depends(get_current_cafe_id),
     db: Session = Depends(get_db),
 ):
-    _expire_stale_orders(db)
     q = db.query(Order).options(selectinload(Order.items)).filter(Order.cafe_id == cafe_id)
     if status_filter:
         try:
@@ -492,7 +475,6 @@ def update_order_status(
     cafe_id: str = Depends(get_current_cafe_id),
     db: Session = Depends(get_db),
 ):
-    _expire_stale_orders(db)
     order = (
         db.query(Order).options(selectinload(Order.items))
         .filter(Order.id == order_id, Order.cafe_id == cafe_id).first()

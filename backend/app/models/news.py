@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey
-from sqlalchemy.dialects.sqlite import TEXT
+from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer
+from app.core.types import ID
 
 from app.core.database import Base
 
@@ -12,8 +12,8 @@ class NewsSettings(Base):
     aktualności na publicznej stronie."""
     __tablename__ = "news_settings"
 
-    id      = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    id      = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                       nullable=False, unique=True, index=True)
     enabled = Column(Boolean, nullable=False, default=False)
 
@@ -24,12 +24,15 @@ class NewsPost(Base):
     zdjęć w galerii."""
     __tablename__ = "news_posts"
 
-    id      = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"),
+    id      = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),
                       nullable=False, index=True)
 
     title   = Column(String(200), nullable=False)
     content = Column(Text, nullable=False)
+
+    image_width = Column(Integer, nullable=True)
+    image_height = Column(Integer, nullable=True)
 
     # Ścieżka względna w /uploads/news — opcjonalna grafika, przeskalowana
     # i skompresowana w momencie zapisu (patrz routers/news.py).

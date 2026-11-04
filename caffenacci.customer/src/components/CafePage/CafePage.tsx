@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import type { CSSProperties } from 'react'
 import { loadClientAuth, saveClientAuth, clearClientAuth } from '../../authStorage'
 import type { ClientAuthState } from '../../authStorage'
@@ -7,16 +7,22 @@ import MenuOrdering from './MenuOrdering'
 import ReservationWidget from './ReservationWidget'
 import ReviewsWidget from './ReviewsWidget'
 import Gallery from './Gallery'
-import LoginForm from '../LoginForm'
-import RegisterForm from '../RegisterForm'
 import './cafePage.css'
-import LoyaltyWidget from './LoyaltyWidget'
 import NewsWidget from './NewsWidget'
 import { CoffeeIcon, PhoneIcon, MailIcon } from './icons'
-import { Eye, X, ExternalLink } from 'lucide-react'
-import CafeLocationMap from './CafeLocationMap'
+import { Eye, ExternalLink } from 'lucide-react'
 import { BADGE_CATALOG } from '../../badges'
 import InfoTooltip from './InfoTooltip'
+import { API_URL } from '../../config'
+import { syncCafeSlugInUrl } from '../../utils/slugUrl'
+import { loadThemeFonts } from '../../fonts/themeFonts'
+import LazyLocationMap from './LazyLocationMap'
+import LazyOnVisible from '../LazyOnVisible'
+import ResponsiveImage, { IMAGE_WIDTHS } from '../ResponsiveImage'
+
+const LoyaltyWidget = lazy(() => import('./LoyaltyWidget'))
+const AuthModal     = lazy(() => import('./AuthModal'))
+const prefetchAuthModal = () => { void import('./AuthModal') }
 
 // ── Typy (odpowiadają backendowemu PublicSiteOut) ───────────────────────────
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
@@ -29,8 +35,16 @@ interface MenuItem {
 }
 interface MenuSection { id: string; name: string; items: MenuItem[] }
 interface ReviewItem { id: string; nick: string; rating: number; comment: string | null; created_at: string }
-interface GalleryImageItem { url: string }
-interface NewsPostItem { id: string; title: string; content: string; image_url: string | null; created_at: string }
+interface GalleryImageItem { url: string; width?: number | null; height?: number | null }
+interface NewsPostItem {
+  id: string
+  title: string
+  content: string
+  image_url: string | null
+  image_width?: number | null
+  image_height?: number | null
+  created_at: string
+}
 interface BadgeItem { key: string; featured: boolean }
 
 // Szablon strony — musi odpowiadać ALLOWED_TEMPLATES w backend/app/schemas/site.py
@@ -48,6 +62,7 @@ type SiteTemplate =
 
 interface PublicSiteData {
   cafe_id: string
+  slug?: string | null
   cafe_name: string
   template: SiteTemplate
   palette: string
@@ -82,6 +97,18 @@ interface PublicSiteData {
   news_enabled: boolean
   news_posts: NewsPostItem[]
   badges: BadgeItem[]
+}
+
+declare global {
+  interface Window { __SITE_DATA__?: PublicSiteData }
+}
+
+// Dane wstrzyknięte przez backend (/kawiarnia/{slug}). Tylko odczyt - usuwamy w efekcie.
+function readSeedData(identifier: string, mode: 'public' | 'preview'): PublicSiteData | null {
+  if (mode !== 'public') return null
+  const seed = window.__SITE_DATA__
+  if (!seed) return null
+  return seed.slug === identifier || seed.cafe_id === identifier ? seed : null
 }
 
 interface Props {
@@ -182,8 +209,10 @@ function BadgeDisplay({ item }: { item: BadgeItem }) {
 
 export default function CafePage({ identifier, mode = 'public', previewToken }: Props) {
   const isPreview = mode === 'preview'
-  const [data, setData] = useState<PublicSiteData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [seed] = useState(() => readSeedData(identifier, mode))
+  const seededFor = useRef<string | null>(seed ? identifier : null)
+  const [data, setData] = useState<PublicSiteData | null>(seed)
+  const [loading, setLoading] = useState(seed === null)
   const [notFound, setNotFound] = useState(false)
   // W trybie podglądu nigdy nie ma sensu wczytywać zapisanej sesji klienta —
   // podgląd ma pokazywać stronę tak, jak widzi ją niezalogowany gość.
@@ -197,8 +226,8 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
     setLoading(true)
     try {
       const url = mode === 'preview'
-        ? `http://localhost:8000/site/preview/${identifier}?token=${encodeURIComponent(previewToken ?? '')}`
-        : `http://localhost:8000/site/public/by-slug/${identifier}`
+        ? `${API_URL}/site/preview/${identifier}?token=${encodeURIComponent(previewToken ?? '')}`
+        : `${API_URL}/site/public/by-slug/${identifier}`
       const res = await fetch(url)
       if (!res.ok) { setNotFound(true); return }
       setData(await res.json())
@@ -209,10 +238,33 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
     }
   }, [identifier, mode, previewToken])
 
-  useEffect(() => { fetchSite() }, [fetchSite])
+  useEffect(() => {
+    if (mode === 'public' && seededFor.current === identifier) {
+      delete window.__SITE_DATA__   // dane zużyte; kolejne wejście pobierze świeże z API
+      return
+    }
+    fetchSite()
+  }, [fetchSite, identifier, mode])
+  
+  useEffect(() => {
+    if (mode === 'public') {
+      syncCafeSlugInUrl(data?.slug)
+    }
+  }, [mode, data?.slug])
 
+  // Podgląd właściciela nigdy nie trafia do indeksu
+  useEffect(() => {
+    if (!isPreview) return
+    const meta = document.createElement('meta')
+    meta.name = 'robots'
+    meta.content = 'noindex, nofollow'
+    document.head.appendChild(meta)
+    return () => { meta.remove() }
+  }, [isPreview])
+  
   // Iskry – tylko motyw magic
   useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     if (data?.template !== 'magic') return
     const layer = sparkLayerRef.current
     if (!layer) return
@@ -236,6 +288,11 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
 
     window.addEventListener('click', spawnSparks)
     return () => window.removeEventListener('click', spawnSparks)
+  }, [data?.template])
+
+  // Ładowanie fontów motywu
+  useEffect(() => {
+    if (data?.template) loadThemeFonts(data.template)
   }, [data?.template])
 
   // W trybie podglądu logowanie/rejestracja są całkowicie wyłączone — to ma
@@ -352,7 +409,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
         )}
         <button className="cp-nav__link" onClick={() => document.getElementById('cp-reviews')?.scrollIntoView({ behavior: 'smooth' })}>Opinie</button>
         <div style={{ flex: 1 }} />
-        <div className="cp-account">
+        <div className="cp-account" onPointerEnter={prefetchAuthModal} onFocusCapture={prefetchAuthModal}>
           {isPreview ? (
             // Podgląd jest wyłącznie wizualny — brak logowania/rejestracji/konta.
             <span style={{
@@ -379,7 +436,14 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
       {/* Hero */}
       <header className="cp-hero">
         {data.logo_url ? (
-          <img className="cp-hero__logo" src={`http://localhost:8000${data.logo_url}`} alt={data.cafe_name} />
+          <ResponsiveImage
+            className="cp-hero__logo"
+            src={data.logo_url}
+            alt={data.cafe_name}
+            widths={IMAGE_WIDTHS.logo}
+            sizes="112px"
+            priority
+          />
         ) : (
           <div className="cp-hero__logo"><CoffeeIcon size={40} /></div>
         )}
@@ -443,17 +507,21 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
         {data.loyalty_enabled && (
           <section id="cp-loyalty">
             <h2 className="cp-section__title">Program lojalności</h2>
-            <LoyaltyWidget
-              cafeId={data.cafe_id}
-              mode={data.loyalty_mode as 'points' | 'stamps'}
-              stampsMax={data.loyalty_stamps_max}
-              stampsEarnDesc={data.loyalty_stamps_earn_desc}
-              stampsRewardDesc={data.loyalty_stamps_reward_desc}
-              rewards={data.loyalty_rewards}
-              requireLogin={requireLogin}
-              authToken={auth?.token ?? null}
-              previewMode={isPreview}
-            />
+            <LazyOnVisible placeholder={<p className="cp-muted-note" style={{ minHeight: 160 }}>Ładowanie…</p>}>
+              <Suspense fallback={<p className="cp-muted-note" style={{ minHeight: 160 }}>Ładowanie…</p>}>
+                <LoyaltyWidget
+                  cafeId={data.cafe_id}
+                  mode={data.loyalty_mode as 'points' | 'stamps'}
+                  stampsMax={data.loyalty_stamps_max}
+                  stampsEarnDesc={data.loyalty_stamps_earn_desc}
+                  stampsRewardDesc={data.loyalty_stamps_reward_desc}
+                  rewards={data.loyalty_rewards}
+                  requireLogin={requireLogin}
+                  authToken={auth?.token ?? null}
+                  previewMode={isPreview}
+                />
+              </Suspense>
+            </LazyOnVisible>
           </section>
         )}
 
@@ -531,7 +599,12 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
                 <div>
                   {data.location_show_map && (
                     <div className="cp-location-map">
-                      <CafeLocationMap latitude={data.latitude!} longitude={data.longitude!} />
+                      <LazyLocationMap
+                        latitude={data.latitude!}
+                        longitude={data.longitude!}
+                        address={`${data.street} ${data.building_number}, ${data.city}`}
+                        gmapsUrl={gmapsUrl}
+                      />
                     </div>
                   )}
                   {data.location_show_gmaps_link && gmapsUrl && (
@@ -592,27 +665,14 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
 
       {/* Modal logowania/rejestracji — nigdy nie renderowany w trybie podglądu */}
       {!isPreview && authModal && (
-        <div className="menu-editor-overlay" onClick={e => { if (e.target === e.currentTarget) { setAuthModal(null); setPendingAction(null) } }}>
-          <div className="menu-editor" style={{ maxWidth: 460, height: 'auto', maxHeight: '90vh' }}>
-            <div className="me-header">
-              <div>
-                <div className="me-eyebrow">Konto gościa</div>
-                <h2 className="me-title">{authModal === 'login' ? 'Zaloguj się' : 'Załóż konto'}</h2>
-              </div>
-              <button className="me-close" type="button" onClick={() => { setAuthModal(null); setPendingAction(null) }}><X size={16} /></button>
-            </div>
-            <div className="me-body">
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-                Rezerwacje, zamówienia i opinie są dostępne wyłącznie dla zalogowanych gości.
-              </p>
-              {authModal === 'login' ? (
-                <LoginForm onSuccess={handleLoginSuccess} onSwitchToRegister={() => setAuthModal('register')} />
-              ) : (
-                <RegisterForm onSuccess={() => setAuthModal('login')} onSwitchToLogin={() => setAuthModal('login')} />
-              )}
-            </div>
-          </div>
-        </div>
+        <Suspense fallback={null}>
+          <AuthModal
+            mode={authModal}
+            onClose={() => { setAuthModal(null); setPendingAction(null) }}
+            onSwitch={setAuthModal}
+            onLoginSuccess={handleLoginSuccess}
+          />
+        </Suspense>
       )}
 
       {data.template === 'magic' && <div ref={sparkLayerRef} className="cp-spark-layer" aria-hidden="true" />}

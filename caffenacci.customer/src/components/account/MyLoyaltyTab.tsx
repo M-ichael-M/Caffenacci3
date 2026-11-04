@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Gift, Coffee, RefreshCw, PartyPopper } from 'lucide-react'
+import { API_URL } from '../../config'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ interface CafeLoyaltyItem {
 
 interface Props { token: string }
 
-const API = 'http://localhost:8000'
+const API = API_URL
 
 // ── Ślad pieczątek ────────────────────────────────────────────────────────
 

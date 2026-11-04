@@ -4,15 +4,22 @@ import os
 import uuid
 from datetime import date as date_cls, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, UploadFile, File
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
-from PIL import Image, ImageOps
+from PIL import Image
 import io
+from app.core.images import (
+    GALLERY_TIERS, LOGO_TIERS, save_image_variants_async, delete_image_files,
+    image_response, logo_url as _logo_url_v, gallery_url,
+)
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
+from app.core.slugs import apply_slug_change
+from app.core.page_cache import invalidate_cafe
+from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings as app_settings
 from app.models.cafe import Cafe
 from app.models.cafe_profile import (
@@ -29,7 +36,6 @@ from app.schemas.cafe_profile import (
 from app.schemas.gallery import (
     GalleryImageOut, PublicGalleryImageOut,
     MAX_GALLERY_IMAGES, MAX_GALLERY_IMAGE_BYTES, ALLOWED_GALLERY_CONTENT_TYPES,
-    GALLERY_MAX_DIMENSION, GALLERY_JPEG_QUALITY,
 )
 
 router = APIRouter(prefix="/profile", tags=["cafe-profile"])
@@ -37,8 +43,7 @@ bearer_scheme = HTTPBearer()
 
 # ── Konfiguracja uploadu logo ────────────────────────────────────────────────
 
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "logos")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = "logos"
 
 MAX_LOGO_BYTES = 10 * 1024 * 1024  # 10 MB
 MIN_LOGO_DIMENSION = 512
@@ -46,8 +51,7 @@ ALLOWED_LOGO_CONTENT_TYPES = {"image/png", "image/jpeg", "image/webp"}
 
 # ── Konfiguracja uploadu galerii ─────────────────────────────────────────────
 
-GALLERY_UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "gallery")
-os.makedirs(GALLERY_UPLOAD_DIR, exist_ok=True)
+GALLERY_UPLOAD_DIR = "gallery"
 
 
 # ── Auth helper ────────────────────────────────────────────────────────────
@@ -76,7 +80,7 @@ def _default_weekly_hours(profile_id: str) -> list[ProfileWeeklyHours]:
     ]
 
 
-def _get_or_create_profile(cafe_id: str, db: Session) -> CafeProfile:
+def _get_or_create_profile(cafe_id: str, db: Session, *, create: bool = True) -> CafeProfile:
     p = (
         db.query(CafeProfile)
         .options(
@@ -89,7 +93,7 @@ def _get_or_create_profile(cafe_id: str, db: Session) -> CafeProfile:
         .filter(CafeProfile.cafe_id == cafe_id)
         .first()
     )
-    if not p:
+    if not p and create:
         p = CafeProfile(cafe_id=cafe_id)
         db.add(p)
         db.flush()
@@ -109,17 +113,21 @@ def _get_or_create_profile(cafe_id: str, db: Session) -> CafeProfile:
             .filter(CafeProfile.id == p.id)
             .first()
         )
-    return p
+    if p:
+        return p
+    profile = CafeProfile(
+        id=f"default-{cafe_id}", cafe_id=cafe_id,
+        contact_email_visible=False, contact_phone_visible=False,
+        description_visible=False, location_visible=False,
+        location_show_map=False, location_show_gmaps_link=False,
+        gallery_visible=False,
+    )
+    profile.weekly_hours = _default_weekly_hours(profile.id)
+    return profile
 
 
 def _logo_url(cafe_id: str, profile: CafeProfile) -> str | None:
-    if not profile.logo_path:
-        return None
-    return f"/profile/logo/{cafe_id}"
-
-
-def _gallery_image_url(cafe_id: str, image_id: str) -> str:
-    return f"/profile/gallery/{cafe_id}/{image_id}"
+    return _logo_url_v(cafe_id, profile.logo_path)
 
 
 def _get_gallery_images(cafe_id: str, db: Session) -> list[CafeGalleryImage]:
@@ -142,8 +150,10 @@ def _profile_to_out(cafe: Cafe, profile: CafeProfile, db: Session) -> CafeProfil
     hours_complete = _hours_complete(profile)
     gallery_rows = _get_gallery_images(cafe.id, db)
     gallery_images = [
-        GalleryImageOut(id=g.id, url=_gallery_image_url(cafe.id, g.id), position=g.position)
-        for g in gallery_rows
+        GalleryImageOut(
+            id=g.id, url=gallery_url(cafe.id, g.id, g.image_path),
+            position=g.position, width=g.width, height=g.height,
+        ) for g in gallery_rows
     ]
     return CafeProfileOut(
         id=profile.id,
@@ -191,7 +201,7 @@ def get_profile(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    profile = _get_or_create_profile(current_cafe.id, db)
+    profile = _get_or_create_profile(current_cafe.id, db, create=False)
     return _profile_to_out(current_cafe, profile, db)
 
 
@@ -202,6 +212,7 @@ def save_profile(
     db:           Session = Depends(get_db),
 ):
     profile = _get_or_create_profile(current_cafe.id, db)
+    old_name, old_city, old_slug = current_cafe.cafe_name, current_cafe.city, current_cafe.slug
 
     # ── Aktualizacja danych z rejestracji (Cafe) ────────────────────────────
     current_cafe.owner_name      = payload.owner_name
@@ -212,7 +223,10 @@ def save_profile(
     current_cafe.street          = payload.street
     current_cafe.building_number = payload.building_number
     current_cafe.postal_code     = payload.postal_code
-
+    # Zmiana nazwy/miasta => nowy slug; stary ląduje w cafe_slug_history.
+    # Bez commitu — wszystko idzie w jednej transakcji z resztą zapisu.
+    if payload.cafe_name != old_name or payload.city != old_city:
+        apply_slug_change(current_cafe, db)
     # ── Aktualizacja profilu ────────────────────────────────────────────────
     profile.contact_email         = payload.contact_email
     profile.contact_email_visible = payload.contact_email_visible if payload.contact_email else False
@@ -303,7 +317,8 @@ def save_profile(
         ))
 
     db.commit()
-
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(old_slug, app_settings.PUBLIC_SITE_URL) + cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
 
@@ -343,22 +358,17 @@ async def upload_logo(
         )
 
     profile = _get_or_create_profile(current_cafe.id, db)
+    old_path = profile.logo_path
 
-    # Usuń stary plik jeśli istnieje
-    if profile.logo_path:
-        old_path = os.path.join(UPLOAD_DIR, profile.logo_path)
-        if os.path.exists(old_path):
-            os.remove(old_path)
+    base = f"{current_cafe.id}_{uuid.uuid4().hex[:8]}"
+    await save_image_variants_async(raw, base, UPLOAD_DIR, LOGO_TIERS, keep_alpha=True)
 
-    ext = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}[file.content_type]
-    filename = f"{current_cafe.id}_{uuid.uuid4().hex[:8]}.{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(raw)
-
-    profile.logo_path  = filename
+    profile.logo_path  = base
     profile.updated_at = datetime.utcnow()
     db.commit()
+    delete_image_files(UPLOAD_DIR, old_path)      # dopiero po commicie
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
 
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
@@ -371,60 +381,30 @@ def delete_logo(
 ):
     profile = _get_or_create_profile(current_cafe.id, db)
     if profile.logo_path:
-        old_path = os.path.join(UPLOAD_DIR, profile.logo_path)
-        if os.path.exists(old_path):
-            os.remove(old_path)
+        old_path = profile.logo_path
         profile.logo_path  = None
         profile.updated_at = datetime.utcnow()
         db.commit()
+        delete_image_files(UPLOAD_DIR, old_path)
+        invalidate_cafe(current_cafe.id)
+        purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
+
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
 
 
 @router.get("/logo/{cafe_id}", summary="Pobierz plik logo (publiczny)")
-def get_logo_file(cafe_id: str, db: Session = Depends(get_db)):
-    from fastapi.responses import FileResponse
-
+def get_logo_file(cafe_id: str, request: Request, w: int | None = Query(None),
+                  db: Session = Depends(get_db)):
     profile = db.query(CafeProfile).filter(CafeProfile.cafe_id == cafe_id).first()
     if not profile or not profile.logo_path:
         raise HTTPException(404, detail="Logo nie zostało jeszcze dodane.")
-    filepath = os.path.join(UPLOAD_DIR, profile.logo_path)
-    if not os.path.exists(filepath):
-        raise HTTPException(404, detail="Plik logo nie istnieje.")
-    return FileResponse(filepath)
+    return image_response(request, UPLOAD_DIR, profile.logo_path, w, LOGO_TIERS)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # GALERIA — upload / usunięcie / pobranie pliku
 # ══════════════════════════════════════════════════════════════════════════════
-
-def _process_gallery_image(raw: bytes) -> Image.Image:
-    """Waliduje, prostuje wg EXIF i przeskalowuje zdjęcie galerii."""
-    try:
-        img = Image.open(io.BytesIO(raw))
-        img.verify()
-        img = Image.open(io.BytesIO(raw))
-    except Exception:
-        raise HTTPException(400, detail="Plik nie jest prawidłowym obrazem.")
-
-    img = ImageOps.exif_transpose(img)
-
-    # Spłaszcz przezroczystość na białe tło zamiast po prostu obcinać kanał
-    # alfa (co dawałoby brzydkie, nieprzewidywalne kolory przy zapisie do JPEG).
-    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
-        img = img.convert("RGBA")
-        background = Image.new("RGB", img.size, (255, 255, 255))
-        background.paste(img, mask=img.split()[-1])
-        img = background
-    else:
-        img = img.convert("RGB")
-
-    # Przeskaluj tak, by dłuższy bok nie przekraczał limitu — realnie
-    # redukuje rozmiar zdjęć z telefonów o rząd wielkości bez zauważalnej
-    # utraty jakości na stronie kawiarni.
-    img.thumbnail((GALLERY_MAX_DIMENSION, GALLERY_MAX_DIMENSION), Image.Resampling.LANCZOS)
-    return img
-
 
 @router.post("/gallery", response_model=CafeProfileOut, summary="Dodaj zdjęcie do galerii")
 async def upload_gallery_image(
@@ -447,25 +427,19 @@ async def upload_gallery_image(
     if existing_count >= MAX_GALLERY_IMAGES:
         raise HTTPException(400, detail=f"Można dodać maksymalnie {MAX_GALLERY_IMAGES} zdjęć do galerii.")
 
-    img = _process_gallery_image(raw)
+    base  = f"{current_cafe.id}_{uuid.uuid4().hex[:10]}"
+    saved = await save_image_variants_async(raw, base, GALLERY_UPLOAD_DIR, GALLERY_TIERS)
 
-    filename = f"{current_cafe.id}_{uuid.uuid4().hex[:10]}.jpg"
-    filepath = os.path.join(GALLERY_UPLOAD_DIR, filename)
-    img.save(filepath, "JPEG", quality=GALLERY_JPEG_QUALITY, optimize=True)
-
-    max_position = (
-        db.query(func.max(CafeGalleryImage.position))
-        .filter(CafeGalleryImage.cafe_id == current_cafe.id)
-        .scalar()
-    )
-    next_position = (max_position + 1) if max_position is not None else 0
-
+    max_position = (db.query(func.max(CafeGalleryImage.position))
+                    .filter(CafeGalleryImage.cafe_id == current_cafe.id).scalar())
     db.add(CafeGalleryImage(
-        cafe_id=current_cafe.id,
-        image_path=filename,
-        position=next_position,
+        cafe_id=current_cafe.id, image_path=base,
+        position=(max_position + 1) if max_position is not None else 0,
+        width=saved.width, height=saved.height,
     ))
     db.commit()
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
 
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
@@ -485,9 +459,7 @@ def delete_gallery_image(
     if not image:
         raise HTTPException(404, detail="Zdjęcie nie istnieje.")
 
-    filepath = os.path.join(GALLERY_UPLOAD_DIR, image.image_path)
-    if os.path.exists(filepath):
-        os.remove(filepath)
+    old_path = image.image_path
     db.delete(image)
     db.flush()
 
@@ -503,26 +475,22 @@ def delete_gallery_image(
         profile.gallery_visible = False
 
     db.commit()
+    delete_image_files(GALLERY_UPLOAD_DIR, old_path)
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
 
     profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
 
 
 @router.get("/gallery/{cafe_id}/{image_id}", summary="Pobierz plik zdjęcia z galerii (publiczny)")
-def get_gallery_image_file(cafe_id: str, image_id: str, db: Session = Depends(get_db)):
-    from fastapi.responses import FileResponse
-
-    image = (
-        db.query(CafeGalleryImage)
-        .filter(CafeGalleryImage.id == image_id, CafeGalleryImage.cafe_id == cafe_id)
-        .first()
-    )
+def get_gallery_image_file(cafe_id: str, image_id: str, request: Request,
+                           w: int | None = Query(None), db: Session = Depends(get_db)):
+    image = (db.query(CafeGalleryImage)
+             .filter(CafeGalleryImage.id == image_id, CafeGalleryImage.cafe_id == cafe_id).first())
     if not image:
         raise HTTPException(404, detail="Zdjęcie nie istnieje.")
-    filepath = os.path.join(GALLERY_UPLOAD_DIR, image.image_path)
-    if not os.path.exists(filepath):
-        raise HTTPException(404, detail="Plik zdjęcia nie istnieje.")
-    return FileResponse(filepath)
+    return image_response(request, GALLERY_UPLOAD_DIR, image.image_path, w, GALLERY_TIERS)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -535,7 +503,7 @@ def list_hour_exceptions(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    profile = _get_or_create_profile(current_cafe.id, db)
+    profile = _get_or_create_profile(current_cafe.id, db, create=False)
     return profile.hour_exceptions
 
 
@@ -581,6 +549,8 @@ def set_hour_exception(
     profile.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(existing)
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
     return existing
 
 
@@ -598,6 +568,8 @@ def delete_hour_exception(
     db.delete(existing)
     profile.updated_at = datetime.utcnow()
     db.commit()
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, app_settings.PUBLIC_SITE_URL))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -661,7 +633,7 @@ def get_public_profile(cafe_id: str, db: Session = Depends(get_db)):
     gallery_images: list[PublicGalleryImageOut] = []
     if profile.gallery_visible:
         gallery_images = [
-            PublicGalleryImageOut(url=_gallery_image_url(cafe_id, g.id))
+            PublicGalleryImageOut(url=gallery_url(cafe_id, g.id, g.image_path), width=g.width, height=g.height)
             for g in _get_gallery_images(cafe_id, db)
         ]
 

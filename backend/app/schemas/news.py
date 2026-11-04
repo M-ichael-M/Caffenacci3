@@ -6,8 +6,6 @@ from datetime import datetime
 MAX_NEWS_POSTS = 3
 MAX_NEWS_IMAGE_BYTES = 10 * 1024 * 1024
 ALLOWED_NEWS_IMAGE_CONTENT_TYPES = {"image/png", "image/jpeg", "image/webp"}
-NEWS_IMAGE_MAX_DIMENSION = 1600
-NEWS_IMAGE_JPEG_QUALITY = 82
 
 
 class NewsSettingsIn(BaseModel):
@@ -26,6 +24,8 @@ class NewsPostOut(BaseModel):
     title: str
     content: str
     image_url: Optional[str] = None
+    image_width: Optional[int] = None
+    image_height: Optional[int] = None
     created_at: datetime
 
 

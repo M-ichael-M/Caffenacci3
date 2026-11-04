@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -211,8 +211,13 @@ def delete_my_review(
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/public/{cafe_id}", response_model=ReviewListOut,
-            summary="Pobierz opinie o kawiarni (publiczne)")
-def list_reviews_public(cafe_id: str, db: Session = Depends(get_db)):
+            summary="Pobierz opinie o kawiarni (publiczne, stronicowane)")
+def list_reviews_public(
+    cafe_id: str,
+    offset: int = Query(0, ge=0),
+    limit:  int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
     cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
     if not cafe:
         raise HTTPException(404, detail="Kawiarnia nie istnieje.")
@@ -220,7 +225,9 @@ def list_reviews_public(cafe_id: str, db: Session = Depends(get_db)):
     rows = (
         db.query(Review)
         .filter(Review.cafe_id == cafe_id)
-        .order_by(Review.created_at.desc())
+        .order_by(Review.created_at.desc(), Review.id.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
     avg, count = _aggregate(cafe_id, db)

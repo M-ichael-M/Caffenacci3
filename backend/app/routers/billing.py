@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -72,10 +73,24 @@ def _sync_subscription(sub: Subscription, db: Session) -> None:
         db.refresh(sub)
 
 
-def _get_effective_subscription(cafe_id: str, db: Session) -> Subscription | None:
+def _get_effective_subscription(cafe_id: str, db: Session, *, sync: bool = False) -> Subscription | SimpleNamespace | None:
     sub = db.query(Subscription).filter(Subscription.cafe_id == cafe_id).first()
-    if sub:
+    if sub and sync:
         _sync_subscription(sub, db)
+    elif sub and sub.kind == "subscription" and not sub.cancel_at_period_end:
+        # GET-owi potrzebny jest efektywny okres, ale odczyt nie powinien
+        # modyfikować ORM ani zatwierdzać zmian w bazie.
+        start, end = sub.period_start, sub.period_end
+        now = datetime.utcnow()
+        while now >= end:
+            start = end
+            end = start + timedelta(days=SUBSCRIPTION_PERIOD_DAYS)
+        if end != sub.period_end:
+            sub = SimpleNamespace(
+                kind=sub.kind, period_start=start, period_end=end,
+                cancel_at_period_end=sub.cancel_at_period_end,
+                promo_code=sub.promo_code,
+            )
     return sub
 
 
@@ -148,7 +163,7 @@ def subscribe(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    existing = _get_effective_subscription(current_cafe.id, db)
+    existing = _get_effective_subscription(current_cafe.id, db, sync=True)
     now = datetime.utcnow()
     if existing and now < existing.period_end:
         raise HTTPException(400, detail="Masz już aktywny dostęp — nie można aktywować kolejnej subskrypcji.")
@@ -190,7 +205,7 @@ def redeem_promo(
     if not days:
         raise HTTPException(400, detail="Nieprawidłowy lub nieaktywny kod promocyjny.")
 
-    existing = _get_effective_subscription(current_cafe.id, db)
+    existing = _get_effective_subscription(current_cafe.id, db, sync=True)
     now = datetime.utcnow()
     if existing and now < existing.period_end:
         raise HTTPException(400, detail="Masz już aktywny dostęp — nie można aktywować kodu promocyjnego.")
@@ -231,7 +246,7 @@ def cancel_subscription(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    sub = _get_effective_subscription(current_cafe.id, db)
+    sub = _get_effective_subscription(current_cafe.id, db, sync=True)
     now = datetime.utcnow()
     if not sub or sub.kind != "subscription" or now >= sub.period_end:
         raise HTTPException(400, detail="Brak aktywnej subskrypcji do anulowania.")
@@ -257,7 +272,7 @@ def resume_subscription(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    sub = _get_effective_subscription(current_cafe.id, db)
+    sub = _get_effective_subscription(current_cafe.id, db, sync=True)
     now = datetime.utcnow()
     if not sub or sub.kind != "subscription" or now >= sub.period_end or not sub.cancel_at_period_end:
         raise HTTPException(400, detail="Brak zaplanowanego anulowania do cofnięcia.")

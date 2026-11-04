@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard'
 import logoTransparent from './assets/logo/logo_transparent.png'
 import './index.css'
 import { ArrowRight } from 'lucide-react'
+import { API_URL, CUSTOMER_URL } from './config'
 
 type View = 'login' | 'register' | 'dashboard'
 
@@ -64,7 +65,7 @@ export default function App() {
   async function fetchProfile(token: string) {
     setLoadingProfile(true)
     try {
-      const res = await fetch('http://localhost:8000/me', {
+      const res = await fetch(`${API_URL}/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -160,7 +161,7 @@ export default function App() {
           )}
           <p className="cross-app-link" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem' }}>
             Jesteś gościem kawiarni?{' '}
-            <a href="http://localhost:5174" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+            <a href={CUSTOMER_URL} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
               Przejdź do strony dla klientów <ArrowRight size={14} />
             </a>
           </p>

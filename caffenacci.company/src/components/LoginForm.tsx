@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { API_URL } from '../config'
 
 interface LoginResponse {
   access_token: string
@@ -26,7 +27,7 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, registerSucce
     setLoading(true)
 
     try {
-      const res = await fetch('http://localhost:8000/auth/login', {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

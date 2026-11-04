@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import LocationPicker from './LocationPicker'
-import { Coffee, AlertTriangle, X, Info, Star } from 'lucide-react'
+import { Coffee, AlertTriangle, X, Star } from 'lucide-react'
 import { BADGE_CATALOG, MAX_FEATURED_BADGES } from '../badges'
 import InfoTooltip from './InfoTooltip'
+import { API_URL } from '../config'
+import { thumbUrl } from '../utils/imageUrl'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -308,7 +310,7 @@ export default function ProfileTab({ token }: Props) {
     setLoading(true)
     setLoadError(null)
     try {
-      const res = await fetch('http://localhost:8000/profile', {
+      const res = await fetch(`${API_URL}/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -372,7 +374,7 @@ export default function ProfileTab({ token }: Props) {
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch('http://localhost:8000/profile/logo', {
+      const res = await fetch(`${API_URL}/profile/logo`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: fd,
@@ -395,7 +397,7 @@ export default function ProfileTab({ token }: Props) {
   const handleLogoDelete = async () => {
     if (!confirm('Czy na pewno chcesz usunąć logo?')) return
     try {
-      const res = await fetch('http://localhost:8000/profile/logo', {
+      const res = await fetch(`${API_URL}/profile/logo`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -426,7 +428,7 @@ export default function ProfileTab({ token }: Props) {
       for (const file of toUpload) {
         const fd = new FormData()
         fd.append('file', file)
-        const res = await fetch('http://localhost:8000/profile/gallery', {
+        const res = await fetch(`${API_URL}/profile/gallery`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: fd,
@@ -452,7 +454,7 @@ export default function ProfileTab({ token }: Props) {
     if (!confirm('Czy na pewno chcesz usunąć to zdjęcie z galerii?')) return
     setGalleryError(null)
     try {
-      const res = await fetch(`http://localhost:8000/profile/gallery/${imageId}`, {
+      const res = await fetch(`${API_URL}/profile/gallery/${imageId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -490,7 +492,7 @@ export default function ProfileTab({ token }: Props) {
   const saveException = async (exc: HourException) => {
     setExceptionsLoading(true)
     try {
-      const res = await fetch(`http://localhost:8000/profile/hour-exceptions/${exc.date}`, {
+      const res = await fetch(`${API_URL}/profile/hour-exceptions/${exc.date}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(exc),
@@ -512,7 +514,7 @@ export default function ProfileTab({ token }: Props) {
   const deleteException = async (date: string) => {
     setExceptionsLoading(true)
     try {
-      await fetch(`http://localhost:8000/profile/hour-exceptions/${date}`, {
+      await fetch(`${API_URL}/profile/hour-exceptions/${date}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -566,7 +568,7 @@ export default function ProfileTab({ token }: Props) {
     setInviteBusy(emp.id)
     setInviteMsg(null)
     try {
-      const res = await fetch(`http://localhost:8000/employee-auth/employees/${emp.id}/invite`, {
+      const res = await fetch(`${API_URL}/employee-auth/employees/${emp.id}/invite`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -586,7 +588,7 @@ export default function ProfileTab({ token }: Props) {
     if (!confirm(`Usunąć dostęp pracownika „${emp.full_name}” do aplikacji?`)) return
     setInviteBusy(emp.id)
     try {
-      await fetch(`http://localhost:8000/employee-auth/employees/${emp.id}/access`, {
+      await fetch(`${API_URL}/employee-auth/employees/${emp.id}/access`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -670,7 +672,7 @@ export default function ProfileTab({ token }: Props) {
           })),
         badges: badges.map((b, i) => ({ key: b.key, featured: b.featured, position: i })),
       }
-      const res = await fetch('http://localhost:8000/profile', {
+      const res = await fetch(`${API_URL}/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
@@ -702,6 +704,7 @@ export default function ProfileTab({ token }: Props) {
       setGalleryVisible(data.gallery_visible)
       setGalleryImages(data.gallery_images)
       setSaveMsg({ type: 'ok', text: 'Profil kawiarni został zapisany.' })
+      window.dispatchEvent(new Event('caffenacci:profile-saved'))
     } catch (err: unknown) {
       setSaveMsg({ type: 'err', text: err instanceof Error ? err.message : 'Błąd zapisu.' })
     } finally { setSaving(false) }
@@ -792,6 +795,9 @@ export default function ProfileTab({ token }: Props) {
           <div className="field">
             <label className="field__label">Nazwa</label>
             <input className="field__input" value={cafeName} onChange={e => setCafeName(e.target.value)} />
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: '0.25rem 0 0' }}>
+              Zmiana nazwy lub miasta zmienia adres strony; stary adres będzie przekierowywał.
+            </p>
           </div>
           <div className="field">
             <label className="field__label">Identyfikator</label>
@@ -826,6 +832,9 @@ export default function ProfileTab({ token }: Props) {
             <div className="field field--grow">
               <label className="field__label">Miasto</label>
               <input className="field__input" value={city} onChange={e => setCity(e.target.value)} />
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: '0.25rem 0 0' }}>
+                Zmiana nazwy lub miasta zmienia adres strony; stary adres będzie przekierowywał.
+              </p>
             </div>
           </div>
           <div className="field">
@@ -892,7 +901,7 @@ export default function ProfileTab({ token }: Props) {
             <div className="pf-logo-circle">
               {logoUrl ? (
                 <img
-                  src={`http://localhost:8000${logoUrl}`}
+                  src={thumbUrl(logoUrl, 256)}
                   alt="Logo kawiarni"
                 />
               ) : (
@@ -1105,7 +1114,7 @@ export default function ProfileTab({ token }: Props) {
           <div className="pf-gallery-grid">
             {galleryImages.map((img, idx) => (
               <div key={img.id} className="pf-gallery-item">
-                <img src={`http://localhost:8000${img.url}`} alt={`Zdjęcie ${idx + 1} z galerii`} />
+                <img src={thumbUrl(img.url, 480)} alt={`Zdjęcie ${idx + 1} z galerii`} loading="lazy" decoding="async" />
                 <div className="pf-gallery-item__actions">
                   <button
                     type="button"

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { CalendarIcon } from './icons'
+import { API_URL } from '../../config'
 
 // ── Typy ─────────────────────────────────────────────────────────────────
 
@@ -176,7 +177,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
   const fetchInfo = useCallback(async (d: string) => {
     setLoadingInfo(true)
     try {
-      const res = await fetch(`http://localhost:8000/reservations/info/${cafeId}?date=${d}`)
+      const res = await fetch(`${API_URL}/reservations/info/${cafeId}?date=${d}`)
       if (res.ok) setInfo(await res.json())
     } catch { /* ignore */ }
     finally { setLoadingInfo(false) }
@@ -288,7 +289,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
 
     for (const candidateTableId of candidates) {
       try {
-        const res = await fetch(`http://localhost:8000/reservations/client/${cafeId}/advanced`, {
+        const res = await fetch(`${API_URL}/reservations/client/${cafeId}/advanced`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({

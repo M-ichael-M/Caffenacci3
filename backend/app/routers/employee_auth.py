@@ -4,7 +4,7 @@ import random
 import string
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -67,6 +67,7 @@ def get_current_cafe_owner(
              summary="Wyślij (lub wyślij ponownie) zaproszenie do aplikacji pracowniczej")
 def invite_employee(
     employee_id: str,
+    background_tasks: BackgroundTasks,
     current_cafe: Cafe = Depends(get_current_cafe_owner),
     db: Session = Depends(get_db),
 ):
@@ -86,7 +87,7 @@ def invite_employee(
     employee.invited_at = datetime.utcnow()
     db.commit()
 
-    send_employee_invite_email(employee.email, current_cafe.cafe_name, employee.invite_code)
+    background_tasks.add_task(send_employee_invite_email, employee.email, current_cafe.cafe_name, employee.invite_code)
     return InviteSentOut()
 
 

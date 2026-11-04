@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ShoppingCart, ClipboardList, Check, X, RefreshCw } from 'lucide-react'
+import { API_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -307,7 +308,7 @@ function CompleteOrderModal({ order, onClose, onSubmit }: {
 // MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════════════════
 
-export default function OrdersTab({ token, cafeId }: Props) {
+export default function OrdersTab({ token }: Props) {
   const [settings, setSettings]       = useState<OrderSettingsOut | null>(null)
   const [settingsSaving, setSettingsSaving] = useState(false)
 
@@ -322,7 +323,7 @@ export default function OrdersTab({ token, cafeId }: Props) {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:8000/orders/settings', {
+      const res = await fetch(`${API_URL}/orders/settings`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) setSettings(await res.json())
@@ -332,7 +333,7 @@ export default function OrdersTab({ token, cafeId }: Props) {
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:8000/orders', {
+      const res = await fetch(`${API_URL}/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -352,7 +353,7 @@ export default function OrdersTab({ token, cafeId }: Props) {
   const handleToggleEnabled = async (enabled: boolean) => {
     setSettingsSaving(true)
     try {
-      const res = await fetch('http://localhost:8000/orders/settings', {
+      const res = await fetch(`${API_URL}/orders/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ enabled }),
@@ -367,7 +368,7 @@ export default function OrdersTab({ token, cafeId }: Props) {
   const handleDecide = async (o: OrderOut, newStatus: 'completed' | 'cancelled') => {
     setSaving(o.id)
     try {
-      const res = await fetch(`http://localhost:8000/orders/${o.id}/status`, {
+      const res = await fetch(`${API_URL}/orders/${o.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus }),
@@ -384,7 +385,7 @@ export default function OrdersTab({ token, cafeId }: Props) {
     if (!completing) return null
     setSaving(completing.id)
     try {
-      const res = await fetch(`http://localhost:8000/orders/${completing.id}/status`, {
+      const res = await fetch(`${API_URL}/orders/${completing.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'completed', loyalty_code: code }),

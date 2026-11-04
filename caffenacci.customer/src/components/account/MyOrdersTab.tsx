@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ShoppingCart, ClipboardList, RefreshCw } from 'lucide-react'
+import { API_URL } from '../../config'
 
 type OrderStatusType = 'pending' | 'completed' | 'cancelled'
 
@@ -127,7 +128,7 @@ export default function MyOrdersTab({ token }: Props) {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:8000/orders/client/mine', {
+      const res = await fetch(`${API_URL}/orders/client/mine`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -145,7 +146,7 @@ export default function MyOrdersTab({ token }: Props) {
     setCancelError(null)
     setCancellingId(o.id)
     try {
-      const res = await fetch(`http://localhost:8000/orders/client/${o.id}/cancel`, {
+      const res = await fetch(`${API_URL}/orders/client/${o.id}/cancel`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })

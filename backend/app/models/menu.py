@@ -1,7 +1,7 @@
 import uuid
 
 from sqlalchemy import Column, String, Float, Boolean, Integer, ForeignKey, Text
-from sqlalchemy.dialects.sqlite import TEXT
+from app.core.types import ID
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -10,8 +10,8 @@ from app.core.database import Base
 class MenuSection(Base):
     __tablename__ = "menu_sections"
 
-    id = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cafe_id = Column(TEXT, ForeignKey("cafes.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cafe_id = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(150), nullable=False)
     position = Column(Integer, nullable=False, default=0)
 
@@ -26,8 +26,8 @@ class MenuSection(Base):
 class MenuItem(Base):
     __tablename__ = "menu_items"
 
-    id = Column(TEXT, primary_key=True, default=lambda: str(uuid.uuid4()))
-    section_id = Column(TEXT, ForeignKey("menu_sections.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    section_id = Column(ID, ForeignKey("menu_sections.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     price = Column(Float, nullable=False)

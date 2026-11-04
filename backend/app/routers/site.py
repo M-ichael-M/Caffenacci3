@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
-from app.core.slugs import generate_unique_slug
+from app.core.slugs import generate_unique_slug, resolve_slug
+from app.core.page_cache import invalidate_cafe
+from app.core.cache_purge import purge_urls, cafe_page_urls
+from app.core.config import settings
+from app.core.images import logo_url as _logo_url_v, gallery_url, news_image_url
 from app.models.cafe import Cafe
 from app.models.site import CafeSite
 from app.models.cafe_profile import CafeProfile
@@ -34,6 +38,8 @@ from app.routers.billing import has_active_access
 router = APIRouter(prefix="/site", tags=["site"])
 bearer_scheme = HTTPBearer()
 
+PUBLIC_REVIEWS_PAGE = 10   # F1; seo.py używa tej samej stałej
+
 
 # ── Auth helper (właściciel) ─────────────────────────────────────────────────
 
@@ -54,14 +60,17 @@ def get_current_cafe(
     return cafe
 
 
-def _get_or_create_site(cafe_id: str, db: Session) -> CafeSite:
+def _get_or_create_site(cafe_id: str, db: Session, *, create: bool = True) -> CafeSite:
     s = db.query(CafeSite).filter(CafeSite.cafe_id == cafe_id).first()
-    if not s:
+    if not s and create:
         s = CafeSite(cafe_id=cafe_id)
         db.add(s)
         db.commit()
         db.refresh(s)
-    return s
+    return s or CafeSite(
+        id=f"default-{cafe_id}", cafe_id=cafe_id,
+        template="classic", palette="espresso-gold", is_published=False,
+    )
 
 
 def _parse_custom_palette(raw: str | None) -> dict[str, str] | None:
@@ -84,16 +93,14 @@ def _site_to_out(s: CafeSite) -> CafeSiteSettingsOut:
 
 
 def _logo_url(cafe_id: str, profile: CafeProfile | None) -> str | None:
-    if profile and profile.logo_path:
-        return f"/profile/logo/{cafe_id}"
-    return None
+    return _logo_url_v(cafe_id, profile.logo_path) if profile else None
 
 
 def _ensure_slug(cafe: Cafe, db: Session) -> None:
     """Zabezpieczenie dla kawiarni sprzed wprowadzenia slugów — generuje go
     leniwie przy pierwszym zapytaniu, jeśli z jakiegoś powodu go brakuje."""
     if not cafe.slug:
-        cafe.slug = generate_unique_slug(cafe.cafe_name, db, exclude_cafe_id=cafe.id)
+        cafe.slug = generate_unique_slug(cafe.cafe_name, cafe.city, db, exclude_cafe_id=cafe.id)
         db.commit()
         db.refresh(cafe)
 
@@ -117,7 +124,7 @@ def get_settings(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    s = _get_or_create_site(current_cafe.id, db)
+    s = _get_or_create_site(current_cafe.id, db, create=False)
     return _site_to_out(s)
 
 
@@ -137,6 +144,8 @@ def save_settings(
     s.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(s)
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
     return _site_to_out(s)
 
 
@@ -161,7 +170,7 @@ def _publish_status_out(cafe: Cafe, site: CafeSite, reasons: list[str]) -> Publi
         can_publish=len(reasons) == 0,
         missing_reasons=reasons,
         slug=cafe.slug,
-        public_path=f"/{cafe.slug}" if cafe.slug else None,
+        public_path=f"/kawiarnia/{cafe.slug}" if cafe.slug else None,
         published_at=site.published_at,
     )
 
@@ -172,8 +181,7 @@ def get_publish_status(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    _ensure_slug(current_cafe, db)
-    site = _get_or_create_site(current_cafe.id, db)
+    site = _get_or_create_site(current_cafe.id, db, create=False)
     profile = db.query(CafeProfile).filter(CafeProfile.cafe_id == current_cafe.id).first()
     reasons = _publish_requirements(current_cafe, profile, db)
     return _publish_status_out(current_cafe, site, reasons)
@@ -195,6 +203,8 @@ def publish_site(
     site.published_at = datetime.utcnow()
     db.commit()
     db.refresh(site)
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
     return _publish_status_out(current_cafe, site, [])
 
 
@@ -207,6 +217,8 @@ def unpublish_site(
     site.is_published = False
     db.commit()
     db.refresh(site)
+    invalidate_cafe(current_cafe.id)
+    purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
 
     profile = db.query(CafeProfile).filter(CafeProfile.cafe_id == current_cafe.id).first()
     reasons = _publish_requirements(current_cafe, profile, db)
@@ -218,7 +230,7 @@ def unpublish_site(
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
-    site = _get_or_create_site(cafe.id, db)
+    site = _get_or_create_site(cafe.id, db, create=False)
     custom_palette = _parse_custom_palette(site.custom_palette_colors)
 
     profile = (
@@ -261,6 +273,7 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
         db.query(Review)
         .filter(Review.cafe_id == cafe.id)
         .order_by(Review.created_at.desc())
+        .limit(PUBLIC_REVIEWS_PAGE)
         .all()
     )
     agg = (
@@ -280,7 +293,7 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
             .all()
         )
         gallery_images = [
-            PublicGalleryImageOut(url=f"/profile/gallery/{cafe.id}/{g.id}")
+            PublicGalleryImageOut(url=gallery_url(cafe.id, g.id, g.image_path), width=g.width, height=g.height)
             for g in gallery_rows
         ]
 
@@ -299,7 +312,9 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
                 id=p.id,
                 title=p.title,
                 content=p.content,
-                image_url=(f"/news/image/{cafe.id}/{p.id}" if p.image_path else None),
+                image_url=news_image_url(cafe.id, p.id, p.image_path),
+                image_width=p.image_width,
+                image_height=p.image_height,
                 created_at=p.created_at,
             )
             for p in news_rows
@@ -307,6 +322,7 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
 
     return PublicSiteOut(
         cafe_id=cafe.id,
+        slug=cafe.slug,
         cafe_name=cafe.cafe_name,
         template=site.template,
         palette=site.palette,
@@ -363,7 +379,7 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
 @router.get("/public/by-slug/{slug}", response_model=PublicSiteOut,
             summary="Publiczna strona kawiarni po adresie (slug) — wymaga publikacji")
 def get_public_site_by_slug(slug: str, db: Session = Depends(get_db)):
-    cafe = db.query(Cafe).filter(Cafe.slug == slug).first()
+    cafe, _is_current = resolve_slug(slug, db)
     if not cafe:
         raise HTTPException(404, detail="Kawiarnia nie istnieje.")
     site = db.query(CafeSite).filter(CafeSite.cafe_id == cafe.id).first()

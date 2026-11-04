@@ -10,6 +10,7 @@ import {
   CircleDot,
   SlidersHorizontal,
 } from 'lucide-react'
+import { API_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -142,7 +143,7 @@ export default function ReservationTab({ token, cafeId }: Props) {
   const fetchSettings = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:8000/reservations/settings', {
+      const res = await fetch(`${API_URL}/reservations/settings`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -176,7 +177,7 @@ export default function ReservationTab({ token, cafeId }: Props) {
     setLoadingRes(true)
     try {
       const res = await fetch(
-        `http://localhost:8000/reservations?date=${date}`,
+        `${API_URL}/reservations?date=${date}`,
         { headers: { Authorization: `Bearer ${token}` } },
       )
       if (res.ok) {
@@ -210,7 +211,7 @@ export default function ReservationTab({ token, cafeId }: Props) {
           close_time: h.close_time || null,
         })),
       }
-      const res = await fetch('http://localhost:8000/reservations/settings', {
+      const res = await fetch(`${API_URL}/reservations/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
@@ -231,7 +232,7 @@ export default function ReservationTab({ token, cafeId }: Props) {
   const handleDelete = async (id: string) => {
     if (!confirm('Czy na pewno chcesz usunąć tę rezerwację?')) return
     try {
-      await fetch(`http://localhost:8000/reservations/${id}`, {
+      await fetch(`${API_URL}/reservations/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -749,7 +750,7 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
 
     setSaving(true)
     try {
-      const res = await fetch('http://localhost:8000/reservations', {
+      const res = await fetch(`${API_URL}/reservations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({

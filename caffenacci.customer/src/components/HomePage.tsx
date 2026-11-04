@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Search, Coffee, Clock, ChevronRight, Star } from 'lucide-react'
 import { BADGE_CATALOG } from '../badges'
+import { API_URL } from '../config'
+import ResponsiveImage from './ResponsiveImage'
+
+const THUMB_WIDTHS = [128, 256] as const
 
 interface TodayHours {
   is_closed: boolean
@@ -81,7 +85,7 @@ export default function HomePage() {
     setLoading(true)
     try {
       const params = q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''
-      const res = await fetch(`http://localhost:8000/cafes/search${params}`)
+      const res = await fetch(`${API_URL}/cafes/search${params}`)
       if (res.ok) {
         const data = await res.json()
         setResults(data.results ?? [])
@@ -144,12 +148,13 @@ export default function HomePage() {
               <a
                 key={cafe.cafe_id}
                 className="cafe-card"
-                href={`/cafe/${cafe.slug}`}
+                href={`/kawiarnia/${encodeURIComponent(cafe.slug)}`}
                 style={{ textDecoration: 'none', color: 'inherit' }}
               >
                 <div className="cafe-card__logo">
                   {cafe.logo_url ? (
-                    <img src={`http://localhost:8000${cafe.logo_url}`} alt={cafe.cafe_name} />
+                    /* sizes = realna szerokość .cafe-card__logo z index.css (zakładam 64px) */
+                    <ResponsiveImage src={cafe.logo_url} alt={cafe.cafe_name} widths={THUMB_WIDTHS} sizes="64px" />
                   ) : (
                     <Coffee size={24} />
                   )}

@@ -1,38 +1,49 @@
 from __future__ import annotations
+
+import logging
+import ssl
 import smtplib
-from email.mime.text import MIMEText
+from email.message import EmailMessage
+from typing import Protocol
 
 from app.core.config import settings
 
-PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.example.caffenacci"
+log = logging.getLogger(__name__)
+
+
+class EmailProvider(Protocol):
+    def send(self, to: str, subject: str, text: str, html: str | None = None) -> None: ...
+
+
+class ConsoleEmailProvider:
+    def send(self, to: str, subject: str, text: str, html: str | None = None) -> None:
+        log.info("[DEV EMAIL] To: %s\nSubject: %s\n\n%s", to, subject, text)
+
+
+class SmtpEmailProvider:
+    def send(self, to: str, subject: str, text: str, html: str | None = None) -> None:
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM_ADDRESS}>"
+        msg["To"] = to
+        msg.set_content(text)
+        if html: msg.add_alternative(html, subtype="html")
+        with smtplib.SMTP(settings.SMTP_HOST or "smtp.gmail.com", settings.SMTP_PORT, timeout=20) as server:
+            if settings.SMTP_STARTTLS: server.starttls(context=ssl.create_default_context())
+            if settings.SMTP_USER: server.login(settings.SMTP_USER, settings.SMTP_PASSWORD or "")
+            server.send_message(msg)
+
+
+def get_email_provider() -> EmailProvider:
+    return SmtpEmailProvider() if settings.EMAIL_BACKEND == "smtp" else ConsoleEmailProvider()
 
 
 def send_employee_invite_email(to_email: str, cafe_name: str, invite_code: str) -> None:
     subject = f"Zaproszenie do aplikacji Caffenacci Business — {cafe_name}"
-    body = (
-        f"Cześć!\n\n"
-        f"Zostałeś/aś zaproszony/a do aplikacji Caffenacci Business dla kawiarni „{cafe_name}”.\n\n"
-        f"1. Pobierz aplikację: {PLAY_STORE_URL}\n"
-        f"2. Twój osobisty kod logowania: {invite_code}\n"
-        f"   (kod jest ważny 30 minut od otrzymania tej wiadomości — poproś "
-        f"właściciela o nowe zaproszenie, jeśli zdąży wygasnąć)\n"
-        f"3. Poproś właściciela kawiarni o stały kod kawiarni — będzie potrzebny "
-        f"przy pierwszym logowaniu.\n\n"
-        f"Do zobaczenia!"
-    )
-
-    if not settings.SMTP_HOST:
-        # Brak skonfigurowanego SMTP — tryb deweloperski: log do konsoli.
-        print(f"[DEV EMAIL] To: {to_email}\nSubject: {subject}\n\n{body}\n")
-        return
-
-    msg = MIMEText(body, "plain", "utf-8")
-    msg["Subject"] = subject
-    msg["From"] = settings.SMTP_FROM or settings.SMTP_USER
-    msg["To"] = to_email
-
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-        server.starttls()
-        if settings.SMTP_USER:
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.sendmail(msg["From"], [to_email], msg.as_string())
+    play_url = settings.PLAY_STORE_URL or ""
+    body = (f"Cześć!\n\nZostałeś/aś zaproszony/a do aplikacji Caffenacci Business dla kawiarni „{cafe_name}”.\n\n"
+            f"1. Pobierz aplikację: {play_url}\n2. Twój osobisty kod logowania: {invite_code}\n"
+            "   (kod jest ważny 30 minut od otrzymania tej wiadomości — poproś właściciela o nowe zaproszenie, jeśli zdąży wygasnąć)\n"
+            "3. Poproś właściciela kawiarni o stały kod kawiarni — będzie potrzebny przy pierwszym logowaniu.\n\nDo zobaczenia!")
+    try: get_email_provider().send(to_email, subject, body)
+    except Exception: log.exception("Employee invitation email failed for %s", to_email)
