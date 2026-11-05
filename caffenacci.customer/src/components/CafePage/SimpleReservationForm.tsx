@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CalendarIcon } from './icons'
 import { API_URL } from '../../config'
+import { useI18n } from '../../i18n/I18nProvider'
 
 interface Props {
   cafeId: string
@@ -9,13 +10,12 @@ interface Props {
   previewMode?: boolean
 }
 
-const PREVIEW_TITLE = 'Niedostępne w trybie podglądu.'
-
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 
 export default function SimpleReservationForm({ cafeId, requireLogin, authToken, previewMode = false }: Props) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [date, setDate] = useState(todayStr())
   const [time, setTime] = useState('12:00')
@@ -44,12 +44,12 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken,
       })
       if (!res.ok) {
         const e = await res.json()
-        throw new Error(e.detail || 'Błąd rezerwacji.')
+        throw new Error(e.detail || t('res.err'))
       }
       setSuccess(true)
       setTimeout(() => { setSuccess(false); setOpen(false) }, 3500)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Błąd rezerwacji.')
+      setError(err instanceof Error ? err.message : t('res.err'))
     } finally {
       setSubmitting(false)
     }
@@ -64,50 +64,50 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken,
           style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
           onClick={() => { if (!previewMode) requireLogin(() => setOpen(true)) }}
           disabled={previewMode}
-          title={previewMode ? PREVIEW_TITLE : undefined}
+          title={previewMode ? t('preview.unavailable') : undefined}
         >
-          <CalendarIcon size={16} /> Zarezerwuj stolik
+          <CalendarIcon size={16} /> {t('reservation.book')}
         </button>
       ) : (
         <div className="res-table-row" style={{ marginTop: '1rem', maxWidth: 560 }}>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <div className="field" style={{ flex: '1 1 140px' }}>
-              <label className="me-label">Data</label>
+              <label className="me-label">{t('res.date')}</label>
               <input type="date" className="me-input" value={date} min={todayStr()} onChange={e => setDate(e.target.value)} />
             </div>
             <div className="field" style={{ flex: '1 1 100px' }}>
-              <label className="me-label">Godzina</label>
+              <label className="me-label">{t('res.time')}</label>
               <input type="time" className="me-input" value={time} onChange={e => setTime(e.target.value)} />
             </div>
             <div className="field" style={{ flex: '1 1 80px' }}>
-              <label className="me-label">Goście</label>
+              <label className="me-label">{t('res.guests')}</label>
               <input type="number" min={1} max={50} className="me-input" value={guests} onChange={e => setGuests(Number(e.target.value))} />
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
             <div className="field" style={{ flex: 1 }}>
-              <label className="me-label">Telefon (opcjonalnie)</label>
+              <label className="me-label">{t('res.phone_opt')}</label>
               <input type="tel" className="me-input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+48 123 456 789" />
             </div>
             <div className="field" style={{ flex: 1 }}>
-              <label className="me-label">E-mail (opcjonalnie)</label>
+              <label className="me-label">{t('res.email_opt')}</label>
               <input type="email" className="me-input" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
           </div>
 
           <div className="field" style={{ marginTop: '0.75rem' }}>
-            <label className="me-label">Komentarz</label>
-            <input type="text" className="me-input" value={comment} onChange={e => setComment(e.target.value)} placeholder="np. stolik przy oknie…" />
+            <label className="me-label">{t('res.comment')}</label>
+            <input type="text" className="me-input" value={comment} onChange={e => setComment(e.target.value)} placeholder={t('res.comment_ph')} />
           </div>
 
           {error && <div className="form-error" style={{ marginTop: '0.75rem' }}>{error}</div>}
-          {success && <div className="form-success" style={{ marginTop: '0.75rem' }}>Prośba o rezerwację wysłana! Czekaj na potwierdzenie kawiarni.</div>}
+          {success && <div className="form-success" style={{ marginTop: '0.75rem' }}>{t('res.simple_success')}</div>}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button type="button" className="btn btn--outline-dark" onClick={() => setOpen(false)}>Anuluj</button>
+            <button type="button" className="btn btn--outline-dark" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
             <button type="button" className="btn btn--primary" style={{ width: 'auto' }} onClick={handleSubmit} disabled={submitting}>
-              {submitting ? 'Wysyłanie…' : 'Wyślij prośbę o rezerwację'}
+              {submitting ? t('res.sending') : t('res.send')}
             </button>
           </div>
         </div>

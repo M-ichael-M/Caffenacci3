@@ -1,4 +1,6 @@
 import { useState, lazy, Suspense } from 'react'
+import { useI18n } from '../../i18n/I18nProvider'
+import { formatCurrency } from '../../i18n/localeFormat'
 
 const CheckoutModal = lazy(() => import('./CheckoutModal'))
 const prefetchCheckout = () => { void import('./CheckoutModal') }
@@ -29,13 +31,13 @@ interface Props {
   previewMode?: boolean
 }
 
-const PREVIEW_TITLE = 'Niedostępne w trybie podglądu.'
-function money(n: number) { return `${n.toFixed(2)} zł` }
-
 export default function MenuOrdering({
   cafeId, sections, ordersEnabled, requireLogin, authToken, weeklyHours, hourExceptions,
   previewMode = false,
 }: Props) {
+  const { t, fmt } = useI18n()
+  const money = (n: number) => formatCurrency(n, fmt)
+
   const [cart, setCart] = useState<Record<string, CartLine>>({})
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
@@ -81,9 +83,9 @@ export default function MenuOrdering({
                   <div className="cp-menu-item__info">
                     <div className="cp-menu-item__name">
                       {item.name}
-                      {item.is_vege && <span className="menu-badge menu-badge--vege">VEGE</span>}
-                      {item.is_hot && <span className="menu-badge menu-badge--hot">HOT</span>}
-                      {item.is_unavailable && <span className="menu-badge menu-badge--unavail">NIEDOSTĘPNE</span>}
+                      {item.is_vege && <span className="menu-badge menu-badge--vege">{t('menu.badge.vege')}</span>}
+                      {item.is_hot && <span className="menu-badge menu-badge--hot">{t('menu.badge.hot')}</span>}
+                      {item.is_unavailable && <span className="menu-badge menu-badge--unavail">{t('menu.badge.unavailable')}</span>}
                     </div>
                     {item.description && <div className="cp-menu-item__desc">{item.description}</div>}
                     <div className="cp-menu-item__price">{money(item.price)}</div>
@@ -102,9 +104,9 @@ export default function MenuOrdering({
                         className="cp-add-btn"
                         onClick={() => addToCart(item)}
                         disabled={previewMode}
-                        title={previewMode ? PREVIEW_TITLE : undefined}
+                        title={previewMode ? t('preview.unavailable') : undefined}
                       >
-                        + Dodaj do zamówienia
+                        {t('menu.add')}
                       </button>
                     )
                   )}
@@ -116,18 +118,18 @@ export default function MenuOrdering({
       ))}
 
       {!ordersEnabled && (
-        <p className="cp-muted-note">Ta kawiarnia nie przyjmuje obecnie zamówień online — zapraszamy na miejscu.</p>
+        <p className="cp-muted-note">{t('menu.orders_disabled')}</p>
       )}
 
       {success && <div className="form-success" style={{ marginTop: '1rem' }}>{success}</div>}
 
       {ordersEnabled && totalQty > 0 && (
         <div className="cp-cart-bar">
-          <span>{totalQty} {totalQty === 1 ? 'pozycja' : 'pozycji'} · {money(totalPrice)}</span>
+          <span>{t('menu.cart_summary', { count: totalQty, total: money(totalPrice) })}</span>
           <button type="button" className="btn btn--primary" style={{ width: 'auto', marginTop: 0 }}
             onMouseEnter={prefetchCheckout}
             onClick={() => requireLogin(() => setCheckoutOpen(true))}>
-            Zamów →
+            {t('menu.order')} <span className="cp-dir-arrow" aria-hidden="true">→</span>
           </button>
         </div>
       )}
@@ -145,7 +147,7 @@ export default function MenuOrdering({
             onSuccess={() => {
               setCart({})
               setCheckoutOpen(false)
-              setSuccess('Zamówienie zostało złożone! Zapłacisz na miejscu przy odbiorze.')
+              setSuccess(t('menu.order_success'))
               setTimeout(() => setSuccess(null), 7000)
             }}
           />

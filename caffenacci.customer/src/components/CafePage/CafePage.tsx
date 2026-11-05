@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { loadClientAuth, saveClientAuth, clearClientAuth } from '../../authStorage'
 import type { ClientAuthState } from '../../authStorage'
@@ -19,6 +19,12 @@ import { loadThemeFonts } from '../../fonts/themeFonts'
 import LazyLocationMap from './LazyLocationMap'
 import LazyOnVisible from '../LazyOnVisible'
 import ResponsiveImage, { IMAGE_WIDTHS } from '../ResponsiveImage'
+import { CafeI18nProvider, normalizeI18n, useI18n, type CafeI18nData } from '../../i18n/I18nProvider'
+import { localizeSite } from '../../i18n/localizeSite'
+import { exceptionSentence } from '../../i18n/hours'
+import { weekdayName } from '../../i18n/localeFormat'
+import LanguageSwitcher from './LanguageSwitcher'
+import type { TFunction } from '../../i18n/system'
 
 const LoyaltyWidget = lazy(() => import('./LoyaltyWidget'))
 const AuthModal     = lazy(() => import('./AuthModal'))
@@ -97,6 +103,7 @@ interface PublicSiteData {
   news_enabled: boolean
   news_posts: NewsPostItem[]
   badges: BadgeItem[]
+  i18n?: Partial<CafeI18nData> | null
 }
 
 declare global {
@@ -116,7 +123,6 @@ interface Props {
   mode?: 'public' | 'preview'
   previewToken?: string
 }
-const DAYS = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela']
 
 // Buduje string YYYY-MM-DD z lokalnej daty, bez przechodzenia przez UTC.
 // new Date().toISOString() zawsze konwertuje do UTC — w Polsce (UTC+1/+2)
@@ -130,7 +136,7 @@ function toLocalDateStr(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-function computeTodayStatus(data: PublicSiteData) {
+function computeTodayStatus(data: PublicSiteData, t: TFunction) {
   const now = new Date()
   const todayStr = toLocalDateStr(now)
   const pyDow = (now.getDay() + 6) % 7
@@ -139,14 +145,19 @@ function computeTodayStatus(data: PublicSiteData) {
   const openTime = exception ? (exception.is_closed ? null : exception.open_time) : (dayPlan?.open_time ?? null)
   const closeTime = exception ? (exception.is_closed ? null : exception.close_time) : (dayPlan?.close_time ?? null)
 
-  if (!openTime || !closeTime) return { open: false, label: 'Dziś zamknięte' }
+  if (!openTime || !closeTime) return { open: false, label: t('status.closed_today') }
 
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const [oh, om] = openTime.split(':').map(Number)
   const [ch, cm] = closeTime.split(':').map(Number)
   const isOpen = nowMin >= oh * 60 + om && nowMin < ch * 60 + cm
 
-  return { open: isOpen, label: isOpen ? `Otwarte do ${closeTime}` : `Zamknięte · dziś ${openTime}–${closeTime}` }
+  return {
+    open: isOpen,
+    label: isOpen
+      ? t('status.open_until', { time: closeTime })
+      : t('status.closed_hours', { open: openTime, close: closeTime }),
+  }
 }
 
 // ── Pomocnicze funkcje do godzin z wyjątkami ─────────────────────────────
@@ -166,27 +177,15 @@ function dateForDayOfWeek(mondayStr: string, dayOfWeek: number): string {
   return toLocalDateStr(target)
 }
 
-function formatExceptionDateLabel(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' })
-}
-
-function formatExceptionSentence(e: HourException): string {
-  const label = formatExceptionDateLabel(e.date)
-  if (e.is_closed || !e.open_time || !e.close_time) {
-    return `${label} kawiarnia będzie nieczynna.`
-  }
-  return `${label} kawiarnia będzie pracować w godzinach ${e.open_time}–${e.close_time}.`
-}
-
 // ── Pływający przycisk powrotu ─────────────────────────────────────
 function HomeFab() {
+  const { t } = useI18n()
   return (
     <button
       type="button"
       className="cp-home-fab"
       onClick={() => { window.location.href = '/' }}
-      title="Wróć do strony głównej Caffenacci"
+      title={t('page.back_home_title')}
     >
       <span className="cp-home-fab__icon" aria-hidden="true"><CoffeeIcon size={16} /></span>
       <span className="cp-home-fab__label">Caffenacci</span>
@@ -195,14 +194,17 @@ function HomeFab() {
 }
 
 function BadgeDisplay({ item }: { item: BadgeItem }) {
+  const { t } = useI18n()
   const def = BADGE_CATALOG.find(b => b.key === item.key)
   if (!def) return null
   const Icon = def.icon
+  const label = t.has(`badge.${item.key}`) ? t(`badge.${item.key}`) : def.label
+  const info = t.has(`badge.${item.key}.info`) ? t(`badge.${item.key}.info`) : def.info
   return (
     <span className={`cp-badge-chip${item.featured ? ' cp-badge-chip--featured' : ''}`}>
       <Icon size={14} />
-      {def.label}
-      {def.info && <InfoTooltip text={def.info} />}
+      {label}
+      {info && <InfoTooltip text={info} />}
     </span>
   )
 }
@@ -236,6 +238,16 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
     } finally {
       setLoading(false)
     }
+  }, [identifier, mode, previewToken])
+
+  const fetchTranslations = useCallback(async (lang: string) => {
+    const l = encodeURIComponent(lang)
+    const url = mode === 'preview'
+      ? `${API_URL}/site/preview/${identifier}/translations/${l}?token=${encodeURIComponent(previewToken ?? '')}`
+      : `${API_URL}/site/public/by-slug/${identifier}/translations/${l}`
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(String(res.status))          // 404 → cichy powrót do primary
+    return (await res.json()).texts as Record<string, string>
   }, [identifier, mode, previewToken])
 
   useEffect(() => {
@@ -326,24 +338,70 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
     return (
       <div className="loading-state" style={{ minHeight: '100vh' }}>
         <div className="loading-spinner" />
-        <p>Wczytywanie strony kawiarni…</p>
       </div>
     )
   }
 
   if (notFound || !data) {
+    const { t } = useI18n()
     return (
       <div className="loading-state" style={{ minHeight: '100vh' }}>
-        <p>Nie znaleziono takiej kawiarni.</p>
+        <p>{t('page.not_found')}</p>
         {!isPreview && <HomeFab />}
       </div>
     )
   }
 
+  return (
+    <CafeI18nProvider i18n={normalizeI18n(data.i18n)} cafeKey={data.cafe_id} fetchTranslations={fetchTranslations}>
+      <CafeContent
+        rawData={data}
+        isPreview={isPreview}
+        auth={auth}
+        authModal={authModal}
+        setAuthModal={setAuthModal}
+        setPendingAction={setPendingAction}
+        requireLogin={requireLogin}
+        onLoginSuccess={handleLoginSuccess}
+        onLogout={handleLogout}
+        sparkLayerRef={sparkLayerRef}
+      />
+    </CafeI18nProvider>
+  )
+}
+
+interface CafeContentProps {
+  rawData: PublicSiteData
+  isPreview: boolean
+  auth: ClientAuthState | null
+  authModal: null | 'login' | 'register'
+  setAuthModal: (v: null | 'login' | 'register') => void
+  setPendingAction: (v: (() => void) | null) => void
+  requireLogin: (action: () => void) => void
+  onLoginSuccess: (d: { access_token: string; user_id: string; nick: string; full_name: string }) => void
+  onLogout: () => void
+  sparkLayerRef: React.RefObject<HTMLDivElement | null>
+}
+
+function CafeContent({
+  rawData,
+  isPreview,
+  auth,
+  authModal,
+  setAuthModal,
+  setPendingAction,
+  requireLogin,
+  onLoginSuccess,
+  onLogout,
+  sparkLayerRef,
+}: CafeContentProps) {
+  const { t, tr, fmt } = useI18n()
+  const data = useMemo(() => localizeSite(rawData, tr), [rawData, tr])
+
   const paletteVars = (data.palette === 'custom' && data.custom_palette)
     ? (data.custom_palette as CSSProperties)
     : getPaletteVars(data.palette)
-  const status = computeTodayStatus(data)
+  const status = computeTodayStatus(data, t)
   const todayIsoStr = toLocalDateStr(new Date())
 
   // ── Godziny otwarcia z wyjątkami ────────────────────────────────
@@ -379,36 +437,37 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
 
   return (
     <div className={`cafe-page cafe-page--${data.template}`} style={paletteVars as CSSProperties}>
-      {mode === 'preview' && (
+      {isPreview && (
         <div className="cp-preview-banner">
           <Eye size={15} />
-          Podgląd właściciela — tylko wygląd, bez logowania i akcji na serwerze.
+          {t('preview.banner')}
         </div>
       )}
       {/* Sticky nav */}
       <nav className="cp-nav">
-        <button className="cp-nav__link" onClick={() => document.getElementById('cp-menu')?.scrollIntoView({ behavior: 'smooth' })}>Menu</button>
+        <button className="cp-nav__link" onClick={() => document.getElementById('cp-menu')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.menu')}</button>
         {data.reservations_enabled && (
-          <button className="cp-nav__link" onClick={() => document.getElementById('cp-reservations')?.scrollIntoView({ behavior: 'smooth' })}>Rezerwacje</button>
+          <button className="cp-nav__link" onClick={() => document.getElementById('cp-reservations')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.reservations')}</button>
         )}
         {data.loyalty_enabled && (
-          <button className="cp-nav__link" onClick={() => document.getElementById('cp-loyalty')?.scrollIntoView({ behavior: 'smooth' })}>Lojalność</button>
+          <button className="cp-nav__link" onClick={() => document.getElementById('cp-loyalty')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.loyalty')}</button>
         )}
         {hasGallery && (
           <button className="cp-nav__link" onClick={() => document.getElementById('cp-gallery')?.scrollIntoView({ behavior: 'smooth' })}>
-            Galeria
+            {t('nav.gallery')}
           </button>
         )}
         {hasBadges && (
           <button className="cp-nav__link" onClick={() => document.getElementById('cp-amenities')?.scrollIntoView({ behavior: 'smooth' })}>
-            Udogodnienia
+            {t('nav.amenities')}
           </button>
         )}
         {(hasContact || hasLocation) && (
-          <button className="cp-nav__link" onClick={() => document.getElementById('cp-info')?.scrollIntoView({ behavior: 'smooth' })}>Kontakt</button>
+          <button className="cp-nav__link" onClick={() => document.getElementById('cp-info')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.contact')}</button>
         )}
-        <button className="cp-nav__link" onClick={() => document.getElementById('cp-reviews')?.scrollIntoView({ behavior: 'smooth' })}>Opinie</button>
+        <button className="cp-nav__link" onClick={() => document.getElementById('cp-reviews')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.reviews')}</button>
         <div style={{ flex: 1 }} />
+        <LanguageSwitcher />
         <div className="cp-account" onPointerEnter={prefetchAuthModal} onFocusCapture={prefetchAuthModal}>
           {isPreview ? (
             // Podgląd jest wyłącznie wizualny — brak logowania/rejestracji/konta.
@@ -417,17 +476,17 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
               fontSize: '0.8125rem', color: 'var(--text-muted)',
               border: '1px solid var(--border)', borderRadius: 100, padding: '0.3rem 0.75rem',
             }}>
-              <Eye size={14} /> Podgląd
+              <Eye size={14} /> {t('nav.preview')}
             </span>
           ) : auth ? (
             <>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Cześć, {auth.nick}</span>
-              <button className="btn btn--outline-dark btn--sm" onClick={handleLogout}>Wyloguj</button>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('nav.hello', { nick: auth.nick })}</span>
+              <button className="btn btn--outline-dark btn--sm" onClick={onLogout}>{t('nav.logout')}</button>
             </>
           ) : (
             <>
-              <button className="btn btn--outline-dark btn--sm" onClick={() => setAuthModal('login')}>Zaloguj się</button>
-              <button className="btn btn--primary btn--sm" style={{ width: 'auto', marginTop: 0 }} onClick={() => setAuthModal('register')}>Zarejestruj się</button>
+              <button className="btn btn--outline-dark btn--sm" onClick={() => setAuthModal('login')}>{t('nav.login')}</button>
+              <button className="btn btn--primary btn--sm" style={{ width: 'auto', marginTop: 0 }} onClick={() => setAuthModal('register')}>{t('nav.register')}</button>
             </>
           )}
         </div>
@@ -464,14 +523,14 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
 
         {data.news_enabled && data.news_posts.length > 0 && (
           <section id="cp-news">
-            <h2 className="cp-section__title">Aktualności</h2>
+            <h2 className="cp-section__title">{t('section.news')}</h2>
             <NewsWidget posts={data.news_posts} />
           </section>
         )}
 
         {/* Menu */}
         <section id="cp-menu">
-          <h2 className="cp-section__title">Menu</h2>
+          <h2 className="cp-section__title">{t('section.menu')}</h2>
           {hasMenu ? (
             <MenuOrdering
               cafeId={data.cafe_id}
@@ -484,14 +543,14 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
               previewMode={isPreview}
             />
           ) : (
-            <p className="cp-muted-note">Menu nie zostało jeszcze opublikowane.</p>
+            <p className="cp-muted-note">{t('menu.empty')}</p>
           )}
         </section>
 
         {/* Rezerwacje */}
         {data.reservations_enabled && (
           <section id="cp-reservations">
-            <h2 className="cp-section__title">Rezerwacja stolika</h2>
+            <h2 className="cp-section__title">{t('section.reservation')}</h2>
             <ReservationWidget
               cafeId={data.cafe_id}
               enabled={data.reservations_enabled}
@@ -506,7 +565,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
         {/* Program lojalności */}
         {data.loyalty_enabled && (
           <section id="cp-loyalty">
-            <h2 className="cp-section__title">Program lojalności</h2>
+            <h2 className="cp-section__title">{t('section.loyalty')}</h2>
             <LazyOnVisible placeholder={<p className="cp-muted-note" style={{ minHeight: 160 }}>Ładowanie…</p>}>
               <Suspense fallback={<p className="cp-muted-note" style={{ minHeight: 160 }}>Ładowanie…</p>}>
                 <LoyaltyWidget
@@ -528,7 +587,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
         {/* Galeria */}
         {hasGallery && (
           <section id="cp-gallery">
-            <h2 className="cp-section__title">Galeria</h2>
+            <h2 className="cp-section__title">{t('section.gallery')}</h2>
             <Gallery images={data.gallery_images} />
           </section>
         )}
@@ -536,7 +595,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
         {/* Udogodnienia (badges) */}
         {hasBadges && (
           <section id="cp-amenities">
-            <h2 className="cp-section__title">Udogodnienia</h2>
+            <h2 className="cp-section__title">{t('section.amenities')}</h2>
             <div className="cp-badge-list">
               {data.badges.map(b => <BadgeDisplay key={b.key} item={b} />)}
             </div>
@@ -545,7 +604,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
 
         {/* Godziny otwarcia – pełna wersja z wyjątkami */}
         <section>
-          <h2 className="cp-section__title">Godziny otwarcia</h2>
+          <h2 className="cp-section__title">{t('section.hours')}</h2>
           <div style={{ maxWidth: 360 }}>
             {weekHourRows.map(row => (
               <div
@@ -553,13 +612,13 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
                 className={`cp-hours-row${row.date === todayIsoStr ? ' cp-hours-row--today' : ''}${row.exception ? ' cp-hours-row--exception' : ''}`}
               >
                 <span>
-                  {DAYS[row.day_of_week]}
-                  {row.exception && <span className="cp-hours-exception-badge">wyjątek</span>}
+                  {weekdayName(row.day_of_week, fmt)}
+                  {row.exception && <span className="cp-hours-exception-badge">{t('hours.exception_badge')}</span>}
                 </span>
                 <span>
                   {!row.is_closed && row.open_time && row.close_time
-                    ? `${row.open_time}–${row.close_time}`
-                    : 'Zamknięte'}
+                    ? <bdi>{row.open_time}–{row.close_time}</bdi>
+                    : t('hours.closed')}
                 </span>
               </div>
             ))}
@@ -569,7 +628,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
             <div className="cp-hours-upcoming">
               {upcomingExceptions.map(e => (
                 <p key={e.date} className="cp-hours-upcoming__item">
-                  {formatExceptionSentence(e)}
+                  {exceptionSentence(e, t, fmt)}
                 </p>
               ))}
             </div>
@@ -579,7 +638,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
         {/* Kontakt i lokalizacja */}
         {(hasContact || hasLocation) && (
           <section id="cp-info">
-            <h2 className="cp-section__title">Kontakt i lokalizacja</h2>
+            <h2 className="cp-section__title">{t('section.contact')}</h2>
             <div className="cp-info-grid">
               {hasContact && (
                 <div>
@@ -609,7 +668,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
                   )}
                   {data.location_show_gmaps_link && gmapsUrl && (
                     <a href={gmapsUrl} target="_blank" rel="noreferrer" className="link" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem', fontSize: '0.8125rem' }}>
-                      Otwórz w Google Maps <ExternalLink size={13} />
+                      {t('location.open_gmaps')} <ExternalLink size={13} />
                     </a>
                   )}
                 </div>
@@ -621,7 +680,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
         {/* Zespół */}
         {hasTeam && (
           <section>
-            <h2 className="cp-section__title">Nasz zespół</h2>
+            <h2 className="cp-section__title">{t('section.team')}</h2>
             <div className="cp-team-grid">
               {data.employees.map((e, i) => (
                 <div key={i} className="cp-team-card">
@@ -637,7 +696,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
         {/* Social media */}
         {hasSocial && (
           <section>
-            <h2 className="cp-section__title">Znajdź nas</h2>
+            <h2 className="cp-section__title">{t('section.social')}</h2>
             <div className="cp-social-links">
               {data.social_links.map((s, i) => (
                 <a key={i} href={s.url} target="_blank" rel="noreferrer">
@@ -650,7 +709,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
 
         {/* Opinie */}
         <section id="cp-reviews">
-          <h2 className="cp-section__title">Opinie gości</h2>
+          <h2 className="cp-section__title">{t('section.reviews')}</h2>
           <ReviewsWidget
             cafeId={data.cafe_id}
             average={data.reviews_average}
@@ -670,7 +729,7 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
             mode={authModal}
             onClose={() => { setAuthModal(null); setPendingAction(null) }}
             onSwitch={setAuthModal}
-            onLoginSuccess={handleLoginSuccess}
+            onLoginSuccess={onLoginSuccess}
           />
         </Suspense>
       )}

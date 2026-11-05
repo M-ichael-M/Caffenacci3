@@ -6,6 +6,8 @@ from datetime import datetime
 
 from app.schemas.gallery import PublicGalleryImageOut
 from app.schemas.cafe_profile import PublicBadgeOut
+from app.schemas.translation import PublicI18nOut
+
 
 ALLOWED_TEMPLATES = {
     "classic",
@@ -229,3 +231,4 @@ class PublicSiteOut(BaseModel):
     news_enabled: bool = False
     news_posts: List[SiteNewsPostOut] = []
     badges: List[PublicBadgeOut] = []
+    i18n: Optional[PublicI18nOut] = None

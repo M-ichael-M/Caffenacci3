@@ -41,6 +41,7 @@ from app.routers import loyalty as loyalty_router
 from app.routers import news as news_router
 from app.routers import employee_auth as employee_auth_router
 from app.routers import seo as seo_router
+from app.routers import translations as translations_router
 from app.core.compression import SelectiveGZipMiddleware
 from app.core.jobs import run_expiration_job
 
@@ -121,6 +122,8 @@ app.include_router(loyalty_router.router)
 app.include_router(news_router.router)
 app.include_router(employee_auth_router.router)
 app.include_router(seo_router.router)
+
+app.include_router(translations_router.router)
 
 # Tylko do lokalnych testów; na produkcji /assets serwuje nginx.
 if settings.CUSTOMER_DIST_DIR:

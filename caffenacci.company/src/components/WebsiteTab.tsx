@@ -25,6 +25,7 @@ import {
 import { PALETTES } from '../palettes'
 import { extractPaletteFromImageUrl } from '../utils/paletteFromImage'
 import { API_URL, CUSTOMER_URL } from '../config'
+import LanguagesCard from './LanguagesCard'
 
 interface Props {
   token: string
@@ -330,7 +331,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
           </button>
         </div>
       </div>
-
+      <LanguagesCard token={token} />
       {/* Wybór szablonu */}
       <div className="info-card">
         <div className="info-card__header">

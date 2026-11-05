@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import ResponsiveImage, { imageUrl } from '../ResponsiveImage'
+import { useI18n } from '../../i18n/I18nProvider'
 
 interface GalleryImageItem {
   url: string
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function Gallery({ images }: Props) {
+  const { t } = useI18n()
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   if (images.length === 0) return null
@@ -44,7 +46,7 @@ export default function Gallery({ images }: Props) {
             >
               <ResponsiveImage
                 src={img.url}
-                alt={`Zdjęcie z galerii ${i + 1}`}
+                alt={t('gallery.alt', { n: i + 1 })}
                 sizes="(max-width: 700px) 200px, 260px"
                 width={img.width}
                 height={img.height}
@@ -56,10 +58,19 @@ export default function Gallery({ images }: Props) {
 
       {lightboxIndex !== null && (
         <div className="cp-lightbox" onClick={close}>
-          <button type="button" className="cp-lightbox__close" onClick={close} aria-label="Zamknij"><X size={20} /></button>
+          <button type="button" className="cp-lightbox__close" onClick={close} aria-label={t('common.close')}>
+            <X size={20} />
+          </button>
 
           {images.length > 1 && (
-            <button type="button" className="cp-lightbox__nav cp-lightbox__nav--prev" onClick={showPrev} aria-label="Poprzednie zdjęcie"><ChevronLeft size={26} /></button>
+            <button
+              type="button"
+              className="cp-lightbox__nav cp-lightbox__nav--prev"
+              onClick={showPrev}
+              aria-label={t('gallery.prev')}
+            >
+              <ChevronLeft size={26} />
+            </button>
           )}
 
           <img
@@ -67,12 +78,19 @@ export default function Gallery({ images }: Props) {
             src={imageUrl(images[lightboxIndex].url, 1600)}
             width={images[lightboxIndex].width ?? undefined}
             height={images[lightboxIndex].height ?? undefined}
-            alt={`Powiększone zdjęcie z galerii ${lightboxIndex + 1}`}
+            alt={t('gallery.alt_big', { n: lightboxIndex + 1 })}
             onClick={e => e.stopPropagation()}
           />
 
           {images.length > 1 && (
-            <button type="button" className="cp-lightbox__nav cp-lightbox__nav--next" onClick={showNext} aria-label="Następne zdjęcie"><ChevronRight size={26} /></button>
+            <button
+              type="button"
+              className="cp-lightbox__nav cp-lightbox__nav--next"
+              onClick={showNext}
+              aria-label={t('gallery.next')}
+            >
+              <ChevronRight size={26} />
+            </button>
           )}
         </div>
       )}

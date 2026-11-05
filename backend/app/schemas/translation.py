@@ -1,0 +1,139 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.core.languages import CURRENCIES, LANGUAGES, TIME_ZONE_RE
+
+
+class LanguageOut(BaseModel):
+    code: str
+    name_en: str
+    native_name: str
+    dir: Literal["ltr", "rtl"]
+    locale: str            # tag BCP-47 do Intl.DateTimeFormat / NumberFormat
+    collator_locale: str   # tag do Intl.Collator (sortowanie)
+
+
+class OptionsOut(BaseModel):
+    languages: List[LanguageOut]
+    currencies: List[str]
+
+
+# ── Ustawienia ──────────────────────────────────────────────────────────
+
+class LanguageSettingsIn(BaseModel):
+    primary_language:   str = "pl"
+    secondary_language: Optional[str] = None
+    currency:           str = "PLN"
+    time_zone:          str = Field("Europe/Warsaw", max_length=64)
+
+    @field_validator("primary_language")
+    @classmethod
+    def _primary(cls, v: str) -> str:
+        if v not in LANGUAGES:
+            raise ValueError("Nieobsługiwany język podstawowy.")
+        return v
+
+    @field_validator("secondary_language")
+    @classmethod
+    def _secondary(cls, v: Optional[str]) -> Optional[str]:
+        if not v:
+            return None
+        if v not in LANGUAGES:
+            raise ValueError("Nieobsługiwany język dodatkowy.")
+        return v
+
+    @field_validator("currency")
+    @classmethod
+    def _currency(cls, v: str) -> str:
+        v = v.upper()
+        if v not in CURRENCIES:
+            raise ValueError("Nieobsługiwana waluta.")
+        return v
+
+    @field_validator("time_zone")
+    @classmethod
+    def _tz(cls, v: str) -> str:
+        if not TIME_ZONE_RE.match(v):
+            raise ValueError("Nieprawidłowa strefa czasowa.")
+        return v
+
+    @model_validator(mode="after")
+    def _different(self):
+        if self.secondary_language and self.secondary_language == self.primary_language:
+            raise ValueError("Język dodatkowy musi być inny niż podstawowy.")
+        return self
+
+
+class LanguageSettingsOut(BaseModel):
+    primary_language:   str
+    secondary_language: Optional[str]
+    currency:           str
+    time_zone:          str
+
+
+# ── Status tłumaczenia ──────────────────────────────────────────────────
+
+class PackageInfoOut(BaseModel):
+    id: str
+    version: int
+    language: str
+    source_language: str
+    created_at: datetime
+    units_count: int
+    is_current: bool      # czy plik odpowiada obecnej treści strony
+
+
+class PackageFileOut(PackageInfoOut):
+    filename: str
+    content: str
+
+
+class TranslationInfoOut(BaseModel):
+    language: str
+    source_language: str
+    package_version: int
+    uploaded_at: datetime
+    units_count: int
+
+
+class TranslationChangesOut(BaseModel):
+    added: int
+    removed: int
+
+
+TranslationState = Literal["disabled", "not_generated", "awaiting_upload", "current", "stale"]
+
+
+class TranslationStatusOut(BaseModel):
+    state: TranslationState
+    secondary_language: Optional[str] = None
+    units_count: int = 0
+    translation: Optional[TranslationInfoOut] = None
+    latest_package: Optional[PackageInfoOut] = None
+    changes: Optional[TranslationChangesOut] = None
+
+
+class TranslationOverviewOut(BaseModel):
+    settings: LanguageSettingsOut
+    status: TranslationStatusOut
+
+
+# ── Publiczne ───────────────────────────────────────────────────────────
+
+class PublicI18nOut(BaseModel):
+    primary: LanguageOut
+    # Ustawiony TYLKO gdy istnieje aktualne tłumaczenie — nieaktualne nie jest wystawiane.
+    secondary: Optional[LanguageOut] = None
+    translation_version: Optional[int] = None
+    currency: str
+    time_zone: str
+
+
+class PublicTranslationOut(BaseModel):
+    language: LanguageOut
+    version: int
+    texts: Dict[str, str]   # klucz: tekst źródłowy po normalizacji (patrz localeFormat.ts)

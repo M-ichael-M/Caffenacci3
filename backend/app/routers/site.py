@@ -15,6 +15,7 @@ from app.core.page_cache import invalidate_cafe
 from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings
 from app.core.images import logo_url as _logo_url_v, gallery_url, news_image_url
+from app.core.translations import build_public_i18n
 from app.models.cafe import Cafe
 from app.models.site import CafeSite
 from app.models.cafe_profile import CafeProfile
@@ -373,6 +374,7 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
             PublicBadgeOut(key=b.key, featured=b.featured)
             for b in (profile.badges if profile else [])
         ],
+        i18n=build_public_i18n(cafe.id, db),
     )
 
 

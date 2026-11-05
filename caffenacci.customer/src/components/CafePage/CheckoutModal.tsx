@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { CreditCardIcon } from './icons'
 import { API_URL } from '../../config'
-
+import { useI18n } from '../../i18n/I18nProvider'
+import { formatCurrency } from '../../i18n/localeFormat'
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
 interface HourException { date: string; is_closed: boolean; open_time: string | null; close_time: string | null }
 
@@ -48,7 +49,6 @@ function getEffectiveHours(dateStr: string, weeklyHours: WeeklyHours[], hourExce
   const plan = weeklyHours.find(h => h.day_of_week === dayOfWeekFromDate(dateStr))
   return { open: plan?.open_time ?? null, close: plan?.close_time ?? null, isException: false }
 }
-function money(n: number) { return `${n.toFixed(2)} zł` }
 function toLocalDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -57,6 +57,7 @@ function todayStr() { return toLocalDateStr(new Date()) }
 export default function CheckoutModal({
   cafeId, authToken, lines, weeklyHours, hourExceptions, previewMode = false, onClose, onSuccess,
 }: Props) {
+  const { t, fmt } = useI18n()
   const [date, setDate] = useState(todayStr())
   const [time, setTime] = useState('12:00')
   const [submitting, setSubmitting] = useState(false)
@@ -103,8 +104,8 @@ export default function CheckoutModal({
 
   const handleSubmitOrder = async () => {
     if (lines.length === 0 || !authToken || previewMode) return
-    if (!orderWindow) { setError('Kawiarnia jest zamknięta w wybranym dniu — wybierz inną datę.'); return }
-    if (!isTimeValid) { setError('Wybierz dostępną godzinę odbioru.'); return }
+    if (!orderWindow) { setError(t('checkout.closed_day')); return }
+    if (!isTimeValid) { setError(t('checkout.pick_time')); return }
     setSubmitting(true)
     setError(null)
     try {
@@ -121,11 +122,11 @@ export default function CheckoutModal({
       })
       if (!res.ok) {
         const e = await res.json()
-        throw new Error(e.detail || 'Błąd składania zamówienia.')
+        throw new Error(e.detail || t('checkout.err'))
       }
       onSuccess()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Błąd składania zamówienia.')
+      setError(err instanceof Error ? err.message : t('checkout.err'))
     } finally {
       setSubmitting(false)
     }
@@ -136,10 +137,10 @@ export default function CheckoutModal({
       <div className="menu-editor" style={{ maxWidth: 480 }}>
         <div className="me-header">
           <div>
-            <div className="me-eyebrow">Podsumowanie</div>
-            <h2 className="me-title">Twoje zamówienie</h2>
+            <div className="me-eyebrow">{t('checkout.eyebrow')}</div>
+            <h2 className="me-title">{t('checkout.title')}</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose}>✕</button>
+          <button className="me-close" type="button" onClick={onClose} aria-label={t('common.close')}>✕</button>
         </div>
 
         <div className="me-body">
@@ -147,23 +148,23 @@ export default function CheckoutModal({
             <div key={l.item.id} className="ord-item-row" style={{ fontSize: '0.9375rem', padding: '0.375rem 0' }}>
               <span className="ord-item-row__qty">{l.qty}×</span>
               <span className="ord-item-row__name">{l.item.name}</span>
-              <span className="ord-item-row__price">{money(l.item.price * l.qty)}</span>
+              <span className="ord-item-row__price">{formatCurrency(l.item.price * l.qty, fmt)}</span>
             </div>
           ))}
           <div style={{ borderTop: '1px solid var(--border)', marginTop: '0.75rem', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-            <span>Razem</span><span>{money(totalPrice)}</span>
+            <span>{t('checkout.total')}</span><span>{formatCurrency(totalPrice, fmt)}</span>
           </div>
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
             <div className="field" style={{ flex: 1 }}>
-              <label className="me-label">Data odbioru</label>
+              <label className="me-label">{t('checkout.pickup_date')}</label>
               <input type="date" className="me-input" value={date} min={minDate} max={maxDate} onChange={e => setDate(e.target.value)} />
             </div>
             <div className="field" style={{ flex: 1 }}>
-              <label className="me-label">Godzina</label>
+              <label className="me-label">{t('checkout.time')}</label>
               <select className="me-input" style={{ cursor: 'pointer' }} value={time}
                 onChange={e => setTime(e.target.value)} disabled={slots.length === 0}>
-                {slots.length === 0 && <option value="">Brak godzin</option>}
+                {slots.length === 0 && <option value="">{t('checkout.no_slots_option')}</option>}
                 {slots.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
@@ -171,21 +172,20 @@ export default function CheckoutModal({
 
           {!orderWindow ? (
             <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>
-              Kawiarnia jest zamknięta w wybranym dniu — wybierz inną datę.
+              {t('checkout.closed_day')}
             </p>
           ) : slots.length === 0 ? (
             <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>
-              Na ten dzień nie ma już wolnych godzin odbioru — wybierz inną datę.
+              {t('checkout.no_slots_left')}
             </p>
           ) : (
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              Zamówienia na ten dzień przyjmujemy od {slots[0]} do {slots[slots.length - 1]}
-              {effectiveHours.isException ? ' (dzień wyjątkowy w godzinach pracy)' : ''}.
+              {t(effectiveHours.isException ? 'checkout.window_exception' : 'checkout.window', { from: slots[0], to: slots[slots.length - 1] })}
             </p>
           )}
 
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <CreditCardIcon size={15} className="cp-inline-icon" /> Płatność na miejscu — przy odbiorze zamówienia.
+            <CreditCardIcon size={15} className="cp-inline-icon" /> {t('checkout.pay_on_site')}
           </p>
 
           {error && <div className="form-error" style={{ marginTop: '0.75rem' }}>{error}</div>}
@@ -193,10 +193,10 @@ export default function CheckoutModal({
 
         <div className="me-footer">
           <div className="me-footer-actions">
-            <button type="button" className="btn btn--outline-dark" onClick={onClose}>Anuluj</button>
+            <button type="button" className="btn btn--outline-dark" onClick={onClose}>{t('common.cancel')}</button>
             <button type="button" className="btn btn--primary" style={{ width: 'auto', minWidth: 160 }}
               onClick={handleSubmitOrder} disabled={submitting || !orderWindow || !isTimeValid}>
-              {submitting ? 'Składanie…' : 'Złóż zamówienie'}
+              {submitting ? t('checkout.submitting') : t('checkout.submit')}
             </button>
           </div>
         </div>

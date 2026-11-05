@@ -18,5 +18,7 @@ from app.models.reservation import (
 from app.models.review import Review
 from app.models.site import CafeSite
 from app.models.slug_history import CafeSlugHistory
-
+from app.models.translation import (
+    CafeLanguageSettings, TranslationPackage, CafeTranslation,
+)
 __all__ = [name for name in globals() if not name.startswith("_")]

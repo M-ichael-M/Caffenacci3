@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Star, Pencil } from 'lucide-react'
 import { API_URL } from '../../config'
-
+import { formatDateTime, formatNumber } from '../../i18n/localeFormat' // dostosuj ścieżkę jeśli inna
+import { useI18n } from '../../i18n/I18nProvider'
 interface ReviewItem {
   id: string
   nick: string
@@ -20,7 +21,6 @@ interface Props {
   previewMode?: boolean
 }
 
-const PREVIEW_TITLE = 'Niedostępne w trybie podglądu.'
 const REVIEWS_PAGE = 10
 
 function Stars({ rating, size = 16 }: { rating: number; size?: number }) {
@@ -39,10 +39,6 @@ function Stars({ rating, size = 16 }: { rating: number; size?: number }) {
   )
 }
 
-function formatDate(s: string) {
-  return new Date(s).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
 // ── Formularz oceny (wspólny dla dodawania i edycji) ─────────────────────
 
 function RatingForm({
@@ -56,13 +52,14 @@ function RatingForm({
   error: string | null
   submitLabel: string
 }) {
+  const { t } = useI18n()
   const [rating, setRating] = useState(initialRating)
   const [comment, setComment] = useState(initialComment)
 
   return (
     <div className="res-table-row">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-        <span className="me-label">Ocena</span>
+        <span className="me-label">{t('reviews.rating')}</span>
         <div style={{ display: 'flex', gap: '0.25rem' }}>
           {[1, 2, 3, 4, 5].map(n => (
             <button key={n} type="button" onClick={() => setRating(n)}
@@ -73,15 +70,28 @@ function RatingForm({
         </div>
       </div>
       <div className="field">
-        <label className="me-label">Komentarz (opcjonalnie)</label>
-        <input className="me-input" value={comment} onChange={e => setComment(e.target.value)} placeholder="Podziel się wrażeniami…" maxLength={1000} />
+        <label className="me-label">{t('reviews.comment_optional')}</label>
+        <input
+          className="me-input"
+          value={comment}
+          onChange={e => setComment(e.target.value)}
+          placeholder={t('reviews.comment_placeholder')}
+          maxLength={1000}
+        />
       </div>
       {error && <div className="form-error" style={{ marginTop: '0.5rem' }}>{error}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.875rem' }}>
-        <button type="button" className="btn btn--outline-dark" onClick={onCancel}>Anuluj</button>
-        <button type="button" className="btn btn--primary" style={{ width: 'auto' }}
-          onClick={() => onSubmit(rating, comment)} disabled={submitting}>
-          {submitting ? 'Zapisywanie…' : submitLabel}
+        <button type="button" className="btn btn--outline-dark" onClick={onCancel}>
+          {t('reviews.cancel')}
+        </button>
+        <button
+          type="button"
+          className="btn btn--primary"
+          style={{ width: 'auto' }}
+          onClick={() => onSubmit(rating, comment)}
+          disabled={submitting}
+        >
+          {submitting ? t('reviews.saving') : submitLabel}
         </button>
       </div>
     </div>
@@ -96,6 +106,9 @@ function MyReviewCard({ r, onEdit, onDelete, deleting }: {
   onDelete: () => void
   deleting: boolean
 }) {
+  const { t, fmt } = useI18n()
+  const fmtDate = (s: string) => formatDateTime(s, fmt, { dateStyle: 'long' })
+
   return (
     <div className="rv-card" style={{ borderColor: 'var(--gold)', borderWidth: '1.5px' }}>
       <div className="rv-card__header">
@@ -105,17 +118,17 @@ function MyReviewCard({ r, onEdit, onDelete, deleting }: {
             fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
             background: 'rgba(181,114,10,0.12)', color: 'var(--gold)', borderRadius: 100, padding: '1px 8px',
           }}>
-            Twoja opinia
+            {t('reviews.your_review')}
           </span>
         </div>
         <Stars rating={r.rating} />
       </div>
       {r.comment && <div className="rv-card__comment">„{r.comment}"</div>}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <div className="rv-card__date">{formatDate(r.created_at)}</div>
+        <div className="rv-card__date">{fmtDate(r.created_at)}</div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button type="button" className="btn btn--outline-dark btn--sm" style={{ width: 'auto' }} onClick={onEdit}>
-            Edytuj
+            {t('reviews.edit')}
           </button>
           <button
             type="button"
@@ -124,7 +137,7 @@ function MyReviewCard({ r, onEdit, onDelete, deleting }: {
             onClick={onDelete}
             disabled={deleting}
           >
-            {deleting ? 'Usuwanie…' : 'Usuń'}
+            {deleting ? t('reviews.deleting') : t('reviews.delete')}
           </button>
         </div>
       </div>
@@ -133,6 +146,8 @@ function MyReviewCard({ r, onEdit, onDelete, deleting }: {
 }
 
 export default function ReviewsWidget({ cafeId, average, count, reviews, requireLogin, authToken, previewMode = false }: Props) {
+  const { t, fmt } = useI18n()
+
   const [list, setList] = useState(reviews)
   const [avg, setAvg] = useState(average)
   const [cnt, setCnt] = useState(count)
@@ -148,6 +163,10 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const fmtDate = (s: string) => formatDateTime(s, fmt, { dateStyle: 'long' })
+  const scoreText = formatNumber(avg, fmt, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  const countText = cnt === 0 ? t('reviews.none') : t('reviews.count', { count: cnt })
 
   // ── Sprawdź, czy zalogowany klient ma już opinię o tej kawiarni ────────
 
@@ -178,7 +197,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
     setError(null)
     try {
       const res = await fetch(`${API_URL}/reviews/public/${cafeId}?offset=${serverOffset}&limit=${REVIEWS_PAGE}`)
-      if (!res.ok) throw new Error('Nie udało się pobrać kolejnych opinii.')
+      if (!res.ok) throw new Error(t('reviews.err_more'))
       const data: { reviews: ReviewItem[]; count: number } = await res.json()
       setList(prev => {
         const seen = new Set(prev.map(r => r.id))
@@ -187,7 +206,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       setServerOffset(o => o + data.reviews.length)
       setExhausted(serverOffset + data.reviews.length >= data.count || data.reviews.length === 0)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Błąd pobierania opinii.')
+      setError(err instanceof Error ? err.message : t('reviews.err_fetch'))
     } finally {
       setLoadingMore(false)
     }
@@ -207,7 +226,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       })
       if (!res.ok) {
         const e = await res.json()
-        throw new Error(e.detail || 'Błąd dodawania opinii.')
+        throw new Error(e.detail || t('reviews.err_add'))
       }
       const created: ReviewItem = await res.json()
       setList(prev => [created, ...prev])
@@ -217,7 +236,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       setMyReview(created)
       setFormOpen(false)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Błąd dodawania opinii.')
+      setError(err instanceof Error ? err.message : t('reviews.err_add'))
     } finally {
       setSubmitting(false)
     }
@@ -237,7 +256,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       })
       if (!res.ok) {
         const e = await res.json()
-        throw new Error(e.detail || 'Błąd edycji opinii.')
+        throw new Error(e.detail || t('reviews.err_edit'))
       }
       const updated: ReviewItem = await res.json()
       const oldRating = myReview.rating
@@ -245,7 +264,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       setAvg(a => cnt > 0 ? Math.round(((a * cnt) - oldRating + rating) / cnt * 100) / 100 : rating)
       setEditOpen(false)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Błąd edycji opinii.')
+      setError(err instanceof Error ? err.message : t('reviews.err_edit'))
     } finally {
       setSubmitting(false)
     }
@@ -255,7 +274,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
 
   const handleDelete = async () => {
     if (!authToken || !myReview || previewMode) return
-    if (!confirm('Czy na pewno chcesz usunąć swoją opinię?')) return
+    if (!confirm(t('reviews.confirm_delete'))) return
     setDeleting(true)
     try {
       const res = await fetch(`${API_URL}/reviews/client/${myReview.id}`, {
@@ -264,7 +283,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       })
       if (!res.ok && res.status !== 204) {
         const e = await res.json()
-        throw new Error(e.detail || 'Błąd usuwania opinii.')
+        throw new Error(e.detail || t('reviews.err_delete'))
       }
       if (list.some(r => r.id === myReview.id)) setServerOffset(o => Math.max(0, o - 1))
       setList(prev => prev.filter(r => r.id !== myReview.id))
@@ -272,7 +291,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       setCnt(c => Math.max(0, c - 1))
       setMyReview(null)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Błąd usuwania opinii.')
+      setError(err instanceof Error ? err.message : t('reviews.err_delete'))
     } finally {
       setDeleting(false)
     }
@@ -281,10 +300,10 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div className="rv-summary">
-        <div className="rv-summary__score">{cnt > 0 ? avg.toFixed(1) : '—'}</div>
+        <div className="rv-summary__score">{cnt > 0 ? scoreText : '—'}</div>
         <div className="rv-summary__details">
           <Stars rating={avg} size={20} />
-          <div className="rv-summary__count">{cnt === 0 ? 'Brak opinii' : cnt === 1 ? '1 opinia' : `${cnt} opinii`}</div>
+          <div className="rv-summary__count">{countText}</div>
         </div>
         <div style={{ flex: 1 }} />
         {!formOpen && !myReview && !loadingMine && (
@@ -294,9 +313,9 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
             style={{ width: 'auto', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
             onClick={() => { if (!previewMode) requireLogin(() => setFormOpen(true)) }}
             disabled={previewMode}
-            title={previewMode ? PREVIEW_TITLE : undefined}
+            title={previewMode ? t('reviews.preview_unavailable') : undefined}
           >
-            <Pencil size={15} /> Dodaj opinię
+            <Pencil size={15} /> {t('reviews.add')}
           </button>
         )}
       </div>
@@ -312,7 +331,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
           onCancel={() => { setFormOpen(false); setError(null) }}
           submitting={submitting}
           error={error}
-          submitLabel="Wyślij opinię"
+          submitLabel={t('reviews.submit')}
         />
       )}
 
@@ -333,12 +352,12 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
           onCancel={() => { setEditOpen(false); setError(null) }}
           submitting={submitting}
           error={error}
-          submitLabel="Zapisz zmiany"
+          submitLabel={t('reviews.save')}
         />
       )}
 
       {otherReviews.length === 0 && !myReview ? (
-        <p className="cp-muted-note">Bądź pierwszą osobą, która doda opinię o tej kawiarni.</p>
+        <p className="cp-muted-note">{t('reviews.be_first')}</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {otherReviews.map(r => (
@@ -348,7 +367,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
                 <Stars rating={r.rating} />
               </div>
               {r.comment && <div className="rv-card__comment">„{r.comment}"</div>}
-              <div className="rv-card__date">{formatDate(r.created_at)}</div>
+              <div className="rv-card__date">{fmtDate(r.created_at)}</div>
             </div>
           ))}
           {!exhausted && (
@@ -359,7 +378,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
               onClick={loadMore}
               disabled={loadingMore}
             >
-              {loadingMore ? 'Wczytywanie…' : 'Pokaż więcej opinii'}
+              {loadingMore ? t('reviews.loading') : t('reviews.show_more')}
             </button>
           )}
         </div>

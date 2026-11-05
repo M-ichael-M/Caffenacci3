@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { CalendarIcon } from './icons'
 import { API_URL } from '../../config'
+import { useI18n } from '../../i18n/I18nProvider'
+import { exceptionSentence } from '../../i18n/hours'
 
 // ── Typy ─────────────────────────────────────────────────────────────────
 
@@ -52,8 +54,6 @@ interface Props {
   previewMode?: boolean
 }
 
-const PREVIEW_TITLE = 'Niedostępne w trybie podglądu.'
-
 // Grupa identycznych stolików (ten sam typ, liczba miejsc i etykieta) —
 // dla klienta liczy się tylko "jaki to rodzaj stolika", a nie który
 // dokładnie egzemplarz. System sam przydziela wolny stolik z grupy.
@@ -63,12 +63,6 @@ interface TableGroup {
   seats: number
   label: string | null
   tables: TableInfo[]
-}
-
-const TABLE_TYPE_LABELS: Record<TableTypeEnum, string> = {
-  standard: 'Zwykły stolik',
-  communal: 'Stół komunalny',
-  special: 'Stolik specjalny',
 }
 
 function todayStr() {
@@ -90,19 +84,6 @@ function dayOfWeekFromDate(dateStr: string): number {
   // JS getDay(): 0=niedziela ... backend: 0=poniedziałek
   const d = new Date(dateStr + 'T00:00:00')
   return (d.getDay() + 6) % 7
-}
-
-function formatExceptionDateLabel(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' })
-}
-
-function formatExceptionSentence(e: HourExceptionInfo): string {
-  const label = formatExceptionDateLabel(e.date)
-  if (e.is_closed || !e.open_time || !e.close_time) {
-    return `${label} kawiarnia będzie nieczynna.`
-  }
-  return `${label} kawiarnia będzie pracować w godzinach ${e.open_time}–${e.close_time}.`
 }
 
 // Grupuje surową listę stolików wg (typ, miejsca, etykieta) — kolejność
@@ -156,6 +137,8 @@ function availableTableIdsInGroup(
 }
 
 export default function AdvancedReservationForm({ cafeId, requireLogin, authToken, previewMode = false }: Props) {
+  const { t, tr, fmt } = useI18n()
+
   const [open, setOpen] = useState(false)
   const [info, setInfo] = useState<ReservationInfo | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(false)
@@ -245,7 +228,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
       const time = fromMinutes(m)
 
       if (guests > selectedGroup.seats) {
-        result.push({ time, available: false, reason: `Stolik ma tylko ${selectedGroup.seats} miejsc` })
+        result.push({ time, available: false, reason: t('res.slot_too_small', { seats: selectedGroup.seats }) })
         continue
       }
 
@@ -254,14 +237,14 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
       const reason = available
         ? undefined
         : selectedGroup.table_type === 'communal'
-          ? 'Za mało wolnych miejsc przy stołach tego typu'
-          : 'Wszystkie stoliki tego typu są zajęte w tym terminie'
+          ? t('res.slot_communal_full')
+          : t('res.slot_all_taken')
 
       result.push({ time, available, reason })
     }
 
     return result
-  }, [info, dayHours, selectedGroup, guests, date])
+  }, [info, dayHours, selectedGroup, guests, date, t])
 
   useEffect(() => { setStartTime(null) }, [groupKey, date, guests])
 
@@ -279,13 +262,13 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
     )
 
     if (candidates.length === 0) {
-      setError('Ten termin nie jest już dostępny — wybierz inną godzinę.')
+      setError(t('res.no_longer_available'))
       setSubmitting(false)
       fetchInfo(date)
       return
     }
 
-    let lastErrorMessage = 'Błąd rezerwacji.'
+    let lastErrorMessage = t('res.err')
 
     for (const candidateTableId of candidates) {
       try {
@@ -313,14 +296,14 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
         }
 
         const e = await res.json()
-        lastErrorMessage = e.detail || 'Błąd rezerwacji.'
+        lastErrorMessage = e.detail || t('res.err')
 
         // Ktoś zdążył zająć akurat ten stolik w międzyczasie — spróbuj
         // kolejnego wolnego egzemplarza z tej samej grupy zanim się poddamy.
         const isConflict = res.status === 400 && /zajęt/i.test(lastErrorMessage)
         if (!isConflict) break
       } catch {
-        lastErrorMessage = 'Błąd rezerwacji.'
+        lastErrorMessage = t('res.err')
         break
       }
     }
@@ -338,9 +321,8 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
         style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
         onClick={() => { if (!previewMode) requireLogin(() => setOpen(true)) }}
         disabled={previewMode}
-        title={previewMode ? PREVIEW_TITLE : undefined}
       >
-        <CalendarIcon size={16} /> Zarezerwuj stolik
+        <CalendarIcon size={16} /> {t('res.adv_submit')}
       </button>
     )
   }
@@ -349,12 +331,12 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
     <div className="res-table-row" style={{ marginTop: '1rem', maxWidth: 620 }}>
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
         <div className="field" style={{ flex: '1 1 150px' }}>
-          <label className="me-label">Data</label>
+          <label className="me-label">{t('res.date')}</label>
           <input type="date" className="me-input" value={date} min={todayStr()} onChange={e => setDate(e.target.value)} />
         </div>
 
         <div className="field" style={{ flex: '1 1 220px' }}>
-          <label className="me-label">Stolik</label>
+          <label className="me-label">{t('res.table')}</label>
           <select
             className="me-input" style={{ cursor: 'pointer' }}
             value={groupKey}
@@ -363,14 +345,18 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
           >
             {groups.map(g => (
               <option key={g.key} value={g.key}>
-                {TABLE_TYPE_LABELS[g.table_type]} · {g.seats} os.{g.label ? ` (${g.label})` : ''}
+                {t(`res.type.${g.table_type}`)} · {t('res.seats_short', { count: g.seats })}{g.label ? ` (${tr(g.label)})` : ''}
               </option>
             ))}
           </select>
         </div>
 
         <div className="field" style={{ flex: '1 1 90px' }}>
-          <label className="me-label">Goście {selectedGroup ? `(maks. ${selectedGroup.seats})` : ''}</label>
+          <label className="me-label">
+            {selectedGroup
+              ? t('res.guests_max', { max: selectedGroup.seats })
+              : t('res.guests')}
+          </label>
           <input type="number" min={1} max={selectedGroup?.seats ?? 50} className="me-input"
             value={guests} onChange={e => setGuests(Number(e.target.value))} />
         </div>
@@ -384,29 +370,29 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
             .slice(0, 5)
             .map(e => (
               <p key={e.date} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-                {formatExceptionSentence(e)}
+                {exceptionSentence(e, t, fmt)}
               </p>
             ))}
         </div>
       )}
 
       <div style={{ marginTop: '1rem' }}>
-        <label className="me-label">Godzina</label>
+        <label className="me-label">{t('res.time')}</label>
         {loadingInfo ? (
-          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Sprawdzanie dostępności…</p>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{t('res.checking')}</p>
         ) : !info || groups.length === 0 ? (
-          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Brak skonfigurowanych stolików.</p>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{t('res.no_tables')}</p>
         ) : !dayHours || !dayHours.open_time || !dayHours.close_time ? (
           <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>
             {dateException?.is_closed
-              ? 'Tego dnia kawiarnia jest wyjątkowo zamknięta.'
-              : 'W tym dniu kawiarnia jest zamknięta.'}
+              ? t('res.closed_exceptional')
+              : t('res.closed_day')}
           </p>
         ) : (
           <>
             {dateException && !dateException.is_closed && (
               <p style={{ fontSize: '0.75rem', color: 'var(--gold)', fontWeight: 600, marginTop: '0.5rem', marginBottom: 0 }}>
-                Tego dnia obowiązują wyjątkowe godziny: {dateException.open_time}–{dateException.close_time}
+                {t('res.special_hours', { open: dayHours.open_time, close: dayHours.close_time })}
               </p>
             )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -423,7 +409,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
                     (!s.available ? ' cp-slot-btn--unavailable' : '')
                   }
                 >
-                  {s.time}
+                  <bdi>{s.time}</bdi>
                 </button>
               ))}
             </div>
@@ -433,35 +419,35 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
 
       <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
         <div className="field" style={{ flex: 1 }}>
-          <label className="me-label">Telefon (opcjonalnie)</label>
+          <label className="me-label">{t('res.phone')}</label>
           <input type="tel" className="me-input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+48 123 456 789" />
         </div>
         <div className="field" style={{ flex: 1 }}>
-          <label className="me-label">E-mail (opcjonalnie)</label>
+          <label className="me-label">{t('res.email')}</label>
           <input type="email" className="me-input" value={email} onChange={e => setEmail(e.target.value)} />
         </div>
       </div>
 
       <div className="field" style={{ marginTop: '0.75rem' }}>
-        <label className="me-label">Komentarz</label>
-        <input type="text" className="me-input" value={comment} onChange={e => setComment(e.target.value)} placeholder="np. stolik przy oknie…" />
+        <label className="me-label">{t('res.comment')}</label>
+        <input type="text" className="me-input" value={comment} onChange={e => setComment(e.target.value)} placeholder={t('res.comment_placeholder')} />
       </div>
 
       {error && <div className="form-error" style={{ marginTop: '0.75rem' }}>{error}</div>}
       {success && (
         <div className="form-success" style={{ marginTop: '0.75rem' }}>
-          Stolik zarezerwowany! Rezerwacja jest od razu potwierdzona — nie czeka na akceptację.
+          {t('res.adv_success')}
         </div>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-        <button type="button" className="btn btn--outline-dark" onClick={() => setOpen(false)}>Anuluj</button>
+        <button type="button" className="btn btn--outline-dark" onClick={() => setOpen(false)}>{t('res.cancel')}</button>
         <button
           type="button" className="btn btn--primary" style={{ width: 'auto' }}
           onClick={handleSubmit}
           disabled={submitting || !selectedGroup || !startTime}
         >
-          {submitting ? 'Rezerwowanie…' : 'Zarezerwuj stolik'}
+          {submitting ? t('res.adv_submitting') : t('res.adv_submit')}
         </button>
       </div>
     </div>

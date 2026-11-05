@@ -229,7 +229,7 @@
 }
 .cp-hours-exception-badge {
   display: inline-block;
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -254,13 +254,13 @@
   font-size: 0.8125rem;
   color: var(--text-muted);
   line-height: 1.5;
-  padding-left: 1.25rem;
+  padding-inline-start: 1.25rem;
   position: relative;
 }
 .cp-hours-upcoming__item::before {
   content: '';
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   top: 0.2em;
   width: 11px;
   height: 11px;
@@ -597,7 +597,7 @@ select.me-input { cursor: pointer; }
 
 .cp-home-fab {
   position: fixed;
-  right: 1.25rem;
+  inset-inline-end: 1.25rem;
   bottom: 1.25rem;
   z-index: 400;
   display: flex;
@@ -711,7 +711,7 @@ select.me-input { cursor: pointer; }
 .cafe-page--modern .cp-nav__link:hover { background: none; text-decoration: underline; text-underline-offset: 4px; }
 
 .cafe-page--modern .cp-hero {
-  text-align: left;
+  text-align: start;
   display: flex; align-items: center; gap: 2rem;
   padding: 4rem 2.5rem;
   border-bottom: 3px solid var(--gold);
@@ -1199,7 +1199,7 @@ select.me-input { cursor: pointer; }
 .cafe-page--usa80s .cp-add-btn,
 .cafe-page--usa80s .cp-qty-stepper {
   flex-shrink: 0;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .cafe-page--usa80s .btn--primary {
@@ -1578,7 +1578,7 @@ select.me-input { cursor: pointer; }
 .cp-lightbox__close {
   position: fixed;
   top: 1.25rem;
-  right: 1.25rem;
+  inset-inline-end: 1.25rem;
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
@@ -1612,15 +1612,15 @@ select.me-input { cursor: pointer; }
   transition: background 0.15s;
 }
 .cp-lightbox__nav:hover { background: rgba(255,255,255,0.24); }
-.cp-lightbox__nav--prev { left: 1.25rem; }
-.cp-lightbox__nav--next { right: 1.25rem; }
+.cp-lightbox__nav--prev { inset-inline-start: 1.25rem; }
+.cp-lightbox__nav--next { inset-inline-end: 1.25rem; }
 
 @media (max-width: 700px) {
   .cp-lightbox { padding: 1rem; }
   .cp-lightbox__nav { width: 2.5rem; height: 2.5rem; font-size: 1.375rem; }
-  .cp-lightbox__nav--prev { left: 0.5rem; }
-  .cp-lightbox__nav--next { right: 0.5rem; }
-  .cp-lightbox__close { top: 0.75rem; right: 0.75rem; }
+  .cp-lightbox__nav--prev { inset-inline-start: 0.5rem; }
+  .cp-lightbox__nav--next { inset-inline-end: 0.5rem; }
+  .cp-lightbox__close { top: 0.75rem; inset-inline-end: 0.75rem; }
 }
 
 /* ════════════════════════════════════════════════
@@ -1639,7 +1639,7 @@ select.me-input { cursor: pointer; }
   .me-body { padding: 1.25rem; }
   .me-footer { padding: 1rem 1.25rem; }
 
-  .cp-home-fab { right: 0.875rem; bottom: 0.875rem; padding: 0.625rem 0.875rem; font-size: 0.75rem; }
+  .cp-home-fab { inset-inline-end: 0.875rem; bottom: 0.875rem; padding: 0.625rem 0.875rem; font-size: 0.75rem; }
   .cp-home-fab__label { display: none; }
 }
 
@@ -2094,8 +2094,8 @@ select.me-input { cursor: pointer; }
   font-weight: 700;
   font-size: 1.0625rem;
   letter-spacing: 0.02em;
-  border-left: 6px solid var(--gold);
-  padding-left: 0.875rem;
+  border-inline-start: 6px solid var(--gold);
+  padding-inline-start: 0.875rem;
 }
 
 .cafe-page--industrial .info-card,
@@ -2631,7 +2631,7 @@ select.me-input { cursor: pointer; }
   background: radial-gradient(ellipse at 50% -20%, rgba(181,114,10,0.16), transparent 60%), #050608;
   border-bottom: 1px solid rgba(181,114,10,0.3);
   padding: 4rem 2rem 3rem;
-  text-align: left;
+  text-align: start;
   display: flex;
   align-items: center;
   gap: 2.25rem;
@@ -3062,7 +3062,7 @@ select.me-input { cursor: pointer; }
   margin: 1.25rem;
   border-radius: 20px;
   box-shadow: var(--tiles-shadow-hover);
-  text-align: left;
+  text-align: start;
   display: flex;
   align-items: center;
   gap: 1.75rem;
@@ -3462,3 +3462,16 @@ select.me-input { cursor: pointer; }
   .cafe-page--expressive .cp-hero::before,
   .cafe-page--industrial .cp-home-fab::before { animation: none; }
 }
+
+/* przełącznik języka */
+.cp-lang{display:inline-flex;border:1px solid var(--border);border-radius:100px;overflow:hidden}
+.cp-lang button{appearance:none;border:none;background:transparent;color:var(--text-muted);font:inherit;font-size:.8125rem;font-weight:600;padding:.3rem .75rem;cursor:pointer}
+.cp-lang button[aria-pressed="true"]{background:var(--gold);color:#fff}
+.cp-lang[data-busy="true"]{opacity:.6;pointer-events:none}
+.cafe-page--magic .cp-lang,.cafe-page--futuristic .cp-lang{border-color:rgba(181,114,10,.4)}
+.cafe-page--magic .cp-lang button,.cafe-page--futuristic .cp-lang button{color:var(--parchment)}
+.cafe-page--magic .cp-lang button[aria-pressed="true"],.cafe-page--futuristic .cp-lang button[aria-pressed="true"]{color:var(--espresso)}
+
+/* RTL: ikony kierunkowe */
+.cp-dir-arrow{display:inline-block}
+[dir='rtl'] .cp-dir-arrow,[dir='rtl'] .cp-lightbox__nav svg{transform:scaleX(-1)}

@@ -354,7 +354,7 @@ body {
 
 .checkbox-error {
   margin-top: 0.25rem;
-  margin-left: 1.75rem;
+  margin-inline-start: 1.75rem;
   font-size: 0.75rem;
   color: var(--error);
 }
