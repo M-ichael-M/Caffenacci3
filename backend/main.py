@@ -26,7 +26,8 @@ from app.models import gallery      # noqa: F401
 from app.models import loyalty      # noqa: F401
 from app.models import news         # noqa: F401
 from app.models import slug_history # noqa: F401
-from app.models import billing      # noqa: F401  ← rejestruje model subskrypcji
+from app.models import billing      # noqa: F401
+from app.models import translation  # noqa: F401
 from app.routers import auth, me
 from app.routers import menu as menu_router
 from app.routers import reservation as reservation_router
@@ -41,7 +42,7 @@ from app.routers import loyalty as loyalty_router
 from app.routers import news as news_router
 from app.routers import employee_auth as employee_auth_router
 from app.routers import seo as seo_router
-from app.routers import translations as translations_router
+from app.routers import translation as translations_router
 from app.core.compression import SelectiveGZipMiddleware
 from app.core.jobs import run_expiration_job
 

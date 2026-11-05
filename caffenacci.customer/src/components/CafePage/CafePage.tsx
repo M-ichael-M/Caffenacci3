@@ -210,6 +210,7 @@ function BadgeDisplay({ item }: { item: BadgeItem }) {
 }
 
 export default function CafePage({ identifier, mode = 'public', previewToken }: Props) {
+  const { t } = useI18n()
   const isPreview = mode === 'preview'
   const [seed] = useState(() => readSeedData(identifier, mode))
   const seededFor = useRef<string | null>(seed ? identifier : null)
@@ -343,7 +344,6 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
   }
 
   if (notFound || !data) {
-    const { t } = useI18n()
     return (
       <div className="loading-state" style={{ minHeight: '100vh' }}>
         <p>{t('page.not_found')}</p>

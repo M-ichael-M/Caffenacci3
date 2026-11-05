@@ -419,18 +419,18 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
 
       <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
         <div className="field" style={{ flex: 1 }}>
-          <label className="me-label">{t('res.phone')}</label>
+          <label className="me-label">{t('res.phone_opt')}</label>
           <input type="tel" className="me-input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+48 123 456 789" />
         </div>
         <div className="field" style={{ flex: 1 }}>
-          <label className="me-label">{t('res.email')}</label>
+          <label className="me-label">{t('res.email_opt')}</label>
           <input type="email" className="me-input" value={email} onChange={e => setEmail(e.target.value)} />
         </div>
       </div>
 
       <div className="field" style={{ marginTop: '0.75rem' }}>
         <label className="me-label">{t('res.comment')}</label>
-        <input type="text" className="me-input" value={comment} onChange={e => setComment(e.target.value)} placeholder={t('res.comment_placeholder')} />
+        <input type="text" className="me-input" value={comment} onChange={e => setComment(e.target.value)} placeholder={t('res.comment_ph')} />
       </div>
 
       {error && <div className="form-error" style={{ marginTop: '0.75rem' }}>{error}</div>}
@@ -441,7 +441,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
       )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-        <button type="button" className="btn btn--outline-dark" onClick={() => setOpen(false)}>{t('res.cancel')}</button>
+        <button type="button" className="btn btn--outline-dark" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
         <button
           type="button" className="btn btn--primary" style={{ width: 'auto' }}
           onClick={handleSubmit}

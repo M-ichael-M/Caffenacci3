@@ -70,19 +70,19 @@ function RatingForm({
         </div>
       </div>
       <div className="field">
-        <label className="me-label">{t('reviews.comment_optional')}</label>
+        <label className="me-label">{t('reviews.comment_opt')}</label>
         <input
           className="me-input"
           value={comment}
           onChange={e => setComment(e.target.value)}
-          placeholder={t('reviews.comment_placeholder')}
+          placeholder={t('reviews.comment_ph')}
           maxLength={1000}
         />
       </div>
       {error && <div className="form-error" style={{ marginTop: '0.5rem' }}>{error}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.875rem' }}>
         <button type="button" className="btn btn--outline-dark" onClick={onCancel}>
-          {t('reviews.cancel')}
+          {t('common.cancel')}
         </button>
         <button
           type="button"
@@ -118,7 +118,7 @@ function MyReviewCard({ r, onEdit, onDelete, deleting }: {
             fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
             background: 'rgba(181,114,10,0.12)', color: 'var(--gold)', borderRadius: 100, padding: '1px 8px',
           }}>
-            {t('reviews.your_review')}
+            {t('reviews.mine')}
           </span>
         </div>
         <Stars rating={r.rating} />
@@ -206,7 +206,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       setServerOffset(o => o + data.reviews.length)
       setExhausted(serverOffset + data.reviews.length >= data.count || data.reviews.length === 0)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('reviews.err_fetch'))
+      setError(err instanceof Error ? err.message : t('reviews.err_more'))
     } finally {
       setLoadingMore(false)
     }
@@ -313,7 +313,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
             style={{ width: 'auto', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
             onClick={() => { if (!previewMode) requireLogin(() => setFormOpen(true)) }}
             disabled={previewMode}
-            title={previewMode ? t('reviews.preview_unavailable') : undefined}
+            title={previewMode ? t('preview.unavailable') : undefined}
           >
             <Pencil size={15} /> {t('reviews.add')}
           </button>
@@ -331,7 +331,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
           onCancel={() => { setFormOpen(false); setError(null) }}
           submitting={submitting}
           error={error}
-          submitLabel={t('reviews.submit')}
+          submitLabel={t('reviews.send')}
         />
       )}
 
@@ -357,7 +357,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
       )}
 
       {otherReviews.length === 0 && !myReview ? (
-        <p className="cp-muted-note">{t('reviews.be_first')}</p>
+        <p className="cp-muted-note">{t('reviews.first')}</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {otherReviews.map(r => (
@@ -378,7 +378,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
               onClick={loadMore}
               disabled={loadingMore}
             >
-              {loadingMore ? t('reviews.loading') : t('reviews.show_more')}
+              {loadingMore ? t('reviews.loading_more') : t('reviews.load_more')}
             </button>
           )}
         </div>
