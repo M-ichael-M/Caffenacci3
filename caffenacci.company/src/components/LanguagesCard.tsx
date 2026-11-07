@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Languages, Download, Upload, Loader2, FileText, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Languages, Download, Upload, Loader2, FileText, CheckCircle2, AlertTriangle, Search } from 'lucide-react'
 import { API_URL } from '../config'
 import { formatCurrency, formatDate, makeCollator, type LocaleFormat } from '../utils/localeFormat'
 
@@ -98,6 +98,39 @@ function timeZones(): string[] {
   return ['Europe/Warsaw', 'UTC']
 }
 
+function SearchableSelect({ label, value, onChange, options, placeholder, emptyLabel }: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: { value: string; label: string; searchText?: string }[]
+  placeholder: string
+  emptyLabel?: string
+}) {
+  const [query, setQuery] = useState('')
+  const filtered = options.filter(option => `${option.label} ${option.searchText ?? ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+  const visible = filtered.some(option => option.value === value) || !value
+    ? filtered
+    : [{ value, label: value }, ...filtered]
+
+  return (
+    <div className="field language-picker">
+      <label className="field__label">{label}</label>
+      <div className="language-picker__search">
+        <Search size={16} aria-hidden="true" />
+        <input className="me-input" type="search" value={query} placeholder={placeholder}
+          aria-label={`Szukaj: ${label.toLocaleLowerCase()}`} onChange={e => setQuery(e.target.value)} />
+      </div>
+      <select className="me-input language-picker__select" value={value}
+        onChange={e => onChange(e.target.value)} size={Math.min(Math.max(visible.length, 2), 6)}>
+        {emptyLabel && <option value="">{emptyLabel}</option>}
+        {visible.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+        {!filtered.length && <option value={value} disabled>Brak wyników wyszukiwania</option>}
+      </select>
+      <span className="language-picker__count">{filtered.length} {filtered.length === 1 ? 'wynik' : 'wyników'}</span>
+    </div>
+  )
+}
+
 const STATE_BADGE: Record<TrState, { cls: string; label: string }> = {
   disabled:        { cls: 'pf-badge--private', label: 'Brak języka dodatkowego' },
   not_generated:   { cls: 'pf-badge--private', label: 'Plik niewygenerowany' },
@@ -172,24 +205,19 @@ export default function LanguagesCard({ token }: Props) {
     return () => window.removeEventListener('caffenacci:profile-saved', refresh)
   }, [refresh])
 
-  // ── Nazwy języków po polsku (Intl.DisplayNames) + sortowanie wg polskich reguł ──
+  // ── Nazwy języków: angielska i lokalna ───────────────────────────────────
 
   const labelOf = useMemo(() => {
-    let dn: Intl.DisplayNames | null = null
-    try { dn = new Intl.DisplayNames(['pl'], { type: 'language' }) } catch { /* brak wsparcia */ }
     const byCode = new Map(languages.map(l => [l.code, l]))
     return (code: string): string => {
       const l = byCode.get(code)
       if (!l) return code
-      let pl: string | undefined
-      try { pl = dn?.of(l.locale) } catch { /* ignore */ }
-      const name = pl && pl !== l.locale ? pl : l.name_en
-      return name.toLowerCase() === l.native_name.toLowerCase() ? l.native_name : `${name} — ${l.native_name}`
+      return l.name_en.toLowerCase() === l.native_name.toLowerCase() ? l.name_en : `${l.name_en} — ${l.native_name}`
     }
   }, [languages])
 
   const sortedLanguages = useMemo(() => {
-    const c = makeCollator('pl')
+    const c = makeCollator('en')
     return languages.slice().sort((a, b) => c.compare(labelOf(a.code), labelOf(b.code)))
   }, [languages, labelOf])
 
@@ -301,42 +329,27 @@ export default function LanguagesCard({ token }: Props) {
 
         {msg && <div className={msg.type === 'ok' ? 'form-success' : 'form-error'}>{msg.text}</div>}
 
-        <div className="field-row">
-          <div className="field">
-            <label className="field__label">Język podstawowy</label>
-            <select className="me-input" style={{ cursor: 'pointer' }} value={primary}
-              onChange={e => { setPrimary(e.target.value); if (e.target.value === secondary) setSecondary('') }}>
-              {sortedLanguages.map(l => <option key={l.code} value={l.code}>{labelOf(l.code)}</option>)}
-            </select>
+        <details className="language-settings-group">
+          <summary className="language-settings-group__heading"><strong>Języki</strong><span>Wybierz języki wyświetlane na stronie</span></summary>
+          <div className="language-picker-grid">
+            <SearchableSelect label="Język podstawowy" value={primary}
+              onChange={value => { setPrimary(value); if (value === secondary) setSecondary('') }}
+              placeholder="Szukaj języka…" options={sortedLanguages.map(l => ({ value: l.code, label: labelOf(l.code), searchText: `${l.code} ${l.name_en} ${l.native_name}` }))} />
+            <SearchableSelect label="Język dodatkowy (opcjonalnie)" value={secondary}
+              onChange={setSecondary} placeholder="Szukaj języka…" emptyLabel="— brak —"
+              options={sortedLanguages.filter(l => l.code !== primary).map(l => ({ value: l.code, label: labelOf(l.code), searchText: `${l.code} ${l.name_en} ${l.native_name}` }))} />
           </div>
-          <div className="field">
-            <label className="field__label">Język dodatkowy (opcjonalnie)</label>
-            <select className="me-input" style={{ cursor: 'pointer' }} value={secondary}
-              onChange={e => setSecondary(e.target.value)}>
-              <option value="">— brak —</option>
-              {sortedLanguages.filter(l => l.code !== primary).map(l =>
-                <option key={l.code} value={l.code}>{labelOf(l.code)}</option>)}
-            </select>
-          </div>
-        </div>
+        </details>
 
-        <div className="field-row">
-          <div className="field">
-            <label className="field__label">Waluta cen w menu</label>
-            <select className="me-input" style={{ cursor: 'pointer' }} value={currency}
-              onChange={e => setCurrency(e.target.value)}>
-              {currencies.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+        <details className="language-settings-group">
+          <summary className="language-settings-group__heading"><strong>Formatowanie regionalne</strong><span>Wpływa na ceny, daty i godziny wyświetlane klientom</span></summary>
+          <div className="language-picker-grid">
+            <SearchableSelect label="Waluta cen w menu" value={currency} onChange={setCurrency}
+              placeholder="Szukaj waluty…" options={currencies.map(c => ({ value: c, label: c }))} />
+            <SearchableSelect label="Strefa czasowa kawiarni" value={timeZone} onChange={setTimeZone}
+              placeholder="Szukaj strefy czasowej…" options={[...new Set([timeZone, ...zones])].map(z => ({ value: z, label: z, searchText: z.replaceAll('_', ' ') }))} />
           </div>
-          <div className="field">
-            <label className="field__label">Strefa czasowa kawiarni</label>
-            <select className="me-input" style={{ cursor: 'pointer' }} value={timeZone}
-              onChange={e => setTimeZone(e.target.value)}>
-              {!zones.includes(timeZone) && <option value={timeZone}>{timeZone}</option>}
-              {zones.map(z => <option key={z} value={z}>{z}</option>)}
-            </select>
-          </div>
-        </div>
+        </details>
 
         {/* Podgląd formatów dla wybranych języków */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
@@ -436,9 +449,16 @@ export default function LanguagesCard({ token }: Props) {
             {/* Krok 3 — upload */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
               <div className="me-label">3. Wgraj przetłumaczony plik</div>
-              <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input ref={fileInputRef} type="file" accept=".txt,text/plain"
+              <div className="translation-file-row">
+                <input ref={fileInputRef} className="translation-file-input" type="file" accept=".txt,text/plain"
                   onChange={e => { setFile(e.target.files?.[0] ?? null); setUploadMsg(null) }} />
+                <button type="button" className="btn btn--outline-dark translation-file-button"
+                  onClick={() => fileInputRef.current?.click()}>
+                  <FileText size={16} /> {file ? 'Zmień plik' : 'Wybierz plik'}
+                </button>
+                <span className={`translation-file-name${file ? ' translation-file-name--selected' : ''}`}>
+                  {file?.name ?? 'Nie wybrano pliku'}
+                </span>
                 <button type="button" className="btn btn--primary"
                   style={{ width: 'auto', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
                   onClick={handleUpload} disabled={!file || uploading || dirty}>

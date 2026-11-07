@@ -3466,6 +3466,7 @@ select.me-input { cursor: pointer; }
 /* przełącznik języka */
 .cp-lang{display:inline-flex;border:1px solid var(--border);border-radius:100px;overflow:hidden}
 .cp-lang button{appearance:none;border:none;background:transparent;color:var(--text-muted);font:inherit;font-size:.8125rem;font-weight:600;padding:.3rem .75rem;cursor:pointer}
+.cp-lang__flag{display:inline-block;width:1.125rem;height:.6875rem;margin-right:.4rem;vertical-align:-.03rem;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.14);}
 .cp-lang button[aria-pressed="true"]{background:var(--gold);color:#fff}
 .cp-lang[data-busy="true"]{opacity:.6;pointer-events:none}
 .cafe-page--magic .cp-lang,.cafe-page--futuristic .cp-lang{border-color:rgba(181,114,10,.4)}

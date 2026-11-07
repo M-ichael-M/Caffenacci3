@@ -1199,6 +1199,74 @@ body {
 .me-input::placeholder { color: var(--text-muted); opacity: 0.6; }
 .me-input--price { font-variant-numeric: tabular-nums; }
 
+/* Searchable locale controls in the website language settings */
+.language-settings-group {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(169, 114, 47, 0.045), transparent 58%);
+}
+.language-settings-group__heading {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0.15rem 2rem 0.15rem 0;
+  cursor: pointer;
+  list-style: none;
+}
+.language-settings-group__heading::-webkit-details-marker { display: none; }
+.language-settings-group__heading::after {
+  content: '';
+  position: absolute;
+  right: 0.3rem;
+  top: 0.25rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform 0.16s ease;
+}
+.language-settings-group[open] .language-settings-group__heading { margin-bottom: 0.85rem; }
+.language-settings-group[open] .language-settings-group__heading::after { transform: rotate(225deg); top: 0.5rem; }
+.language-settings-group__heading:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 3px; }
+.language-settings-group__heading strong { color: var(--text-dark); font-size: 0.9rem; }
+.language-settings-group__heading span { color: var(--text-muted); font-size: 0.75rem; }
+.language-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.language-picker { min-width: 0; }
+.language-picker__search { position: relative; margin-bottom: 0.4rem; }
+.language-picker__search > svg {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.language-picker__search .me-input { padding-left: 2.25rem; }
+.language-picker__select {
+  cursor: pointer;
+  padding: 0.25rem !important;
+  background-image: none !important;
+}
+.language-picker__select option { padding: 0.35rem 0.5rem; }
+.language-picker__count { display: block; margin-top: 0.3rem; color: var(--text-muted); font-size: 0.6875rem; }
+.translation-file-row { display: flex; align-items: center; gap: 0.625rem; flex-wrap: wrap; }
+.translation-file-input { display: none; }
+.translation-file-button { display: inline-flex; align-items: center; gap: 0.45rem; width: auto; }
+.translation-file-name { color: var(--text-muted); font-size: 0.8125rem; overflow-wrap: anywhere; }
+.translation-file-name--selected { color: var(--text-dark); font-weight: 500; }
+@media (max-width: 640px) {
+  .language-picker-grid { grid-template-columns: minmax(0, 1fr); }
+  .language-settings-group { padding: 0.8rem; }
+}
+
 /* ── Remove item button ─────────────────────────── */
 .me-remove-btn {
   appearance: none;
