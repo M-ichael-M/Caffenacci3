@@ -236,7 +236,7 @@ export default function App() {
         <Suspense fallback={<Spinner />}><AccountDashboard auth={auth as ClientAuthState} /></Suspense>
       ) : (
         <>
-          <HomePage />
+          <HomePage token={auth?.token ?? null} />
           <p
             className="cross-app-link"
             style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}

@@ -20,20 +20,31 @@ class CafeSearchResultOut(BaseModel):
     postal_code: str
     logo_url: Optional[str] = None
     today_hours: Optional[TodayHoursOut] = None
-    # Klucze maks. 3 wyróżnionych plakietek (patrz app/schemas/badges.py) —
-    # front (caffenacci.customer) mapuje je na etykietę/ikonę do wyświetlenia
-    # w kafelku kawiarni.
     featured_badges: List[str] = []
+
+    # ── Dane do filtrów / kafelka ─────────────────────────────────────
+    average_rating: Optional[float] = None
+    review_count: int = 0
+    distance_km: Optional[float] = None      # tylko gdy podano lat/lng
+    is_open_now: Optional[bool] = None       # None = brak danych o godzinach
+    open_days: List[int] = []                # 0=pn … 6=nd (plan tygodniowy)
+    reservations_enabled: bool = False
+    orders_enabled: bool = False
+    badges: List[str] = []                   # wszystkie klucze plakietek
+    visited: Optional[bool] = None           # None = niezalogowany
 
 
 class CafeSearchListOut(BaseModel):
     results: List[CafeSearchResultOut]
     count: int
 
+
+class CafeSearchMetaOut(BaseModel):
+    countries: List[str]                     # kraje, w których są opublikowane kawiarnie
+    detected_country_code: Optional[str] = None   # ISO 3166-1 alpha-2 z CDN, jeśli dostępny
+
+
 # ── Lista wszystkich zarejestrowanych kawiarni (bez filtra publikacji) ────
-# Używane m.in. przez aplikację pracowniczą do wyboru kawiarni przed
-# zalogowaniem pracownika — w odróżnieniu od /cafes/search, nie wymaga
-# opublikowanej strony ani aktywnej subskrypcji.
 
 class CafeListItemOut(BaseModel):
     id: str
