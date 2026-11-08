@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -15,6 +16,7 @@ from app.models.cafe import Cafe
 from app.routers.employee_auth import get_current_cafe_owner
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
+log = logging.getLogger("caffenacci.analytics")
 
 
 class CollectIn(BaseModel):
@@ -56,7 +58,7 @@ async def collect(request: Request):
         payload = CollectIn.model_validate(json.loads(raw))
         await run_in_threadpool(_handle, payload, _client_ip(request), request.headers.get("user-agent", ""))
     except Exception:
-        pass
+        log.exception("analytics collect failed")
     return Response(status_code=204)
 
 

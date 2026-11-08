@@ -91,30 +91,48 @@ function Kpi({ icon, label, value, hint, children }: {
   )
 }
 
+/** Oś Y z całkowitymi, równymi podziałkami (bez powtórzeń i dziur). */
+function niceScale(max: number): { top: number; ticks: number[] } {
+  if (max <= 4) {
+    const top = Math.max(1, Math.ceil(max))
+    return { top, ticks: Array.from({ length: top + 1 }, (_, i) => i) }
+  }
+  const raw = max / 4
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)))
+  const step = [1, 2, 5, 10].map(m => m * pow).find(s => s >= raw) ?? raw
+  const top = step * Math.ceil(max / step)
+  const ticks: number[] = []
+  for (let v = 0; v <= top; v += step) ticks.push(v)
+  return { top, ticks }
+}
+
 function TrendChart({ data, metric }: { data: Summary['series']; metric: Metric }) {
-  const W = 640, H = 200, P = { l: 36, r: 12, t: 12, b: 26 }
+  const W = 640, H = 200, P = { l: 40, r: 12, t: 12, b: 26 }
   const vals = data.map(d => d[metric])
-  const max = Math.max(1, ...vals)
-  const x = (i: number) => P.l + (data.length <= 1 ? 0 : (i * (W - P.l - P.r)) / (data.length - 1))
-  const y = (v: number) => P.t + (H - P.t - P.b) * (1 - v / max)
+  const { top, ticks } = niceScale(Math.max(0, ...vals))
+  const x = (i: number) => P.l + (data.length <= 1 ? (W - P.l - P.r) / 2 : (i * (W - P.l - P.r)) / (data.length - 1))
+  const y = (v: number) => P.t + (H - P.t - P.b) * (1 - v / top)
   const line = vals.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
   const area = `${line} L${x(vals.length - 1).toFixed(1)},${H - P.b} L${x(0).toFixed(1)},${H - P.b} Z`
-  const labelIdx = [0, Math.floor((data.length - 1) / 2), data.length - 1]
+  const labelIdx = [...new Set([0, Math.floor((data.length - 1) / 2), data.length - 1])]
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="an-chart" role="img" aria-label="Wykres trendu">
-      {[0, 0.5, 1].map(t => (
+      {ticks.map(t => (
         <g key={t}>
-          <line x1={P.l} x2={W - P.r} y1={y(max * t)} y2={y(max * t)} className="an-chart__grid" />
-          <text x={P.l - 6} y={y(max * t) + 4} textAnchor="end" className="an-chart__tick">{Math.round(max * t)}</text>
+          <line x1={P.l} x2={W - P.r} y1={y(t)} y2={y(t)} className="an-chart__grid" />
+          <text x={P.l - 6} y={y(t) + 4} textAnchor="end" className="an-chart__tick">{nf.format(t)}</text>
         </g>
       ))}
       <path d={area} className="an-chart__area" />
       <path d={line} className="an-chart__line" />
       {vals.map((v, i) => (
-        <circle key={i} cx={x(i)} cy={y(v)} r={7} className="an-chart__hit">
-          <title>{shortDay(data[i].day)}: {nf.format(v)}</title>
-        </circle>
+        <g key={i}>
+          {data.length <= 31 && <circle cx={x(i)} cy={y(v)} r={2.5} className="an-chart__dot" />}
+          <circle cx={x(i)} cy={y(v)} r={8} className="an-chart__hit">
+            <title>{shortDay(data[i].day)}: {nf.format(v)}</title>
+          </circle>
+        </g>
       ))}
       {labelIdx.map(i => (
         <text key={i} x={x(i)} y={H - 6} textAnchor="middle" className="an-chart__tick">{shortDay(data[i].day)}</text>

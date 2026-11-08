@@ -134,10 +134,11 @@ def _insert(db: Session):
 
 
 def _bump(db: Session, cafe_id: str, day: str, metric: str, dim: str = "", n: int = 1) -> None:
-    ins = _insert(db)(AnalyticsDaily).values(cafe_id=cafe_id, day=day, metric=metric, dim=dim, value=n)
+    T = AnalyticsDaily.__table__
+    ins = _insert(db)(T).values(cafe_id=cafe_id, day=day, metric=metric, dim=dim, value=n)
     db.execute(ins.on_conflict_do_update(
-        index_elements=["cafe_id", "day", "metric", "dim"],
-        set_={"value": AnalyticsDaily.__table__.c.value + ins.excluded.value},
+        index_elements=[T.c.cafe_id, T.c.day, T.c.metric, T.c.dim],
+        set_={"value": T.c.value + ins.excluded.value},
     ))
 
 
@@ -167,13 +168,16 @@ def record(
     row = db.execute(select(V.c.last_seen).where(
         V.c.cafe_id == cafe_id, V.c.day == day, V.c.visitor_hash == vh)).first()
 
-    new_visitor = row is None
+    new_visitor = False
     new_visit = False
-    if new_visitor:
-        res = db.execute(_insert(db)(AnalyticsVisitorDay).values(
-            cafe_id=cafe_id, day=day, visitor_hash=vh, last_seen=now, pageviews=1,
-        ).on_conflict_do_nothing(index_elements=["cafe_id", "day", "visitor_hash"]))
-        new_visitor = res.rowcount == 1          # przegrany wyścig = traktuj jak istniejącego
+    if row is None:
+        inserted = db.execute(
+            _insert(db)(V)
+            .values(cafe_id=cafe_id, day=day, visitor_hash=vh, last_seen=now, pageviews=1)
+            .on_conflict_do_nothing(index_elements=[V.c.cafe_id, V.c.day, V.c.visitor_hash])
+            .returning(V.c.visitor_hash)
+        ).first()
+        new_visitor = inserted is not None
         new_visit = new_visitor
     else:
         new_visit = now - row.last_seen > VISIT_GAP
@@ -221,7 +225,10 @@ def _impact(db: Session, cafe_id: str, s: datetime, e: datetime) -> dict:
         Order.cafe_id == cafe_id, Order.created_at >= s, Order.created_at < e,
         Order.client_id.isnot(None)).scalar() or 0
 
-    r = db.query(Reservation).filter(Reservation.cafe_id == cafe_id, Reservation.created_at >= s, Reservation.created_at < e)
+    r = db.query(Reservation).filter(
+        Reservation.cafe_id == cafe_id, Reservation.created_by_owner.is_(False),
+        Reservation.created_at >= s, Reservation.created_at < e,
+    )
     res_total = r.count()
     res_confirmed = r.filter(Reservation.status == ReservationStatus.confirmed).count()
 
