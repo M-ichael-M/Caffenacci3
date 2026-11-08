@@ -39,6 +39,7 @@ export default function Gallery({ images }: Props) {
             <div
               key={img.url + i}
               className="cp-gallery__item"
+              data-track="gallery_open"
               onClick={() => setLightboxIndex(i)}
               role="button"
               tabIndex={0}

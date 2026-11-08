@@ -102,6 +102,7 @@ export default function MenuOrdering({
                       <button
                         type="button"
                         className="cp-add-btn"
+                        data-track="menu_add"
                         onClick={() => addToCart(item)}
                         disabled={previewMode}
                         title={previewMode ? t('preview.unavailable') : undefined}
@@ -126,7 +127,7 @@ export default function MenuOrdering({
       {ordersEnabled && totalQty > 0 && (
         <div className="cp-cart-bar">
           <span>{t('menu.cart_summary', { count: totalQty, total: money(totalPrice) })}</span>
-          <button type="button" className="btn btn--primary" style={{ width: 'auto', marginTop: 0 }}
+          <button type="button" className="btn btn--primary" data-track="checkout_open" style={{ width: 'auto', marginTop: 0 }}
             onMouseEnter={prefetchCheckout}
             onClick={() => requireLogin(() => setCheckoutOpen(true))}>
             {t('menu.order')} <span className="cp-dir-arrow" aria-hidden="true">→</span>

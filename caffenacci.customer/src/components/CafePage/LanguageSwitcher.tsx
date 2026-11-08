@@ -66,7 +66,7 @@ export default function LanguageSwitcher() {
   return (
     <div className="cp-lang" role="group" aria-label={t('lang.label')} data-busy={busy}>
       {([['primary', primary], ['secondary', secondary]] as const).map(([which, l]) => (
-        <button key={which} type="button" lang={l.locale} dir={l.dir}
+        <button key={which} type="button" data-track="lang_switch" lang={l.locale} dir={l.dir}
                 aria-pressed={active === which} onClick={() => select(which)}>
           <LanguageFlag code={l.code} /> {l.native_name}
         </button>

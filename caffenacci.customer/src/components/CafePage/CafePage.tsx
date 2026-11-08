@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { loadClientAuth, saveClientAuth, clearClientAuth } from '../../authStorage'
+import { trackPageview, trackEvent } from '../../analytics'
 import type { ClientAuthState } from '../../authStorage'
 import { getPaletteVars } from './palettes'
 import MenuOrdering from './MenuOrdering'
@@ -398,6 +399,25 @@ function CafeContent({
   const { t, tr, fmt } = useI18n()
   const data = useMemo(() => localizeSite(rawData, tr), [rawData, tr])
 
+  // Analityka: tylko strona publiczna (nigdy podgląd właściciela)
+  useEffect(() => {
+    if (isPreview) return
+    trackPageview(rawData.cafe_id)
+  }, [isPreview, rawData.cafe_id])
+
+  // Jeden delegowany listener: każdy element z data-track="nazwa[:wymiar]" liczy kliknięcie
+  useEffect(() => {
+    if (isPreview) return
+    const onClick = (e: MouseEvent) => {
+      const el = (e.target as Element | null)?.closest<HTMLElement>('[data-track]')
+      if (!el?.dataset.track) return
+      const [name, dim] = el.dataset.track.split(':')
+      trackEvent(rawData.cafe_id, name, dim)
+    }
+    document.addEventListener('click', onClick)
+    return () => document.removeEventListener('click', onClick)
+  }, [isPreview, rawData.cafe_id])
+
   const paletteVars = (data.palette === 'custom' && data.custom_palette)
     ? (data.custom_palette as CSSProperties)
     : getPaletteVars(data.palette)
@@ -445,27 +465,27 @@ function CafeContent({
       )}
       {/* Sticky nav */}
       <nav className="cp-nav">
-        <button className="cp-nav__link" onClick={() => document.getElementById('cp-menu')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.menu')}</button>
+        <button className="cp-nav__link" data-track="nav_click:menu" onClick={() => document.getElementById('cp-menu')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.menu')}</button>
         {data.reservations_enabled && (
-          <button className="cp-nav__link" onClick={() => document.getElementById('cp-reservations')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.reservations')}</button>
+          <button className="cp-nav__link" data-track="nav_click:reservations" onClick={() => document.getElementById('cp-reservations')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.reservations')}</button>
         )}
         {data.loyalty_enabled && (
-          <button className="cp-nav__link" onClick={() => document.getElementById('cp-loyalty')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.loyalty')}</button>
+          <button className="cp-nav__link" data-track="nav_click:loyalty" onClick={() => document.getElementById('cp-loyalty')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.loyalty')}</button>
         )}
         {hasGallery && (
-          <button className="cp-nav__link" onClick={() => document.getElementById('cp-gallery')?.scrollIntoView({ behavior: 'smooth' })}>
+          <button className="cp-nav__link" data-track="nav_click:gallery" onClick={() => document.getElementById('cp-gallery')?.scrollIntoView({ behavior: 'smooth' })}>
             {t('nav.gallery')}
           </button>
         )}
         {hasBadges && (
-          <button className="cp-nav__link" onClick={() => document.getElementById('cp-amenities')?.scrollIntoView({ behavior: 'smooth' })}>
+          <button className="cp-nav__link" data-track="nav_click:amenities" onClick={() => document.getElementById('cp-amenities')?.scrollIntoView({ behavior: 'smooth' })}>
             {t('nav.amenities')}
           </button>
         )}
         {(hasContact || hasLocation) && (
-          <button className="cp-nav__link" onClick={() => document.getElementById('cp-info')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.contact')}</button>
+          <button className="cp-nav__link" data-track="nav_click:contact" onClick={() => document.getElementById('cp-info')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.contact')}</button>
         )}
-        <button className="cp-nav__link" onClick={() => document.getElementById('cp-reviews')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.reviews')}</button>
+        <button className="cp-nav__link" data-track="nav_click:reviews" onClick={() => document.getElementById('cp-reviews')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.reviews')}</button>
         <div style={{ flex: 1 }} />
         <LanguageSwitcher />
         <div className="cp-account" onPointerEnter={prefetchAuthModal} onFocusCapture={prefetchAuthModal}>
@@ -485,8 +505,8 @@ function CafeContent({
             </>
           ) : (
             <>
-              <button className="btn btn--outline-dark btn--sm" onClick={() => setAuthModal('login')}>{t('nav.login')}</button>
-              <button className="btn btn--primary btn--sm" style={{ width: 'auto', marginTop: 0 }} onClick={() => setAuthModal('register')}>{t('nav.register')}</button>
+              <button className="btn btn--outline-dark btn--sm" data-track="login_open" onClick={() => setAuthModal('login')}>{t('nav.login')}</button>
+              <button className="btn btn--primary btn--sm" data-track="register_open" style={{ width: 'auto', marginTop: 0 }} onClick={() => setAuthModal('register')}>{t('nav.register')}</button>
             </>
           )}
         </div>
@@ -644,12 +664,12 @@ function CafeContent({
                 <div>
                   {data.contact_phone && (
                     <div style={{ marginBottom: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <PhoneIcon size={15} className="cp-inline-icon" /> {data.contact_phone}
+                      <PhoneIcon size={15} className="cp-inline-icon" /> <a href={`tel:${data.contact_phone.replace(/\s+/g, '')}`} data-track="phone_click" className="link">{data.contact_phone}</a>
                     </div>
                   )}
                   {data.contact_email && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <MailIcon size={15} className="cp-inline-icon" /> {data.contact_email}
+                      <MailIcon size={15} className="cp-inline-icon" /> <a href={`mailto:${data.contact_email}`} data-track="email_click" className="link">{data.contact_email}</a>
                     </div>
                   )}
                 </div>
@@ -667,7 +687,7 @@ function CafeContent({
                     </div>
                   )}
                   {data.location_show_gmaps_link && gmapsUrl && (
-                    <a href={gmapsUrl} target="_blank" rel="noreferrer" className="link" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem', fontSize: '0.8125rem' }}>
+                    <a href={gmapsUrl} data-track="map_click" target="_blank" rel="noreferrer" className="link" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem', fontSize: '0.8125rem' }}>
                       {t('location.open_gmaps')} <ExternalLink size={13} />
                     </a>
                   )}
@@ -699,7 +719,7 @@ function CafeContent({
             <h2 className="cp-section__title">{t('section.social')}</h2>
             <div className="cp-social-links">
               {data.social_links.map((s, i) => (
-                <a key={i} href={s.url} target="_blank" rel="noreferrer">
+                <a key={i} href={s.url} data-track={`social_click:${s.platform}`} target="_blank" rel="noreferrer">
                   {s.label || s.platform}
                 </a>
               ))}

@@ -61,6 +61,7 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken,
         <button
           type="button"
           className="btn btn--primary"
+          data-track="reservation_open"
           style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
           onClick={() => { if (!previewMode) requireLogin(() => setOpen(true)) }}
           disabled={previewMode}

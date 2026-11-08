@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   Home,
+  BarChart3,
   ClipboardList,
   ShoppingCart,
   CalendarDays,
@@ -17,13 +18,14 @@ import {
 import logoTransparent from '../assets/logo/logo_transparent.png'
 
 export type TabId =
-  | 'overview' | 'menu' | 'orders' | 'reservations'
+  | 'overview' | 'analytics' | 'menu' | 'orders' | 'reservations'
   | 'loyalty'  | 'reviews' | 'news' | 'profile' | 'website' | 'billing'
 
 type TabIcon = React.ComponentType<{ size?: number; strokeWidth?: number }>
 
 const TABS: { id: TabId; label: string; icon: TabIcon }[] = [
   { id: 'overview',     label: 'Przegląd',      icon: Home },
+  { id: 'analytics',    label: 'Statystyki',    icon: BarChart3 },
   { id: 'menu',         label: 'Menu',          icon: ClipboardList },
   { id: 'orders',       label: 'Zamówienia',    icon: ShoppingCart },
   { id: 'reservations', label: 'Rezerwacje',    icon: CalendarDays },

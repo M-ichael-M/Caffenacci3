@@ -310,6 +310,7 @@ export default function ReviewsWidget({ cafeId, average, count, reviews, require
           <button
             type="button"
             className="btn btn--primary"
+            data-track="review_open"
             style={{ width: 'auto', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
             onClick={() => { if (!previewMode) requireLogin(() => setFormOpen(true)) }}
             disabled={previewMode}

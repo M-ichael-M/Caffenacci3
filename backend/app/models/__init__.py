@@ -21,4 +21,5 @@ from app.models.slug_history import CafeSlugHistory
 from app.models.translation import (
     CafeLanguageSettings, TranslationPackage, CafeTranslation,
 )
+from app.models.analytics import AnalyticsDaily, AnalyticsVisitorDay
 __all__ = [name for name in globals() if not name.startswith("_")]

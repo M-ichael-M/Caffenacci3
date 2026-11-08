@@ -9,6 +9,7 @@ import WebsiteTab from './WebsiteTab'
 import LoyaltyTab from './LoyaltyTab'
 import BillingTab from './BillingTab'
 import NewsTab from './NewsTab'
+import AnalyticsTab from './AnalyticsTab'
 import logoCircle from '../assets/logo/logo_circle.png'
 import {
   ClipboardList,
@@ -361,6 +362,13 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* STATYSTYKI */}
+            {activeTab === 'analytics' && (
+              <div className="dashboard-content">
+                <AnalyticsTab token={auth.token} />
               </div>
             )}
 

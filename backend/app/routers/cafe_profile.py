@@ -201,7 +201,10 @@ def get_profile(
     current_cafe: Cafe    = Depends(get_current_cafe),
     db:           Session = Depends(get_db),
 ):
-    profile = _get_or_create_profile(current_cafe.id, db, create=False)
+    # A newly registered cafe has no profile row yet. Create it here so the
+    # response contains persisted weekly-hours rows with IDs, as required by
+    # CafeProfileOut (the read-only fallback has transient rows without IDs).
+    profile = _get_or_create_profile(current_cafe.id, db)
     return _profile_to_out(current_cafe, profile, db)
 
 

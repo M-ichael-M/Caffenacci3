@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal, engine
 from app.models.order import Order, OrderStatus
 from app.models.reservation import Reservation, ReservationStatus
+from app.core import analytics as analytics_svc
 
 log = logging.getLogger(__name__)
 _LOCK_ID = 742193610
@@ -34,6 +35,7 @@ def run_expiration_job() -> tuple[int, int] | None:
                 log.info("Expiration job skipped: advisory lock held by another process")
                 return None
         counts = expire_stale_entries(db)
+        analytics_svc.purge(db)
         log.info("Expiration job completed: orders=%s reservations=%s", *counts)
         return counts
     finally:
