@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { QrCode, X } from 'lucide-react'
 import { API_URL } from '../config'
+import { useI18n } from '../i18n/I18nProvider'
 
-interface Props {
-  token: string
-}
+interface Props { token: string }
 
 const API = API_URL
 
 export default function LoyaltyCodeButton({ token }: Props) {
+  const { t } = useI18n()
   const [code, setCode] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -16,9 +16,7 @@ export default function LoyaltyCodeButton({ token }: Props) {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API}/loyalty/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const res = await fetch(`${API}/loyalty/me`, { headers: { Authorization: `Bearer ${token}` } })
         if (res.ok) {
           const data = await res.json()
           setCode(data.loyalty_code)
@@ -41,7 +39,7 @@ export default function LoyaltyCodeButton({ token }: Props) {
         onClick={() => setOpen(true)}
       >
         <QrCode size={17} />
-        Pokaż mój kod lojalnościowy
+        {t('loy.show_code')}
       </button>
 
       {open && (
@@ -49,19 +47,17 @@ export default function LoyaltyCodeButton({ token }: Props) {
           <div className="menu-editor" style={{ maxWidth: 400, height: 'auto' }}>
             <div className="me-header">
               <div>
-                <div className="me-eyebrow">Program lojalnościowy</div>
-                <h2 className="me-title">Twój kod</h2>
+                <div className="me-eyebrow">{t('acc.loyalty_title')}</div>
+                <h2 className="me-title">{t('loy.your_code')}</h2>
               </div>
-              <button className="me-close" type="button" onClick={() => setOpen(false)} aria-label="Zamknij"><X size={16} /></button>
+              <button className="me-close" type="button" onClick={() => setOpen(false)} aria-label={t('acc.close')}><X size={16} /></button>
             </div>
 
             <div className="me-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', textAlign: 'center' }}>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                Pokaż ten kod obsłudze kawiarni, aby naliczyć punkty lub pieczątki.
-              </p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t('loy.show_staff')}</p>
               <img
                 src={qrUrl}
-                alt="Kod QR programu lojalnościowego"
+                alt={t('loy.qr_alt')}
                 width={220}
                 height={220}
                 style={{ borderRadius: 12, border: '1px solid var(--border)' }}
@@ -76,7 +72,7 @@ export default function LoyaltyCodeButton({ token }: Props) {
             </div>
 
             <div className="me-footer">
-              <button type="button" className="btn btn--outline-dark" onClick={() => setOpen(false)}>Zamknij</button>
+              <button type="button" className="btn btn--outline-dark" onClick={() => setOpen(false)}>{t('acc.close')}</button>
             </div>
           </div>
         </div>

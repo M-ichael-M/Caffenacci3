@@ -1,6 +1,6 @@
 {
   "common.close": "Close", "common.cancel": "Cancel", "common.more_info": "More information",
-  "lang.label": "Language",
+  "lang.label": "Language", "site_lang.aria": "Site language",
   "nav.menu": "Menu", "nav.reservations": "Reservations", "nav.loyalty": "Loyalty", "nav.gallery": "Gallery",
   "nav.amenities": "Amenities", "nav.contact": "Contact", "nav.reviews": "Reviews",
   "nav.hello": "Hi, {nick}", "nav.logout": "Log out", "nav.login": "Log in", "nav.register": "Sign up", "nav.preview": "Preview",

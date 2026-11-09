@@ -4,18 +4,27 @@ export type Params = Record<string, string | number>
 export interface TFunction { (key: string, params?: Params): string; has(key: string): boolean }
 
 const modules = import.meta.glob<{ default: Dict }>('./system/*.json')
+// Napisy panelu gościa / wyszukiwarki (poza stronami kawiarni)
+const appModules = import.meta.glob<{ default: Dict }>('./app/*.json')
 const cache = new Map<string, Promise<SystemDicts>>()
 
-function loaderFor(code: string) {
+function pick(mods: Record<string, () => Promise<{ default: Dict }>>, dir: string, code: string) {
   const lc = code.toLowerCase()
-  return modules[`./system/${code}.json`] ?? modules[`./system/${lc}.json`] ?? modules[`./system/${lc.split('-')[0]}.json`] ?? null
+  return mods[`./${dir}/${code}.json`] ?? mods[`./${dir}/${lc}.json`] ?? mods[`./${dir}/${lc.split('-')[0]}.json`] ?? null
 }
 
 export function loadSystem(code: string): Promise<SystemDicts> {
   let p = cache.get(code)
   if (!p) {
-    p = Promise.all([loaderFor(code)?.(), modules['./system/en.json']()])
-      .then(([m, e]) => ({ dict: m?.default ?? {}, en: e.default }))
+    p = Promise.all([
+      pick(modules, 'system', code)?.(),
+      modules['./system/en.json'](),
+      pick(appModules, 'app', code)?.(),
+      appModules['./app/en.json']?.(),
+    ]).then(([m, e, a, ae]) => ({
+      dict: { ...(m?.default ?? {}), ...(a?.default ?? {}) },
+      en: { ...e.default, ...(ae?.default ?? {}) },
+    }))
     cache.set(code, p)
   }
   return p

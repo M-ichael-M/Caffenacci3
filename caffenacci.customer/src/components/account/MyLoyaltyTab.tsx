@@ -1,14 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Gift, Coffee, RefreshCw, PartyPopper } from 'lucide-react'
 import { API_URL } from '../../config'
+import { useI18n } from '../../i18n/I18nProvider'
 
-// ── Types ─────────────────────────────────────────────────────────────────
-
-interface RewardItem {
-  id: string
-  name: string
-  cost_points: number
-}
+interface RewardItem { id: string; name: string; cost_points: number }
 
 interface CafeLoyaltyItem {
   cafe_id: string
@@ -24,8 +19,6 @@ interface CafeLoyaltyItem {
 interface Props { token: string }
 
 const API = API_URL
-
-// ── Ślad pieczątek ────────────────────────────────────────────────────────
 
 function StampsTrack({ stamps, max }: { stamps: number; max: number }) {
   return (
@@ -45,9 +38,8 @@ function StampsTrack({ stamps, max }: { stamps: number; max: number }) {
   )
 }
 
-// ── Karta kawiarni ────────────────────────────────────────────────────────
-
 function CafeLoyaltyCard({ c }: { c: CafeLoyaltyItem }) {
+  const { t } = useI18n()
   const nextReward = c.mode === 'points'
     ? c.rewards.filter(r => r.cost_points > c.points).sort((a, b) => a.cost_points - b.cost_points)[0]
     : undefined
@@ -77,14 +69,14 @@ function CafeLoyaltyCard({ c }: { c: CafeLoyaltyItem }) {
           {c.mode === 'points' ? (
             <>
               <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--gold)', marginTop: '0.25rem' }}>
-                {c.points} pkt.
+                {t('loy.points_short', { points: c.points })}
               </div>
               {c.rewards.length > 0 && (
                 <div className="entity-card__sub" style={{ marginTop: '0.375rem' }}>
                   {pointsReady && <PartyPopper size={13} />}
                   {nextReward
-                    ? `Do nagrody „${nextReward.name}" brakuje ${nextReward.cost_points - c.points} pkt.`
-                    : 'Masz wystarczająco punktów na dostępną nagrodę!'}
+                    ? t('loy.next_reward', { name: nextReward.name, points: nextReward.cost_points - c.points })
+                    : t('loy.enough')}
                 </div>
               )}
             </>
@@ -93,8 +85,8 @@ function CafeLoyaltyCard({ c }: { c: CafeLoyaltyItem }) {
               <StampsTrack stamps={c.stamps} max={c.stamps_max} />
               <div className="entity-card__sub" style={{ marginTop: '0.5rem' }}>
                 {stampsReady && <PartyPopper size={13} />}
-                {c.stamps} / {c.stamps_max} pieczątek
-                {stampsReady && ' · nagroda gotowa do odebrania!'}
+                {t('loy.stamps_progress', { count: c.stamps, max: c.stamps_max })}
+                {stampsReady && t('loy.reward_ready')}
               </div>
             </div>
           )}
@@ -104,20 +96,15 @@ function CafeLoyaltyCard({ c }: { c: CafeLoyaltyItem }) {
   )
 }
 
-// ═════════════════════════════════════════════════════════════════════════
-// MAIN
-// ═════════════════════════════════════════════════════════════════════════
-
 export default function MyLoyaltyTab({ token }: Props) {
+  const { t } = useI18n()
   const [cafes, setCafes]     = useState<CafeLoyaltyItem[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API}/loyalty/client/mine`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await fetch(`${API}/loyalty/client/mine`, { headers: { Authorization: `Bearer ${token}` } })
       if (res.ok) {
         const data = await res.json()
         setCafes(data.cafes ?? [])
@@ -132,7 +119,7 @@ export default function MyLoyaltyTab({ token }: Props) {
     return (
       <div className="loading-state">
         <div className="loading-spinner" />
-        <p>Wczytywanie Twoich kawiarni…</p>
+        <p>{t('loy.loading')}</p>
       </div>
     )
   }
@@ -141,22 +128,20 @@ export default function MyLoyaltyTab({ token }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div className="page-header__eyebrow">Twoje konto</div>
-          <h1 className="page-header__title" style={{ fontSize: '1.625rem' }}>Moje kawiarnie</h1>
+          <div className="page-header__eyebrow">{t('acc.eyebrow')}</div>
+          <h1 className="page-header__title" style={{ fontSize: '1.625rem' }}>{t('loy.title')}</h1>
         </div>
         <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={fetchAll}>
           <RefreshCw size={15} />
-          Odśwież
+          {t('acc.refresh')}
         </button>
       </div>
 
       {cafes.length === 0 ? (
         <div className="res-empty-card">
           <div className="res-empty-icon"><Gift size={44} strokeWidth={1.4} /></div>
-          <div className="res-empty-title">Brak punktów i pieczątek</div>
-          <div className="res-empty-sub">
-            Pokaż swój kod lojalnościowy w kawiarni przy zakupie, aby zacząć zbierać punkty lub pieczątki.
-          </div>
+          <div className="res-empty-title">{t('loy.empty_title')}</div>
+          <div className="res-empty-sub">{t('loy.empty_sub')}</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>

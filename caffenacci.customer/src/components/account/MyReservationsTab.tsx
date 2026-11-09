@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { CalendarDays, Users, X, RefreshCw, ArrowRight } from 'lucide-react'
 import { API_URL } from '../../config'
-
-// ── Typy ──────────────────────────────────────────────────────────────────
+import { useI18n } from '../../i18n/I18nProvider'
+import { formatDate, type LocaleFormat } from '../../i18n/localeFormat'
+import type { TFunction } from '../../i18n/system'
 
 type ResStatus = 'pending' | 'confirmed' | 'cancelled'
 
@@ -32,38 +33,9 @@ interface ClientReservation {
 
 interface Props { token: string }
 
-const TABLE_TYPE_LABELS: Record<string, string> = {
-  standard: 'Zwykły stolik',
-  communal: 'Stół komunalny',
-  special: 'Stolik specjalny',
+function dayLabel(ds: string, fmt: LocaleFormat) {
+  return formatDate(ds, fmt, { weekday: 'short', day: 'numeric', month: 'short' })
 }
-
-// ── Helpery ───────────────────────────────────────────────────────────────
-
-function guestsLabel(n: number) {
-  if (n === 1) return '1 osoba'
-  if (n < 5) return `${n} osoby`
-  return `${n} osób`
-}
-
-function formatDate(ds: string) {
-  const d = new Date(ds + 'T00:00:00')
-  return d.toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'short' })
-}
-
-// Rezerwacja "przenosi się" do historii godzinę po planowanym terminie.
-function endTimestamp(r: ClientReservation): number {
-  const [h, m] = r.start_time.split(':').map(Number)
-  const d = new Date(r.date + 'T00:00:00')
-  d.setHours(h, m, 0, 0)
-  return d.getTime() + 60 * 60 * 1000
-}
-
-function isPast(r: ClientReservation): boolean {
-  return endTimestamp(r) < Date.now()
-}
-
-const CANCEL_DEADLINE_MS = 30 * 60 * 1000
 
 function startTimestamp(r: ClientReservation): number {
   const [h, m] = r.start_time.split(':').map(Number)
@@ -72,37 +44,44 @@ function startTimestamp(r: ClientReservation): number {
   return d.getTime()
 }
 
+// Rezerwacja "przenosi się" do historii godzinę po planowanym terminie.
+function isPast(r: ClientReservation): boolean {
+  return startTimestamp(r) + 60 * 60 * 1000 < Date.now()
+}
+
+const CANCEL_DEADLINE_MS = 30 * 60 * 1000
+
 function canCancel(r: ClientReservation): boolean {
   return r.status !== 'cancelled' && Date.now() <= startTimestamp(r) - CANCEL_DEADLINE_MS
 }
 
-function statusMeta(r: ClientReservation): { label: string; cls: string } {
+function statusMeta(r: ClientReservation, t: TFunction): { label: string; cls: string } {
   if (r.status === 'cancelled') {
-    if (r.cancelled_by === 'client') return { label: 'Anulowana przez Ciebie', cls: 'status-badge--cancelled' }
-    if (r.cancelled_by === 'owner')  return { label: 'Anulowana przez kawiarnię', cls: 'status-badge--cancelled' }
-    return { label: 'Odrzucona', cls: 'status-badge--cancelled' }
+    if (r.cancelled_by === 'client') return { label: t('resv.s_cancelled_you'), cls: 'status-badge--cancelled' }
+    if (r.cancelled_by === 'owner')  return { label: t('resv.s_cancelled_cafe'), cls: 'status-badge--cancelled' }
+    return { label: t('resv.s_rejected'), cls: 'status-badge--cancelled' }
   }
-  if (r.is_advanced) return { label: 'Potwierdzona', cls: 'status-badge--confirmed' }
-  if (r.status === 'pending') return { label: 'Oczekuje', cls: 'status-badge--pending' }
-  return { label: 'Potwierdzona', cls: 'status-badge--confirmed' }
+  if (r.is_advanced) return { label: t('resv.s_confirmed'), cls: 'status-badge--confirmed' }
+  if (r.status === 'pending') return { label: t('resv.s_pending'), cls: 'status-badge--pending' }
+  return { label: t('resv.s_confirmed'), cls: 'status-badge--confirmed' }
 }
 
-function tableDescription(r: ClientReservation): string {
+function tableDescription(r: ClientReservation, t: TFunction): string {
   if (!r.table_type) return ''
-  const base = TABLE_TYPE_LABELS[r.table_type] ?? r.table_type
-  if (r.table_label) return `${base} – ${r.table_label}`
-  if (r.table_seats) return `${base} (${r.table_seats} os.)`
+  const key = `resv.type.${r.table_type}`
+  const base = t.has(key) ? t(key) : r.table_type
+  if (r.table_label) return t('resv.table_label', { base, label: r.table_label })
+  if (r.table_seats) return t('resv.table_seats', { base, seats: r.table_seats })
   return base
 }
-
-// ── Karta rezerwacji ──────────────────────────────────────────────────────
 
 function ReservationCard({ r, onClick, onCancel, cancelling }: {
   r: ClientReservation; onClick?: () => void; onCancel?: () => void; cancelling?: boolean
 }) {
-  const meta = statusMeta(r)
+  const { t, fmt } = useI18n()
+  const meta = statusMeta(r, t)
   const clickable = !!onClick
-  const tableDesc = tableDescription(r)
+  const tableDesc = tableDescription(r, t)
 
   return (
     <div
@@ -114,9 +93,7 @@ function ReservationCard({ r, onClick, onCancel, cancelling }: {
       <div className="entity-card__body">
         <div className="entity-card__date">
           <div className="entity-card__date-day">{r.date.slice(8)}</div>
-          <div className="entity-card__date-month">
-            {new Date(r.date + 'T00:00:00').toLocaleDateString('pl-PL', { month: 'short' })}
-          </div>
+          <div className="entity-card__date-month">{formatDate(r.date, fmt, { month: 'short' })}</div>
           <div className="entity-card__date-time">{r.start_time}</div>
         </div>
 
@@ -128,9 +105,9 @@ function ReservationCard({ r, onClick, onCancel, cancelling }: {
 
           <div className="entity-card__sub">
             <Users size={13} />
-            {guestsLabel(r.guests)}
+            {t('resv.guests', { count: r.guests })}
             {tableDesc && <> · {tableDesc}</>}
-            {r.is_advanced && <> · rezerwacja zaawansowana</>}
+            {r.is_advanced && <> · {t('resv.advanced')}</>}
           </div>
 
           {(r.guest_phone || r.guest_email) && (
@@ -141,7 +118,7 @@ function ReservationCard({ r, onClick, onCancel, cancelling }: {
 
           {r.comment && (
             <div className="entity-card__sub" style={{ marginTop: '0.25rem', fontStyle: 'italic' }}>
-              „{r.comment}"
+              „{r.comment}”
             </div>
           )}
 
@@ -155,19 +132,19 @@ function ReservationCard({ r, onClick, onCancel, cancelling }: {
                   onClick={e => { e.stopPropagation(); onCancel?.() }}
                   disabled={cancelling}
                 >
-                  {cancelling ? 'Anulowanie…' : 'Anuluj rezerwację'}
+                  {cancelling ? t('ord.cancelling') : t('resv.cancel')}
                 </button>
               </div>
             ) : (
               <div className="entity-card__sub" style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
-                Anulowanie było możliwe do 30 min przed terminem.
+                {t('resv.cancel_window')}
               </div>
             )
           )}
 
           {clickable && (
             <div className="entity-card__hint">
-              Kliknij, aby zobaczyć wiadomość od kawiarni <ArrowRight size={12} />
+              {t('resv.hint')} <ArrowRight size={12} />
             </div>
           )}
         </div>
@@ -176,19 +153,18 @@ function ReservationCard({ r, onClick, onCancel, cancelling }: {
   )
 }
 
-// ── Modal ze szczegółami / wiadomością od kawiarni ─────────────────────────
-
 function ReservationDetailModal({ r, onClose }: { r: ClientReservation; onClose: () => void }) {
-  const meta = statusMeta(r)
+  const { t, fmt } = useI18n()
+  const meta = statusMeta(r, t)
   return (
     <div className="menu-editor-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="menu-editor" style={{ height: 'auto', maxHeight: '90vh' }}>
         <div className="me-header">
           <div>
             <div className="me-eyebrow">{r.cafe_name}</div>
-            <h2 className="me-title">Rezerwacja · {formatDate(r.date)}</h2>
+            <h2 className="me-title">{t('resv.modal_title', { date: dayLabel(r.date, fmt) })}</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij"><X size={16} /></button>
+          <button className="me-close" type="button" onClick={onClose} aria-label={t('acc.close')}><X size={16} /></button>
         </div>
 
         <div className="me-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -196,46 +172,41 @@ function ReservationDetailModal({ r, onClose }: { r: ClientReservation; onClose:
             <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '0.625rem' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-dark)' }}>
                 <CalendarDays size={15} />
-                {formatDate(r.date)} o {r.start_time}
+                {t('resv.date_at', { date: dayLabel(r.date, fmt), time: r.start_time })}
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 <Users size={15} />
-                {guestsLabel(r.guests)}
+                {t('resv.guests', { count: r.guests })}
               </span>
             </div>
             <span className={`status-badge ${meta.cls}`}>{meta.label}</span>
             {r.comment && (
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-body)', fontStyle: 'italic', marginTop: '0.75rem' }}>
-                Twój komentarz: „{r.comment}"
+                {t('resv.your_comment', { comment: r.comment })}
               </div>
             )}
           </div>
 
           <div>
-            <label className="me-label">Wiadomość od kawiarni</label>
+            <label className="me-label">{t('resv.cafe_msg')}</label>
             {r.owner_note ? (
               <p style={{ fontSize: '0.9375rem', color: 'var(--text-dark)', lineHeight: 1.6 }}>{r.owner_note}</p>
             ) : (
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                Kawiarnia nie dodała żadnej wiadomości.
-              </p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('resv.no_msg')}</p>
             )}
           </div>
         </div>
 
         <div className="me-footer">
-          <button type="button" className="btn btn--outline-dark" onClick={onClose}>Zamknij</button>
+          <button type="button" className="btn btn--outline-dark" onClick={onClose}>{t('acc.close')}</button>
         </div>
       </div>
     </div>
   )
 }
 
-// ═════════════════════════════════════════════════════════════════════════
-// MAIN
-// ═════════════════════════════════════════════════════════════════════════
-
 export default function MyReservationsTab({ token }: Props) {
+  const { t } = useI18n()
   const [reservations, setReservations] = useState<ClientReservation[]>([])
   const [loading, setLoading] = useState(true)
   const [activeSub, setActiveSub] = useState<'current' | 'history'>('current')
@@ -246,9 +217,7 @@ export default function MyReservationsTab({ token }: Props) {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/reservations/client/mine`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await fetch(`${API_URL}/reservations/client/mine`, { headers: { Authorization: `Bearer ${token}` } })
       if (res.ok) {
         const data = await res.json()
         setReservations(data.reservations ?? [])
@@ -260,7 +229,7 @@ export default function MyReservationsTab({ token }: Props) {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const handleCancel = async (r: ClientReservation) => {
-    if (!confirm('Czy na pewno chcesz anulować tę rezerwację?')) return
+    if (!confirm(t('resv.confirm'))) return
     setCancelError(null)
     setCancellingId(r.id)
     try {
@@ -269,10 +238,10 @@ export default function MyReservationsTab({ token }: Props) {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Nie udało się anulować rezerwacji.')
+      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : t('resv.err_cancel'))
       setReservations(prev => prev.map(x => x.id === r.id ? { ...x, status: data.status, cancelled_by: data.cancelled_by } : x))
     } catch (err: unknown) {
-      setCancelError(err instanceof Error ? err.message : 'Nie udało się anulować rezerwacji.')
+      setCancelError(err instanceof Error ? err.message : t('resv.err_cancel'))
     } finally { setCancellingId(null) }
   }
 
@@ -288,7 +257,7 @@ export default function MyReservationsTab({ token }: Props) {
     return (
       <div className="loading-state">
         <div className="loading-spinner" />
-        <p>Wczytywanie rezerwacji…</p>
+        <p>{t('resv.loading')}</p>
       </div>
     )
   }
@@ -302,22 +271,22 @@ export default function MyReservationsTab({ token }: Props) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <div className="page-header__eyebrow">Twoje konto</div>
-            <h1 className="page-header__title" style={{ fontSize: '1.625rem' }}>Rezerwacje</h1>
+            <div className="page-header__eyebrow">{t('acc.eyebrow')}</div>
+            <h1 className="page-header__title" style={{ fontSize: '1.625rem' }}>{t('resv.title')}</h1>
           </div>
           <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={fetchAll}>
             <RefreshCw size={15} />
-            Odśwież
+            {t('acc.refresh')}
           </button>
         </div>
 
         <div className="subtab-row">
           <button type="button" className={`subtab-btn${activeSub === 'current' ? ' subtab-btn--active' : ''}`} onClick={() => setActiveSub('current')}>
-            Aktualne
+            {t('resv.tab_current')}
             {current.length > 0 && <span className="subtab-badge">{current.length}</span>}
           </button>
           <button type="button" className={`subtab-btn${activeSub === 'history' ? ' subtab-btn--active' : ''}`} onClick={() => setActiveSub('history')}>
-            Historia
+            {t('resv.tab_history')}
             {history.length > 0 && <span className="subtab-badge subtab-badge--muted">{history.length}</span>}
           </button>
         </div>
@@ -328,12 +297,10 @@ export default function MyReservationsTab({ token }: Props) {
           <div className="res-empty-card">
             <div className="res-empty-icon"><CalendarDays size={44} strokeWidth={1.4} /></div>
             <div className="res-empty-title">
-              {activeSub === 'current' ? 'Brak nadchodzących rezerwacji' : 'Brak historii rezerwacji'}
+              {activeSub === 'current' ? t('resv.empty_current') : t('resv.empty_history')}
             </div>
             <div className="res-empty-sub">
-              {activeSub === 'current'
-                ? 'Twoje rezerwacje we wszystkich kawiarniach pojawią się tutaj.'
-                : 'Zakończone rezerwacje pojawiają się tutaj godzinę po planowanym terminie.'}
+              {activeSub === 'current' ? t('resv.empty_current_sub') : t('resv.empty_history_sub')}
             </div>
           </div>
         ) : (

@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="src/assets/logo/logo_circle.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Caffenacci</title>
+    <script>
+      // Ustaw język przed pierwszym renderem (strony kawiarni zarządzają nim osobno).
+      (function () {
+        try {
+          if (/^\/(kawiarnia|cafe|preview)\//.test(location.pathname)) return;
+          var s = localStorage.getItem('caffenacci_site_lang');
+          var l = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+          document.documentElement.lang = s === 'pl' || s === 'en' ? s : /^pl(-|$)/i.test(l) ? 'pl' : 'en';
+        } catch (e) {}
+      })();
+    </script>
     <!--SEO_HEAD-->
   </head>
   <body>

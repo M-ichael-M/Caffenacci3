@@ -3,21 +3,18 @@ import {
   Search, Coffee, Clock, ChevronRight, Star, SlidersHorizontal,
   MapPin, Globe, LocateFixed, X, List, Map as MapIcon,
 } from 'lucide-react'
-import { BADGE_CATALOG } from '../badges'
+import { BADGE_CATALOG, type BadgeDefinition } from '../badges'
 import { API_URL } from '../config'
 import ResponsiveImage from './ResponsiveImage'
+import { useI18n } from '../i18n/I18nProvider'
+import { formatNumber, weekdayName } from '../i18n/localeFormat'
+import type { TFunction } from '../i18n/system'
 
 const CafesMap = lazy(() => import('./CafesMap'))
 
 const THUMB_WIDTHS = [128, 256] as const
 
-// ── Typy ──────────────────────────────────────────────────────────────────
-
-interface TodayHours {
-  is_closed: boolean
-  open_time: string | null
-  close_time: string | null
-}
+interface TodayHours { is_closed: boolean; open_time: string | null; close_time: string | null }
 
 interface CafeResult {
   cafe_id: string
@@ -63,8 +60,6 @@ const DEFAULT_FILTERS: Filters = {
   nearby: false, radiusKm: 10, sort: 'relevance', visited: 'any',
 }
 
-const DAY_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd']
-const DAY_TITLES = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela']
 const RATING_OPTIONS = [3, 3.5, 4, 4.5]
 const REVIEWS_OPTIONS = [3, 5, 10]
 
@@ -77,8 +72,7 @@ const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').t
 
 function browserRegion(): string | null {
   try {
-    const lang = navigator.language
-    const loc = new Intl.Locale(lang)
+    const loc = new Intl.Locale(navigator.language)
     return (loc.region ?? loc.maximize().region ?? null)?.toUpperCase() ?? null
   } catch { return null }
 }
@@ -107,8 +101,6 @@ function writeSavedCountry(v: string) {
   try { localStorage.setItem(COUNTRY_KEY, v || ALL_COUNTRIES) } catch { /* ignore */ }
 }
 
-// ── Geolokalizacja ────────────────────────────────────────────────────────
-
 function requestLocation(): Promise<Coords> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject(new Error('unsupported')); return }
@@ -122,31 +114,28 @@ function requestLocation(): Promise<Coords> {
 
 // ── Pomocnicze UI ─────────────────────────────────────────────────────────
 
-function formatTodayHours(h: TodayHours | null): string {
-  if (!h) return 'Brak informacji o godzinach otwarcia'
-  if (h.is_closed || !h.open_time || !h.close_time) return 'Dziś zamknięte'
-  return `Dziś czynne: ${h.open_time}–${h.close_time}`
+function formatTodayHours(h: TodayHours | null, t: TFunction): string {
+  if (!h) return t('home.hours_unknown')
+  if (h.is_closed || !h.open_time || !h.close_time) return t('home.hours_closed')
+  return t('home.hours_today', { open: h.open_time, close: h.close_time })
 }
 
-function formatDistance(km: number): string {
-  return `${km.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} km`
-}
-
-function reviewsWord(count: number) {
-  return count === 1 ? '1 opinia' : count < 5 ? `${count} opinie` : `${count} opinii`
-}
+const badgeLabel = (t: TFunction, b: BadgeDefinition) => (t.has(`badge.${b.key}`) ? t(`badge.${b.key}`) : b.label)
+const badgeInfo = (t: TFunction, b: BadgeDefinition) => (t.has(`badge.${b.key}.info`) ? t(`badge.${b.key}.info`) : undefined)
 
 function RatingBadge({ rating, count }: { rating: number; count: number }) {
+  const { t } = useI18n()
   return (
     <span className="cafe-card__rating">
       <Star size={12} fill="currentColor" strokeWidth={0} />
       {rating.toFixed(1)}
-      <span className="cafe-card__rating-count">({reviewsWord(count)})</span>
+      <span className="cafe-card__rating-count">({t('home.reviews', { count })})</span>
     </span>
   )
 }
 
 function CafeBadgeChips({ keys }: { keys: string[] }) {
+  const { t } = useI18n()
   if (keys.length === 0) return null
   return (
     <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
@@ -157,7 +146,7 @@ function CafeBadgeChips({ keys }: { keys: string[] }) {
         return (
           <span
             key={key}
-            title={def.info ?? def.label}
+            title={badgeInfo(t, def) ?? badgeLabel(t, def)}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
               fontSize: '0.6875rem', fontWeight: 600, color: 'var(--gold)',
@@ -166,7 +155,7 @@ function CafeBadgeChips({ keys }: { keys: string[] }) {
             }}
           >
             <Icon size={11} />
-            {def.label}
+            {badgeLabel(t, def)}
           </span>
         )
       })}
@@ -188,11 +177,15 @@ function Chip({ on, onClick, children, title }: {
 // ═════════════════════════════════════════════════════════════════════════
 
 export default function HomePage({ token = null }: { token?: string | null }) {
+  const { t, fmt } = useI18n()
+  const tRef = useRef(t)
+  tRef.current = t
+
   const [query, setQuery] = useState('')
   const [countries, setCountries] = useState<string[]>([])
   const [country, setCountry] = useState('')
   const [countryAuto, setCountryAuto] = useState(false)
-  const [ready, setReady] = useState(false)          // kraj ustalony → można szukać
+  const [ready, setReady] = useState(false)
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -211,12 +204,10 @@ export default function HomePage({ token = null }: { token?: string | null }) {
 
   const patch = (p: Partial<Filters>) => setFilters(f => ({ ...f, ...p }))
 
-  // Wylogowanie / wygaśnięcie sesji → filtr historii nie ma sensu
   useEffect(() => {
     if (!token) setFilters(f => (f.visited === 'any' ? f : { ...f, visited: 'any' }))
   }, [token])
 
-  // ── Kraj domyślny: zapisany wybór → kraj z CDN → region przeglądarki ──
   useEffect(() => {
     let off = false
     ;(async () => {
@@ -229,7 +220,7 @@ export default function HomePage({ token = null }: { token?: string | null }) {
           list = d.countries ?? []
           code = d.detected_country_code ?? null
         }
-      } catch { /* sieć niedostępna — szukamy bez kraju */ }
+      } catch { /* szukamy bez kraju */ }
       if (off) return
 
       setCountries(list)
@@ -254,7 +245,6 @@ export default function HomePage({ token = null }: { token?: string | null }) {
     writeSavedCountry(v)
   }
 
-  // ── Wyszukiwanie ──
   const runSearch = useCallback(async () => {
     const seq = ++seqRef.current
     setLoading(true)
@@ -263,7 +253,6 @@ export default function HomePage({ token = null }: { token?: string | null }) {
       if (query.trim()) p.set('q', query.trim())
       if (country) p.set('country', country)
       if (filters.nearby && coords) {
-        // ~100 m dokładności wystarcza i nie wysyłamy dokładnej pozycji
         p.set('lat', coords.lat.toFixed(3))
         p.set('lng', coords.lng.toFixed(3))
         p.set('radius_km', String(filters.radiusKm))
@@ -287,12 +276,12 @@ export default function HomePage({ token = null }: { token?: string | null }) {
       if (seq !== seqRef.current) return
       if (res.status === 401 && filters.visited !== 'any') {
         patch({ visited: 'any' })
-        setSearchError('Sesja wygasła — zaloguj się ponownie, aby filtrować po wizytach.')
+        setSearchError(tRef.current('home.err_session'))
         return
       }
       if (!res.ok) {
         setResults([])
-        setSearchError('Nie udało się pobrać wyników. Spróbuj ponownie.')
+        setSearchError(tRef.current('home.err_fetch'))
         return
       }
       const data = await res.json()
@@ -301,7 +290,7 @@ export default function HomePage({ token = null }: { token?: string | null }) {
     } catch {
       if (seq === seqRef.current) {
         setResults([])
-        setSearchError('Brak połączenia z serwerem.')
+        setSearchError(tRef.current('home.err_network'))
       }
     } finally {
       if (seq === seqRef.current) { setLoading(false); setSearched(true) }
@@ -312,11 +301,10 @@ export default function HomePage({ token = null }: { token?: string | null }) {
     if (!ready || view === 'map') return
     const delay = firstRun.current ? 0 : 350
     firstRun.current = false
-    const t = setTimeout(runSearch, delay)
-    return () => clearTimeout(t)
+    const timer = setTimeout(runSearch, delay)
+    return () => clearTimeout(timer)
   }, [ready, view, runSearch])
 
-  // ── W okolicy ──
   const toggleNearby = async () => {
     setGeoError(null)
     if (filters.nearby) {
@@ -330,9 +318,7 @@ export default function HomePage({ token = null }: { token?: string | null }) {
       patch({ nearby: true, sort: 'distance' })
     } catch (e) {
       const denied = (e as GeolocationPositionError)?.code === 1
-      setGeoError(denied
-        ? 'Brak zgody na lokalizację — zezwól na nią w ustawieniach przeglądarki.'
-        : 'Nie udało się ustalić Twojej lokalizacji.')
+      setGeoError(denied ? t('home.geo_denied') : t('home.geo_failed'))
     } finally {
       setGeoLoading(false)
     }
@@ -351,13 +337,14 @@ export default function HomePage({ token = null }: { token?: string | null }) {
     filters.badges.length + (filters.nearby ? 1 : 0) + (filters.visited !== 'any' ? 1 : 0)
 
   const refreshing = loading && results.length > 0
+  const [hintA, hintB] = t('home.country_hint').split('{country}')
 
   return (
     <main className="home-main">
       <section className="home-hero">
         <div className="home-hero__eyebrow">Caffenacci</div>
-        <h1 className="home-hero__title">Znajdź swoją kawiarnię</h1>
-        <p className="home-hero__subtitle">Szukaj po nazwie, ulicy, mieście lub kodzie pocztowym</p>
+        <h1 className="home-hero__title">{t('home.title')}</h1>
+        <p className="home-hero__subtitle">{t('home.subtitle')}</p>
 
         <div className="home-searchrow">
           <div className="home-search">
@@ -365,30 +352,30 @@ export default function HomePage({ token = null }: { token?: string | null }) {
             <input
               type="text"
               className="home-search__input"
-              placeholder="np. Kawiarnia Pod Lipą, Warszawa, Marszałkowska…"
+              placeholder={t('home.search_ph')}
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
           </div>
 
           {countries.length > 0 && (
-            <label className="home-country" title="Kraj, w którym szukasz kawiarni">
+            <label className="home-country" title={t('home.country_title')}>
               <Globe size={16} />
-              <select value={country} onChange={e => changeCountry(e.target.value)} aria-label="Kraj">
-                <option value="">Wszystkie kraje</option>
+              <select value={country} onChange={e => changeCountry(e.target.value)} aria-label={t('home.country_aria')}>
+                <option value="">{t('home.all_countries')}</option>
                 {countries.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </label>
           )}
 
-          <div className="view-toggle" role="group" aria-label="Widok wyników">
+          <div className="view-toggle" role="group" aria-label={t('home.view_aria')}>
             <button type="button" aria-pressed={view === 'list'}
               className={`view-toggle__btn${view === 'list' ? ' view-toggle__btn--on' : ''}`} onClick={() => setView('list')}>
-              <List size={15} /> Lista
+              <List size={15} /> {t('home.view_list')}
             </button>
             <button type="button" aria-pressed={view === 'map'}
               className={`view-toggle__btn${view === 'map' ? ' view-toggle__btn--on' : ''}`} onClick={() => setView('map')}>
-              <MapIcon size={15} /> Mapa
+              <MapIcon size={15} /> {t('home.view_map')}
             </button>
           </div>
 
@@ -399,26 +386,25 @@ export default function HomePage({ token = null }: { token?: string | null }) {
             aria-expanded={panelOpen}
           >
             <SlidersHorizontal size={16} />
-            Filtry
+            {t('home.filters')}
             {activeCount > 0 && <span className="filters-toggle__count">{activeCount}</span>}
           </button>}
         </div>
 
         {countryAuto && country && (
           <p className="home-country-hint">
-            Szukasz w kraju: <strong>{country}</strong> (wykryty automatycznie) — możesz to zmienić powyżej.
+            {hintA}<strong>{country}</strong>{hintB}
           </p>
         )}
 
         {panelOpen && view === 'list' && (
           <div className="filters-panel">
-            {/* W okolicy */}
             <div className="filter-group">
-              <div className="filter-group__label">W okolicy</div>
+              <div className="filter-group__label">{t('home.f_nearby')}</div>
               <div className="filter-row">
                 <Chip on={filters.nearby} onClick={toggleNearby}>
                   {geoLoading ? <LocateFixed size={14} /> : <MapPin size={14} />}
-                  {geoLoading ? 'Ustalanie lokalizacji…' : filters.nearby ? 'W pobliżu: włączone' : 'Szukaj w pobliżu mnie'}
+                  {geoLoading ? t('home.nearby_locating') : filters.nearby ? t('home.nearby_on') : t('home.nearby_off')}
                 </Chip>
               </div>
               {filters.nearby && (
@@ -427,46 +413,39 @@ export default function HomePage({ token = null }: { token?: string | null }) {
                     type="range" min={1} max={100} step={1}
                     value={filters.radiusKm}
                     onChange={e => patch({ radiusKm: Number(e.target.value) })}
-                    aria-label="Promień wyszukiwania w kilometrach"
+                    aria-label={t('home.radius_aria')}
                   />
-                  <span className="filter-range__value">do {filters.radiusKm} km</span>
+                  <span className="filter-range__value">{t('home.radius_value', { km: filters.radiusKm })}</span>
                 </div>
               )}
               {geoError && <p className="filter-error" role="alert">{geoError}</p>}
-              {filters.nearby && (
-                <p className="filter-note">
-                  Pokazujemy tylko kawiarnie, które udostępniają swoją lokalizację na mapie.
-                </p>
-              )}
+              {filters.nearby && <p className="filter-note">{t('home.nearby_note')}</p>}
             </div>
 
             {token && (
               <div className="filter-group">
-                <div className="filter-group__label">Twoje wizyty</div>
+                <div className="filter-group__label">{t('home.f_visits')}</div>
                 <div className="filter-row">
                   <Chip on={filters.visited === 'visited'}
                     onClick={() => patch({ visited: filters.visited === 'visited' ? 'any' : 'visited' })}>
-                    Byłem
+                    {t('home.visited')}
                   </Chip>
                   <Chip on={filters.visited === 'not_visited'}
                     onClick={() => patch({ visited: filters.visited === 'not_visited' ? 'any' : 'not_visited' })}>
-                    Jeszcze nie byłem
+                    {t('home.not_visited')}
                   </Chip>
                 </div>
-                <p className="filter-note">
-                  Liczymy zrealizowane zamówienia, minione rezerwacje i wizyty z programu lojalnościowego.
-                </p>
+                <p className="filter-note">{t('home.visits_note')}</p>
               </div>
             )}
 
-            {/* Opinie */}
             <div className="filter-group">
-              <div className="filter-group__label">Opinie</div>
+              <div className="filter-group__label">{t('home.f_reviews')}</div>
               <div className="filter-row">
                 {RATING_OPTIONS.map(r => (
                   <Chip key={r} on={filters.minRating === r}
                     onClick={() => patch({ minRating: filters.minRating === r ? null : r })}>
-                    <Star size={12} fill="currentColor" strokeWidth={0} /> {r.toFixed(1)}+
+                    <Star size={12} fill="currentColor" strokeWidth={0} /> {formatNumber(r, fmt, { minimumFractionDigits: 1 })}+
                   </Chip>
                 ))}
               </div>
@@ -474,55 +453,50 @@ export default function HomePage({ token = null }: { token?: string | null }) {
                 {REVIEWS_OPTIONS.map(n => (
                   <Chip key={n} on={filters.minReviews === n}
                     onClick={() => patch({ minReviews: filters.minReviews === n ? null : n })}>
-                    min. {n} opinii
+                    {t('home.min_reviews', { n })}
                   </Chip>
                 ))}
               </div>
             </div>
 
-            {/* Godziny */}
             <div className="filter-group">
-              <div className="filter-group__label">Godziny otwarcia</div>
+              <div className="filter-group__label">{t('home.f_hours')}</div>
               <div className="filter-row">
                 <Chip on={filters.openNow} onClick={() => patch({ openNow: !filters.openNow })}>
-                  <Clock size={13} /> Otwarte teraz
+                  <Clock size={13} /> {t('home.open_now_chip')}
                 </Chip>
               </div>
               <div className="filter-row">
-                {DAY_LABELS.map((l, i) => (
-                  <Chip key={l} on={filters.days.includes(i)} title={DAY_TITLES[i]} onClick={() => toggleDay(i)}>
-                    {l}
+                {[0, 1, 2, 3, 4, 5, 6].map(i => (
+                  <Chip key={i} on={filters.days.includes(i)} title={weekdayName(i, fmt, 'long')} onClick={() => toggleDay(i)}>
+                    {weekdayName(i, fmt, 'short')}
                   </Chip>
                 ))}
               </div>
-              {filters.days.length > 0 && (
-                <p className="filter-note">Kawiarnia musi być otwarta we wszystkie zaznaczone dni.</p>
-              )}
+              {filters.days.length > 0 && <p className="filter-note">{t('home.days_note')}</p>}
             </div>
 
-            {/* Usługi */}
             <div className="filter-group">
-              <div className="filter-group__label">Usługi</div>
+              <div className="filter-group__label">{t('home.f_services')}</div>
               <div className="filter-row">
                 <Chip on={filters.reservations} onClick={() => patch({ reservations: !filters.reservations })}>
-                  Rezerwacje online
+                  {t('home.reservations')}
                 </Chip>
                 <Chip on={filters.orders} onClick={() => patch({ orders: !filters.orders })}>
-                  Zamówienia online
+                  {t('home.orders')}
                 </Chip>
               </div>
             </div>
 
-            {/* Plakietki */}
             <div className="filter-group filter-group--wide">
-              <div className="filter-group__label">Udogodnienia</div>
+              <div className="filter-group__label">{t('home.f_amenities')}</div>
               <div className="filter-row">
                 {BADGE_CATALOG.map(b => {
                   const Icon = b.icon
                   return (
-                    <Chip key={b.key} on={filters.badges.includes(b.key)} title={b.info}
+                    <Chip key={b.key} on={filters.badges.includes(b.key)} title={badgeInfo(t, b)}
                       onClick={() => toggleBadge(b.key)}>
-                      <Icon size={13} /> {b.label}
+                      <Icon size={13} /> {badgeLabel(t, b)}
                     </Chip>
                   )
                 })}
@@ -531,18 +505,18 @@ export default function HomePage({ token = null }: { token?: string | null }) {
 
             <div className="filters-panel__footer">
               <label className="filter-sort">
-                Sortuj:
+                {t('home.sort')}
                 <select value={filters.sort} onChange={e => patch({ sort: e.target.value as SortKey })}>
-                  <option value="relevance">Trafność / nazwa</option>
-                  {filters.nearby && <option value="distance">Najbliższe</option>}
-                  <option value="rating">Najwyżej oceniane</option>
-                  <option value="name">Nazwa A–Z</option>
+                  <option value="relevance">{t('home.sort_relevance')}</option>
+                  {filters.nearby && <option value="distance">{t('home.sort_distance')}</option>}
+                  <option value="rating">{t('home.sort_rating')}</option>
+                  <option value="name">{t('home.sort_name')}</option>
                 </select>
               </label>
               {activeCount > 0 && (
                 <button type="button" className="link-btn" onClick={clearFilters}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <X size={13} /> Wyczyść filtry
+                  <X size={13} /> {t('home.clear_filters')}
                 </button>
               )}
             </div>
@@ -561,21 +535,21 @@ export default function HomePage({ token = null }: { token?: string | null }) {
         {loading && results.length === 0 ? (
           <div className="loading-state">
             <div className="loading-spinner" />
-            <p>Szukanie kawiarni…</p>
+            <p>{t('home.searching')}</p>
           </div>
         ) : results.length === 0 && searched ? (
           <div className="home-empty">
-            <p>Nie znaleziono kawiarni pasujących do wyszukiwania.</p>
+            <p>{t('home.none')}</p>
             {activeCount > 0 && (
               <button type="button" className="link-btn" onClick={clearFilters} style={{ marginTop: '0.5rem' }}>
-                Wyczyść filtry
+                {t('home.clear_filters')}
               </button>
             )}
           </div>
         ) : (
           <>
             <p className="home-results__count" aria-live="polite">
-              {results.length === 1 ? '1 kawiarnia' : `Znalezione kawiarnie: ${results.length}`}
+              {t('home.found', { count: results.length })}
               {country ? ` · ${country}` : ''}
             </p>
             <div className={`cafe-list${refreshing ? ' cafe-list--refreshing' : ''}`}>
@@ -599,10 +573,10 @@ export default function HomePage({ token = null }: { token?: string | null }) {
                       {!!cafe.average_rating && !!cafe.review_count && (
                         <RatingBadge rating={cafe.average_rating} count={cafe.review_count} />
                       )}
-                      {cafe.visited && <span className="cafe-card__visited">Byłeś tu</span>}
+                      {cafe.visited && <span className="cafe-card__visited">{t('home.visited_badge')}</span>}
                       {cafe.distance_km != null && (
                         <span className="cafe-card__distance">
-                          <MapPin size={12} /> {formatDistance(cafe.distance_km)}
+                          <MapPin size={12} /> {formatNumber(cafe.distance_km, fmt, { maximumFractionDigits: 1 })} km
                         </span>
                       )}
                     </div>
@@ -615,8 +589,8 @@ export default function HomePage({ token = null }: { token?: string | null }) {
                       }`}
                     >
                       <Clock size={13} />
-                      {formatTodayHours(cafe.today_hours)}
-                      {cafe.is_open_now === true && ' · otwarte teraz'}
+                      {formatTodayHours(cafe.today_hours, t)}
+                      {cafe.is_open_now === true && ` · ${t('home.open_now_suffix')}`}
                     </p>
                     <CafeBadgeChips keys={cafe.featured_badges ?? []} />
                   </div>

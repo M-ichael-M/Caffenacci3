@@ -1,6 +1,6 @@
 {
   "common.close": "Zamknij", "common.cancel": "Anuluj", "common.more_info": "Więcej informacji",
-  "lang.label": "Język",
+  "lang.label": "Język", "site_lang.aria": "Język witryny",
   "nav.menu": "Menu", "nav.reservations": "Rezerwacje", "nav.loyalty": "Lojalność", "nav.gallery": "Galeria",
   "nav.amenities": "Udogodnienia", "nav.contact": "Kontakt", "nav.reviews": "Opinie",
   "nav.hello": "Cześć, {nick}", "nav.logout": "Wyloguj", "nav.login": "Zaloguj się", "nav.register": "Zarejestruj się", "nav.preview": "Podgląd",

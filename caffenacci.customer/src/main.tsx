@@ -3,10 +3,10 @@ import { createRoot } from 'react-dom/client'
 import './fonts/baseFonts'
 import './index.css'
 import App from './App.tsx'
-import { SystemI18nProvider, DEFAULT_LANGUAGE } from './i18n/I18nProvider'
+import { SiteLanguageProvider, SITE_LANGUAGES, detectSiteLanguage } from './i18n/siteLanguage'
 import { loadSystem } from './i18n/system'
-void loadSystem(DEFAULT_LANGUAGE.code)
+void loadSystem(SITE_LANGUAGES[detectSiteLanguage()].code)
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode><SystemI18nProvider language={DEFAULT_LANGUAGE}><App /></SystemI18nProvider></StrictMode>
+  <StrictMode><SiteLanguageProvider><App /></SiteLanguageProvider></StrictMode>
 )
