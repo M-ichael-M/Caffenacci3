@@ -288,6 +288,12 @@ def search_cafes(
         query = query.filter(Cafe.id.in_(
             select(OrderSettings.cafe_id).where(OrderSettings.enabled.is_(True))))
 
+    # Visited / not visited
+    if visited_sq is not None and visited == "visited":
+        query = query.filter(Cafe.id.in_(select(visited_sq.c.cafe_id)))
+    elif visited_sq is not None and visited == "not_visited":
+        query = query.filter(Cafe.id.notin_(select(visited_sq.c.cafe_id)))
+
     # ── Plakietki (kawiarnia musi mieć WSZYSTKIE zaznaczone) ──
     for key in wanted_badges:
         query = query.filter(Cafe.id.in_(

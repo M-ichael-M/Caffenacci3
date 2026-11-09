@@ -199,6 +199,7 @@ export default function HomePage({ token = null }: { token?: string | null }) {
   const [geoError, setGeoError] = useState<string | null>(null)
 
   const [results, setResults] = useState<CafeResult[]>([])
+  const [searchError, setSearchError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [searched, setSearched] = useState(false)
 
@@ -276,20 +277,29 @@ export default function HomePage({ token = null }: { token?: string | null }) {
       if (sort !== 'relevance') p.set('sort', sort)
 
       const qs = p.toString()
+      setSearchError(null)
       const res = await fetch(`${API_URL}/cafes/search${qs ? `?${qs}` : ''}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       })
       if (seq !== seqRef.current) return
       if (res.status === 401 && filters.visited !== 'any') {
         patch({ visited: 'any' })
+        setSearchError('Sesja wygasła — zaloguj się ponownie, aby filtrować po wizytach.')
         return
       }
-      if (res.ok) {
-        const data = await res.json()
-        setResults(data.results ?? [])
+      if (!res.ok) {
+        setResults([])
+        setSearchError('Nie udało się pobrać wyników. Spróbuj ponownie.')
+        return
       }
+      const data = await res.json()
+      if (seq !== seqRef.current) return
+      setResults(data.results ?? [])
     } catch {
-      /* ignore — sieć niedostępna */
+      if (seq === seqRef.current) {
+        setResults([])
+        setSearchError('Brak połączenia z serwerem.')
+      }
     } finally {
       if (seq === seqRef.current) { setLoading(false); setSearched(true) }
     }
@@ -527,6 +537,7 @@ export default function HomePage({ token = null }: { token?: string | null }) {
       </section>
 
       <section className="home-results">
+        {searchError && <div className="form-error" role="alert">{searchError}</div>}
         {loading && results.length === 0 ? (
           <div className="loading-state">
             <div className="loading-spinner" />
