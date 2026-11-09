@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import {
   Search, Coffee, Clock, ChevronRight, Star, SlidersHorizontal,
-  MapPin, Globe, LocateFixed, X,
+  MapPin, Globe, LocateFixed, X, List, Map as MapIcon,
 } from 'lucide-react'
 import { BADGE_CATALOG } from '../badges'
 import { API_URL } from '../config'
 import ResponsiveImage from './ResponsiveImage'
+
+const CafesMap = lazy(() => import('./CafesMap'))
 
 const THUMB_WIDTHS = [128, 256] as const
 
@@ -194,6 +196,7 @@ export default function HomePage({ token = null }: { token?: string | null }) {
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [view, setView] = useState<'list' | 'map'>('list')
   const [coords, setCoords] = useState<Coords | null>(null)
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
@@ -306,12 +309,12 @@ export default function HomePage({ token = null }: { token?: string | null }) {
   }, [query, country, filters, coords, token])
 
   useEffect(() => {
-    if (!ready) return
+    if (!ready || view === 'map') return
     const delay = firstRun.current ? 0 : 350
     firstRun.current = false
     const t = setTimeout(runSearch, delay)
     return () => clearTimeout(t)
-  }, [ready, runSearch])
+  }, [ready, view, runSearch])
 
   // ── W okolicy ──
   const toggleNearby = async () => {
@@ -378,7 +381,18 @@ export default function HomePage({ token = null }: { token?: string | null }) {
             </label>
           )}
 
-          <button
+          <div className="view-toggle" role="group" aria-label="Widok wyników">
+            <button type="button" aria-pressed={view === 'list'}
+              className={`view-toggle__btn${view === 'list' ? ' view-toggle__btn--on' : ''}`} onClick={() => setView('list')}>
+              <List size={15} /> Lista
+            </button>
+            <button type="button" aria-pressed={view === 'map'}
+              className={`view-toggle__btn${view === 'map' ? ' view-toggle__btn--on' : ''}`} onClick={() => setView('map')}>
+              <MapIcon size={15} /> Mapa
+            </button>
+          </div>
+
+          {view === 'list' && <button
             type="button"
             className={`filters-toggle${panelOpen ? ' filters-toggle--open' : ''}`}
             onClick={() => setPanelOpen(o => !o)}
@@ -387,7 +401,7 @@ export default function HomePage({ token = null }: { token?: string | null }) {
             <SlidersHorizontal size={16} />
             Filtry
             {activeCount > 0 && <span className="filters-toggle__count">{activeCount}</span>}
-          </button>
+          </button>}
         </div>
 
         {countryAuto && country && (
@@ -396,7 +410,7 @@ export default function HomePage({ token = null }: { token?: string | null }) {
           </p>
         )}
 
-        {panelOpen && (
+        {panelOpen && view === 'list' && (
           <div className="filters-panel">
             {/* W okolicy */}
             <div className="filter-group">
@@ -536,7 +550,13 @@ export default function HomePage({ token = null }: { token?: string | null }) {
         )}
       </section>
 
-      <section className="home-results">
+      {view === 'map' ? (
+        <section className="home-results">
+          {ready && <Suspense fallback={<div className="loading-state"><div className="loading-spinner" /></div>}>
+            <CafesMap query={query} country={country} />
+          </Suspense>}
+        </section>
+      ) : <section className="home-results">
         {searchError && <div className="form-error" role="alert">{searchError}</div>}
         {loading && results.length === 0 ? (
           <div className="loading-state">
@@ -606,7 +626,7 @@ export default function HomePage({ token = null }: { token?: string | null }) {
             </div>
           </>
         )}
-      </section>
+      </section>}
     </main>
   )
 }

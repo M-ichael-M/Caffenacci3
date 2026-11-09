@@ -271,9 +271,11 @@ export default function AnalyticsTab({ token }: Props) {
 
       {/* ── Trend ── */}
       <Card icon={<TrendingUp size={18} />} title="Trend">
-        <div className="subtab-row" style={{ marginBottom: '0.5rem' }}>
-          {([['visits', 'Wizyty'], ['pageviews', 'Odsłony'], ['visitors', 'Odwiedzający']] as [Metric, string][]).map(([k, l]) => (
-            <button key={k} type="button" className={`subtab-btn${metric === k ? ' subtab-btn--active' : ''}`} onClick={() => setMetric(k)}>{l}</button>
+        <div className="an-metric-switch" role="group" aria-label="Wybierz metrykę trendu">
+          {([['visits', 'Wizyty', Compass], ['pageviews', 'Odsłony', Eye], ['visitors', 'Odwiedzający', Users]] as [Metric, string, typeof Compass][]).map(([k, l, Icon]) => (
+            <button key={k} type="button" className={`an-metric-switch__btn${metric === k ? ' an-metric-switch__btn--active' : ''}`} onClick={() => setMetric(k)} aria-pressed={metric === k}>
+              <Icon size={15} aria-hidden="true" />{l}
+            </button>
           ))}
         </div>
         {noTraffic

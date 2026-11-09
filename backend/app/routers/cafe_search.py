@@ -28,7 +28,7 @@ from app.models.translation import CafeLanguageSettings
 from app.schemas.badges import ALLOWED_BADGE_KEYS
 from app.schemas.cafe_search import (
     CafeSearchResultOut, CafeSearchListOut, CafeSearchMetaOut, TodayHoursOut,
-    CafeListItemOut, CafeListOut,
+    CafeListItemOut, CafeListOut, CafeMapPointOut, CafeMapOut,
 )
 
 router = APIRouter(prefix="/cafes", tags=["cafe-search"])
@@ -131,7 +131,7 @@ def _today_hours(profile: CafeProfile | None, now: datetime) -> TodayHoursOut | 
     return None
 
 
-def _is_open_now(today: TodayHours | None, now: datetime) -> bool | None:
+def _is_open_now(today: TodayHoursOut | None, now: datetime) -> bool | None:
     """None = brak danych. Godziny przechodzące przez północ (np. 20:00–02:00)
     są obsługiwane przybliżeniem: po północy liczy się dzisiejszy plan."""
     if today is None:
@@ -190,6 +190,63 @@ def search_meta(request: Request, response: Response, db: Session = Depends(get_
         .all()
     )
     return CafeSearchMetaOut(countries=[r[0] for r in rows if r[0]], detected_country_code=detected)
+
+
+# ── Mapa: wszystkie opublikowane kawiarnie z udostępnioną lokalizacją ───────
+
+MAX_MAP_POINTS = 3000
+
+
+@router.get("/map", response_model=CafeMapOut,
+            summary="Punkty kawiarni do wyświetlenia na mapie (tylko z włączoną widocznością lokalizacji)")
+def map_cafes(
+    q: str | None = Query(None, max_length=200),
+    country: str | None = Query(None, max_length=100),
+    db: Session = Depends(get_db),
+):
+    query = (
+        db.query(Cafe, CafeProfile)
+        .join(CafeSite, CafeSite.cafe_id == Cafe.id)
+        .join(CafeProfile, CafeProfile.cafe_id == Cafe.id)
+        .options(selectinload(CafeProfile.weekly_hours), selectinload(CafeProfile.hour_exceptions))
+        .filter(
+            CafeSite.is_published.is_(True), CafeProfile.location_visible.is_(True),
+            CafeProfile.latitude.isnot(None), CafeProfile.longitude.isnot(None),
+        )
+    )
+    term = (q or "").strip()
+    if term:
+        fields = (Cafe.cafe_name, Cafe.city, Cafe.street, Cafe.postal_code)
+        if db.get_bind().dialect.name == "postgresql":
+            normalized = func.unaccent(func.lower(literal(term)))
+            query = query.filter(or_(*[
+                func.unaccent(func.lower(field)).ilike(func.concat("%", normalized, "%"))
+                for field in fields
+            ]))
+        else:
+            like = f"%{term}%"
+            query = query.filter(or_(*[field.ilike(like) for field in fields]))
+    if country and country.strip():
+        query = query.filter(func.lower(Cafe.country) == country.strip().lower())
+
+    rows = query.order_by(Cafe.cafe_name).limit(MAX_MAP_POINTS).all()
+    if not rows:
+        return CafeMapOut(cafes=[], count=0)
+    tz_map = dict(db.query(CafeLanguageSettings.cafe_id, CafeLanguageSettings.time_zone)
+                  .filter(CafeLanguageSettings.cafe_id.in_([c.id for c, _ in rows])).all())
+    points: list[CafeMapPointOut] = []
+    for cafe, profile in rows:
+        now = _cafe_now(tz_map.get(cafe.id))
+        today = _today_hours(profile, now)
+        points.append(CafeMapPointOut(
+            cafe_id=cafe.id, slug=cafe.slug or cafe.id, cafe_name=cafe.cafe_name,
+            latitude=profile.latitude, longitude=profile.longitude,
+            is_open_now=_is_open_now(today, now),
+            open_time=today.open_time if today and not today.is_closed else None,
+            close_time=today.close_time if today and not today.is_closed else None,
+            closed_today=bool(today and today.is_closed),
+        ))
+    return CafeMapOut(cafes=points, count=len(points))
 
 
 # ── Wyszukiwarka ────────────────────────────────────────────────────────────

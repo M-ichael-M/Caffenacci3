@@ -1583,3 +1583,19 @@ body {
   padding: 1px 9px;
   white-space: nowrap;
 }
+.view-toggle {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 100px;
+  padding: .1875rem;
+  box-shadow: var(--shadow-sm);
+}
+.view-toggle__btn {
+  appearance: none; display: inline-flex; align-items: center; gap: .375rem;
+  border: none; background: transparent; border-radius: 100px; padding: .5625rem .875rem;
+  font-family: inherit; font-size: .875rem; font-weight: 600; color: var(--text-muted);
+  cursor: pointer; transition: background .15s, color .15s;
+}
+.view-toggle__btn:hover { color: var(--text-dark); }
+.view-toggle__btn--on { background: var(--espresso); color: var(--parchment); }

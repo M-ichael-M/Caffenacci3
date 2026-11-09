@@ -92,7 +92,7 @@ async def auth_no_store(request: Request, call_next):
         return response
     public_json = not request.headers.get("authorization") and request.method == "GET" and (
         request.url.path.startswith(("/site/public/", "/reviews/public/", "/menu/public/"))
-        or request.url.path in ("/cafes/search", "/cafes/all")
+        or request.url.path in ("/cafes/search", "/cafes/all", "/cafes/map")
     )
     if public_json and response.status_code == 200 and "application/json" in response.headers.get("content-type", ""):
         body = b"".join([chunk async for chunk in response.body_iterator])

@@ -1,0 +1,16 @@
+.cmap-wrap { position: relative; border: 1px solid var(--border-soft); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-card); background: var(--surface-2); }
+.cmap { width: 100%; height: min(70vh, 640px); min-height: 360px; }
+.cmap-overlay { position: absolute; top: .75rem; left: 50%; transform: translateX(-50%); background: var(--surface); color: var(--text-body); border: 1px solid var(--border); border-radius: 100px; padding: .4375rem 1rem; font-size: .8125rem; font-weight: 500; box-shadow: var(--shadow-card); pointer-events: none; white-space: nowrap; }
+.cmap-overlay--error { color: var(--error); border-color: rgba(178, 59, 59, .3); }
+.cmap-popup .maplibregl-popup-content { padding: .875rem 1rem; border-radius: var(--radius-md); box-shadow: var(--shadow-pop); font-family: Inter, system-ui, sans-serif; }
+.cmap-popup .maplibregl-popup-close-button { font-size: 1.125rem; padding: .125rem .5rem; color: var(--text-muted); }
+.cmap-card { display: flex; flex-direction: column; gap: .25rem; min-width: 180px; padding-right: .75rem; }
+.cmap-card__name { font-family: 'Playfair Display', serif; font-size: 1.0625rem; font-weight: 600; color: var(--text-dark); line-height: 1.25; }
+.cmap-card__status { font-size: .8125rem; font-weight: 600; color: var(--text-muted); }
+.cmap-card__status--open { color: var(--success); }
+.cmap-card__status--closed { color: var(--error); }
+.cmap-card__link { margin-top: .375rem; align-self: flex-start; font-size: .8125rem; font-weight: 600; color: var(--gold); text-decoration: none; }
+.cmap-card__link:hover { color: var(--gold-hover); text-decoration: underline; }
+.cmap-list { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: .625rem; }
+.cmap-list__title { font-size: .6875rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); padding-right: 1.25rem; }
+.cmap-list__row + .cmap-list__row { border-top: 1px solid var(--border-soft); padding-top: .625rem; }

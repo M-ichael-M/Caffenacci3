@@ -58,3 +58,22 @@ class CafeListItemOut(BaseModel):
 class CafeListOut(BaseModel):
     cafes: List[CafeListItemOut]
     count: int
+
+
+# ── Punkty na mapie ───────────────────────────────────────────────────────
+
+class CafeMapPointOut(BaseModel):
+    cafe_id: str
+    slug: str
+    cafe_name: str
+    latitude: float
+    longitude: float
+    is_open_now: Optional[bool] = None
+    open_time: Optional[str] = None
+    close_time: Optional[str] = None
+    closed_today: bool = False
+
+
+class CafeMapOut(BaseModel):
+    cafes: List[CafeMapPointOut]
+    count: int
