@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Eye, MousePointerClick, Users, Compass, ShoppingCart, CalendarDays, Star, QrCode,
   TrendingUp, TrendingDown, Copy, Check, RefreshCw, ShieldCheck, Gift,
 } from 'lucide-react'
 import { API_URL } from '../config'
+import { useI18n } from '../i18n'
 
 // ── Typy (odpowiadają core/analytics.py: build_summary) ────────────────────
 
@@ -31,33 +32,26 @@ type Metric = keyof Totals
 
 interface Props { token: string }
 
-// ── Etykiety ──────────────────────────────────────────────────────────────
-
-const SOURCE_LABELS: Record<string, string> = {
-  direct: 'Wejście bezpośrednie', caffenacci: 'Wyszukiwarka Caffenacci', qr: 'Kod QR',
-  nfc: 'NFC', flyer: 'Ulotka / plakat', newsletter: 'Newsletter', social: 'Social media',
-  search: 'Wyszukiwarki (Google itd.)', other: 'Inne strony',
-}
-const DEVICE_LABELS: Record<string, string> = { mobile: 'Telefon', desktop: 'Komputer', tablet: 'Tablet' }
-const EVENT_LABELS: Record<string, string> = {
-  menu_add: 'Dodania do zamówienia', checkout_open: 'Otwarcia podsumowania zamówienia',
-  reservation_open: 'Otwarcia formularza rezerwacji', review_open: 'Otwarcia formularza opinii',
-  phone_click: 'Kliknięcia w telefon', email_click: 'Kliknięcia w e-mail', map_click: 'Kliknięcia w mapę',
-  social_click: 'Kliknięcia w social media', gallery_open: 'Otwarcia zdjęć z galerii',
-  nav_click: 'Kliknięcia w nawigację', login_open: 'Kliknięcia „Zaloguj się”',
-  register_open: 'Kliknięcia „Zarejestruj się”', lang_switch: 'Zmiany języka',
-}
 const RANGES = [7, 30, 90] as const
 
 // ── Helpery ───────────────────────────────────────────────────────────────
 
-const nf = new Intl.NumberFormat('pl-PL')
-const money = (n: number) => new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(n)
-
-function shortDay(d: string) {
-  // składamy datę z komponentów lokalnych — bez konwersji przez UTC
-  const [y, m, day] = d.split('-').map(Number)
-  return new Date(y, m - 1, day).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
+/** Formatery liczb / walut / dat w języku panelu. */
+function useFmt() {
+  const { locale } = useI18n()
+  return useMemo(() => {
+    const nf = new Intl.NumberFormat(locale)
+    const cf = new Intl.NumberFormat(locale, { style: 'currency', currency: 'PLN' })
+    return {
+      nf,
+      money: (n: number) => cf.format(n),
+      shortDay: (d: string) => {
+        // składamy datę z komponentów lokalnych — bez konwersji przez UTC
+        const [y, m, day] = d.split('-').map(Number)
+        return new Date(y, m - 1, day).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+      },
+    }
+  }, [locale])
 }
 
 function delta(cur: number, prev: number): number | null {
@@ -68,8 +62,9 @@ function delta(cur: number, prev: number): number | null {
 // ── Komponenty ────────────────────────────────────────────────────────────
 
 function Delta({ cur, prev }: { cur: number; prev: number }) {
+  const { t } = useI18n()
   const d = delta(cur, prev)
-  if (d === null) return <span className="an-delta an-delta--flat">{cur > 0 ? 'nowe' : '—'}</span>
+  if (d === null) return <span className="an-delta an-delta--flat">{cur > 0 ? t('analytics.delta.new') : '—'}</span>
   const up = d >= 0
   return (
     <span className={`an-delta ${up ? 'an-delta--up' : 'an-delta--down'}`}>
@@ -107,6 +102,8 @@ function niceScale(max: number): { top: number; ticks: number[] } {
 }
 
 function TrendChart({ data, metric }: { data: Summary['series']; metric: Metric }) {
+  const { t } = useI18n()
+  const { nf, shortDay } = useFmt()
   const W = 640, H = 200, P = { l: 40, r: 12, t: 12, b: 26 }
   const vals = data.map(d => d[metric])
   const { top, ticks } = niceScale(Math.max(0, ...vals))
@@ -117,11 +114,11 @@ function TrendChart({ data, metric }: { data: Summary['series']; metric: Metric 
   const labelIdx = [...new Set([0, Math.floor((data.length - 1) / 2), data.length - 1])]
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="an-chart" role="img" aria-label="Wykres trendu">
-      {ticks.map(t => (
-        <g key={t}>
-          <line x1={P.l} x2={W - P.r} y1={y(t)} y2={y(t)} className="an-chart__grid" />
-          <text x={P.l - 6} y={y(t) + 4} textAnchor="end" className="an-chart__tick">{nf.format(t)}</text>
+    <svg viewBox={`0 0 ${W} ${H}`} className="an-chart" role="img" aria-label={t('analytics.trend.chartAria')}>
+      {ticks.map(tk => (
+        <g key={tk}>
+          <line x1={P.l} x2={W - P.r} y1={y(tk)} y2={y(tk)} className="an-chart__grid" />
+          <text x={P.l - 6} y={y(tk) + 4} textAnchor="end" className="an-chart__tick">{nf.format(tk)}</text>
         </g>
       ))}
       <path d={area} className="an-chart__area" />
@@ -142,9 +139,11 @@ function TrendChart({ data, metric }: { data: Summary['series']; metric: Metric 
 }
 
 function BarList({ items, total }: { items: { key: string; label: string; value: number }[]; total?: number }) {
+  const { t } = useI18n()
+  const { nf } = useFmt()
   const sum = total ?? items.reduce((s, i) => s + i.value, 0)
   const max = Math.max(1, ...items.map(i => i.value))
-  if (items.length === 0) return <p className="an-empty">Brak danych w tym okresie.</p>
+  if (items.length === 0) return <p className="an-empty">{t('analytics.empty')}</p>
   return (
     <div className="an-bars">
       {items.map(i => (
@@ -172,22 +171,24 @@ function Card({ icon, title, children }: { icon: React.ReactNode; title: string;
 // ═════════════════════════════════════════════════════════════════════════
 
 export default function AnalyticsTab({ token }: Props) {
+  const { t } = useI18n()
+  const { nf, money } = useFmt()
   const [days, setDays] = useState<number>(30)
   const [data, setData] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState(false)
   const [metric, setMetric] = useState<Metric>('visits')
   const [copied, setCopied] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    setError(null)
+    setError(false)
     try {
       const res = await fetch(`${API_URL}/analytics/summary?days=${days}`, { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error()
       setData(await res.json())
     } catch {
-      setError('Nie udało się wczytać statystyk. Spróbuj ponownie.')
+      setError(true)
     } finally { setLoading(false) }
   }, [token, days])
 
@@ -198,10 +199,17 @@ export default function AnalyticsTab({ token }: Props) {
     try { await navigator.clipboard.writeText(data.share_url); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* ignoruj */ }
   }
 
-  if (loading && !data) {
-    return <div className="loading-state"><div className="loading-spinner" /><p>Wczytywanie statystyk…</p></div>
+  /** Etykieta z słownika; dla nieznanego klucza (np. nowe zdarzenie) pokazuje surowy klucz. */
+  const lbl = (prefix: string, k: string) => {
+    const key = `${prefix}.${k}`
+    const v = t(key)
+    return v === key ? k : v
   }
-  if (error && !data) return <div className="form-error" role="alert">{error}</div>
+
+  if (loading && !data) {
+    return <div className="loading-state"><div className="loading-spinner" /><p>{t('analytics.loading')}</p></div>
+  }
+  if (error && !data) return <div className="form-error" role="alert">{t('analytics.err.load')}</div>
   if (!data) return null
 
   const { totals, previous, impact: imp } = data
@@ -210,35 +218,37 @@ export default function AnalyticsTab({ token }: Props) {
   const noTraffic = totals.pageviews === 0
 
   const sourceItems = Object.entries(data.sources).sort((a, b) => b[1] - a[1])
-    .map(([k, v]) => ({ key: k, label: SOURCE_LABELS[k] ?? k, value: v }))
+    .map(([k, v]) => ({ key: k, label: lbl('analytics.source', k), value: v }))
   const deviceItems = Object.entries(data.devices).sort((a, b) => b[1] - a[1])
-    .map(([k, v]) => ({ key: k, label: DEVICE_LABELS[k] ?? k, value: v }))
+    .map(([k, v]) => ({ key: k, label: lbl('analytics.device', k), value: v }))
   const clickItems = Object.entries(data.events).sort((a, b) => b[1].total - a[1].total)
-    .map(([k, v]) => ({ key: k, label: EVENT_LABELS[k] ?? k, value: v.total }))
+    .map(([k, v]) => ({ key: k, label: lbl('analytics.event', k), value: v.total }))
 
   const funnel = [
-    { key: 'visits', label: 'Wizyty na stronie', value: totals.visits },
-    { key: 'menu_add', label: 'Dodali pozycję do zamówienia', value: eventTotal('menu_add') },
-    { key: 'checkout', label: 'Otworzyli podsumowanie', value: eventTotal('checkout_open') },
-    { key: 'orders', label: 'Złożyli zamówienie', value: imp.orders.placed },
+    { key: 'visits', label: t('analytics.funnel.visits'), value: totals.visits },
+    { key: 'menu_add', label: t('analytics.funnel.menuAdd'), value: eventTotal('menu_add') },
+    { key: 'checkout', label: t('analytics.funnel.checkout'), value: eventTotal('checkout_open') },
+    { key: 'orders', label: t('analytics.funnel.orders'), value: imp.orders.placed },
   ]
+
+  const vsPrev = t('analytics.vsPrevious', { days })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div className="page-header__eyebrow">Zarządzanie</div>
+          <div className="page-header__eyebrow">{t('common.management')}</div>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
-            Statystyki i wpływ Caffenacci
+            {t('analytics.title')}
           </h2>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {RANGES.map(r => (
             <button key={r} type="button" className={`res-mode-btn${days === r ? ' res-mode-btn--active' : ''}`} onClick={() => setDays(r)}>
-              {r} dni
+              {t('analytics.range', { count: r })}
             </button>
           ))}
-          <button type="button" className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 0.875rem' }} onClick={fetchData} aria-label="Odśwież">
+          <button type="button" className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 0.875rem' }} onClick={fetchData} aria-label={t('common.refresh')}>
             <RefreshCw size={15} />
           </button>
         </div>
@@ -247,88 +257,85 @@ export default function AnalyticsTab({ token }: Props) {
       <div className="an-privacy">
         <ShieldCheck size={16} />
         <span>
-          Statystyki ruchu są zbierane bez cookies i bez zapisu czegokolwiek na urządzeniu gościa. Nie przechowujemy adresów IP;
-          skróty odwiedzających są ważne jeden dzień i kasowane po 2 dniach. „Odwiedzający” to goście liczeni <strong>dziennie</strong>
-          {' '}(ta sama osoba jutro policzy się ponownie). Dane z kodów lojalnościowych, zamówień i rezerwacji są dokładne i pochodzą z systemu.
+          {t('analytics.privacy.before')} <strong>{t('analytics.privacy.strong')}</strong> {t('analytics.privacy.after')}
         </span>
       </div>
 
       {/* ── KPI ruchu ── */}
       <div className="an-kpis">
-        <Kpi icon={<Eye size={16} />} label="Odsłony" value={nf.format(totals.pageviews)} hint="Wszystkie wyświetlenia strony">
-          <Delta cur={totals.pageviews} prev={previous.pageviews} /> <span>vs poprzednie {days} dni</span>
+        <Kpi icon={<Eye size={16} />} label={t('analytics.pageviews')} value={nf.format(totals.pageviews)} hint={t('analytics.pageviews.hint')}>
+          <Delta cur={totals.pageviews} prev={previous.pageviews} /> <span>{vsPrev}</span>
         </Kpi>
-        <Kpi icon={<Compass size={16} />} label="Wizyty" value={nf.format(totals.visits)} hint="Wizyta = wejście po min. 30 min przerwy">
-          <Delta cur={totals.visits} prev={previous.visits} /> <span>vs poprzednie {days} dni</span>
+        <Kpi icon={<Compass size={16} />} label={t('analytics.visits')} value={nf.format(totals.visits)} hint={t('analytics.visits.hint')}>
+          <Delta cur={totals.visits} prev={previous.visits} /> <span>{vsPrev}</span>
         </Kpi>
-        <Kpi icon={<Users size={16} />} label="Odwiedzający" value={nf.format(totals.visitors)} hint="Suma unikalnych gości z każdego dnia">
-          <Delta cur={totals.visitors} prev={previous.visitors} /> <span>(dziennie, sumowani)</span>
+        <Kpi icon={<Users size={16} />} label={t('analytics.visitors')} value={nf.format(totals.visitors)} hint={t('analytics.visitors.hint')}>
+          <Delta cur={totals.visitors} prev={previous.visitors} /> <span>{t('analytics.visitors.foot')}</span>
         </Kpi>
-        <Kpi icon={<QrCode size={16} />} label="Wizyty przez Caffenacci" value={nf.format(viaCaffenacci)} hint="Wyszukiwarka Caffenacci + kody QR">
-          <span>{totals.visits > 0 ? `${Math.round((viaCaffenacci / totals.visits) * 100)}% wszystkich wizyt` : '—'}</span>
+        <Kpi icon={<QrCode size={16} />} label={t('analytics.viaCaffenacci')} value={nf.format(viaCaffenacci)} hint={t('analytics.viaCaffenacci.hint')}>
+          <span>{totals.visits > 0 ? t('analytics.viaCaffenacci.foot', { pct: Math.round((viaCaffenacci / totals.visits) * 100) }) : '—'}</span>
         </Kpi>
       </div>
 
       {/* ── Trend ── */}
-      <Card icon={<TrendingUp size={18} />} title="Trend">
-        <div className="an-metric-switch" role="group" aria-label="Wybierz metrykę trendu">
-          {([['visits', 'Wizyty', Compass], ['pageviews', 'Odsłony', Eye], ['visitors', 'Odwiedzający', Users]] as [Metric, string, typeof Compass][]).map(([k, l, Icon]) => (
+      <Card icon={<TrendingUp size={18} />} title={t('analytics.trend')}>
+        <div className="an-metric-switch" role="group" aria-label={t('analytics.trend.aria')}>
+          {([['visits', t('analytics.visits'), Compass], ['pageviews', t('analytics.pageviews'), Eye], ['visitors', t('analytics.visitors'), Users]] as [Metric, string, typeof Compass][]).map(([k, l, Icon]) => (
             <button key={k} type="button" className={`an-metric-switch__btn${metric === k ? ' an-metric-switch__btn--active' : ''}`} onClick={() => setMetric(k)} aria-pressed={metric === k}>
               <Icon size={15} aria-hidden="true" />{l}
             </button>
           ))}
         </div>
         {noTraffic
-          ? <p className="an-empty">Brak ruchu w tym okresie. Statystyki pojawią się, gdy ktoś odwiedzi opublikowaną stronę kawiarni.</p>
+          ? <p className="an-empty">{t('analytics.trend.empty')}</p>
           : <TrendChart data={data.series} metric={metric} />}
       </Card>
 
       {/* ── Wpływ Caffenacci (dokładne dane z systemu) ── */}
-      <div className="an-section-title">Co Caffenacci daje Twojej kawiarni <span>(ostatnie {days} dni)</span></div>
+      <div className="an-section-title">{t('analytics.impact.title')} <span>{t('analytics.impact.period', { days })}</span></div>
       <div className="an-kpis">
-        <Kpi icon={<Gift size={16} />} label="Goście z kodem Caffenacci" value={nf.format(imp.loyalty.scanned_period)}
-             hint="Unikalni goście, którym obsługa zeskanowała / wpisała kod">
-          <span>{nf.format(imp.loyalty.new_in_period)} nowych · {nf.format(imp.loyalty.returning_in_period)} wracających</span>
+        <Kpi icon={<Gift size={16} />} label={t('analytics.kpi.scanned')} value={nf.format(imp.loyalty.scanned_period)}
+             hint={t('analytics.kpi.scanned.hint')}>
+          <span>{t('analytics.kpi.scanned.foot', { new: nf.format(imp.loyalty.new_in_period), returning: nf.format(imp.loyalty.returning_in_period) })}</span>
         </Kpi>
-        <Kpi icon={<Users size={16} />} label="Wszyscy kiedykolwiek zeskanowani" value={nf.format(imp.loyalty.scanned_total)}
-             hint="Unikalni goście w całej historii programu lojalnościowego">
-          <span>{nf.format(imp.loyalty.transactions)} operacji w okresie</span>
+        <Kpi icon={<Users size={16} />} label={t('analytics.kpi.scannedTotal')} value={nf.format(imp.loyalty.scanned_total)}
+             hint={t('analytics.kpi.scannedTotal.hint')}>
+          <span>{t('analytics.kpi.transactions', { count: imp.loyalty.transactions })}</span>
         </Kpi>
-        <Kpi icon={<ShoppingCart size={16} />} label="Zamówienia online" value={nf.format(imp.orders.placed)}>
-          <span>{nf.format(imp.orders.completed)} zrealizowanych · {money(imp.orders.revenue)}</span>
+        <Kpi icon={<ShoppingCart size={16} />} label={t('analytics.kpi.orders')} value={nf.format(imp.orders.placed)}>
+          <span>{t('analytics.kpi.orders.foot', { completed: nf.format(imp.orders.completed), revenue: money(imp.orders.revenue) })}</span>
         </Kpi>
-        <Kpi icon={<CalendarDays size={16} />} label="Rezerwacje" value={nf.format(imp.reservations.total)}>
-          <span>{nf.format(imp.reservations.confirmed)} potwierdzonych</span>
+        <Kpi icon={<CalendarDays size={16} />} label={t('analytics.kpi.reservations')} value={nf.format(imp.reservations.total)}>
+          <span>{t('analytics.kpi.reservations.foot', { count: nf.format(imp.reservations.confirmed) })}</span>
         </Kpi>
-        <Kpi icon={<Star size={16} />} label="Nowe opinie" value={nf.format(imp.reviews.count)}>
-          <span>{imp.reviews.average !== null ? `średnio ${imp.reviews.average.toFixed(1)} ★` : 'brak ocen'}</span>
+        <Kpi icon={<Star size={16} />} label={t('analytics.kpi.reviews')} value={nf.format(imp.reviews.count)}>
+          <span>{imp.reviews.average !== null ? t('analytics.kpi.reviews.avg', { avg: imp.reviews.average.toFixed(1) }) : t('analytics.kpi.reviews.none')}</span>
         </Kpi>
-        <Kpi icon={<MousePointerClick size={16} />} label="Kliknięcia w kontakt i mapę"
+        <Kpi icon={<MousePointerClick size={16} />} label={t('analytics.kpi.contact')}
              value={nf.format(eventTotal('phone_click') + eventTotal('email_click') + eventTotal('map_click'))}>
-          <span>telefon, e-mail, mapa</span>
+          <span>{t('analytics.kpi.contact.foot')}</span>
         </Kpi>
       </div>
 
       <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
-        <Card icon={<Compass size={18} />} title="Skąd przychodzą goście"><BarList items={sourceItems} /></Card>
-        <Card icon={<MousePointerClick size={18} />} title="Co robią na stronie"><BarList items={clickItems} total={undefined} /></Card>
-        <Card icon={<ShoppingCart size={18} />} title="Od wizyty do zamówienia">
+        <Card icon={<Compass size={18} />} title={t('analytics.card.sources')}><BarList items={sourceItems} /></Card>
+        <Card icon={<MousePointerClick size={18} />} title={t('analytics.card.actions')}><BarList items={clickItems} total={undefined} /></Card>
+        <Card icon={<ShoppingCart size={18} />} title={t('analytics.card.funnel')}>
           <BarList items={funnel} total={funnel[0].value} />
-          <p className="an-note">Kroki pośrednie to liczba akcji (jeden gość może wykonać kilka). Zamówienia pochodzą z systemu.</p>
+          <p className="an-note">{t('analytics.funnel.note')}</p>
         </Card>
-        <Card icon={<Users size={18} />} title="Urządzenia"><BarList items={deviceItems} /></Card>
+        <Card icon={<Users size={18} />} title={t('analytics.card.devices')}><BarList items={deviceItems} /></Card>
       </div>
 
       {data.share_url && (
-        <Card icon={<QrCode size={18} />} title="Zmierz skuteczność kodu QR i ulotek">
+        <Card icon={<QrCode size={18} />} title={t('analytics.share.title')}>
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem', lineHeight: 1.6 }}>
-            Użyj tego adresu w kodzie QR na stolikach, plakacie lub ulotce. Wejścia z niego zobaczysz powyżej jako „Kod QR”.
-            W innych materiałach zamień końcówkę <code>src=qr</code> na <code>flyer</code>, <code>nfc</code>, <code>newsletter</code> lub <code>social</code>.
+            {t('analytics.share.text1')} <code>src=qr</code> {t('analytics.share.text2')} <code>flyer</code>, <code>nfc</code>, <code>newsletter</code> {t('analytics.share.or')} <code>social</code>.
           </p>
           <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <code className="an-link">{data.share_url}</code>
+            <code className="an-link" translate="no">{data.share_url}</code>
             <button type="button" className="btn btn--outline-dark btn--sm" style={{ width: 'auto', display: 'inline-flex', gap: '0.4rem' }} onClick={copyLink}>
-              {copied ? <><Check size={14} /> Skopiowano</> : <><Copy size={14} /> Kopiuj</>}
+              {copied ? <><Check size={14} /> {t('analytics.copied')}</> : <><Copy size={14} /> {t('analytics.copy')}</>}
             </button>
           </div>
         </Card>

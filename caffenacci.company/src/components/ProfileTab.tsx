@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import LocationPicker from './LocationPicker'
 import { Coffee, AlertTriangle, X, Star } from 'lucide-react'
 import { BADGE_CATALOG, MAX_FEATURED_BADGES } from '../badges'
 import InfoTooltip from './InfoTooltip'
 import { API_URL } from '../config'
 import { thumbUrl } from '../utils/imageUrl'
+import { useI18n } from '../i18n'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -97,21 +98,27 @@ interface Props {
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const DAYS = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela']
-const PLATFORM_OPTIONS = [
+const PLATFORM_OPTIONS: { value: string; label?: string }[] = [
   { value: 'instagram', label: 'Instagram' },
   { value: 'facebook',  label: 'Facebook' },
   { value: 'x',         label: 'X (Twitter)' },
   { value: 'tiktok',    label: 'TikTok' },
-  { value: 'other',     label: 'Inny' },
+  { value: 'other' },
 ]
 const MAX_EXCEPTION_DAYS_AHEAD = 21
 const MAX_GALLERY_IMAGES = 10
 
+function weekdayNames(locale: string): string[] {
+  return [0, 1, 2, 3, 4, 5, 6].map(i => {
+    const s = new Date(2024, 0, 1 + i).toLocaleDateString(locale, { weekday: 'long' })
+    return s.charAt(0).toLocaleUpperCase(locale) + s.slice(1)
+  })
+}
+
 function uid() { return Math.random().toString(36).slice(2) }
 
 function defaultWeeklyHours(): WeeklyHours[] {
-  return DAYS.map((_, i) => ({
+  return Array.from({ length: 7 }, (_, i) => ({
     day_of_week: i,
     open_time:  i < 5 ? '08:00' : i === 5 ? '09:00' : null,
     close_time: i < 5 ? '20:00' : i === 5 ? '21:00' : null,
@@ -154,12 +161,11 @@ function Toggle({ checked, onChange, disabled = false }: {
 }
 
 function VisibilityBadge({ visible, alwaysPublic = false }: { visible: boolean; alwaysPublic?: boolean }) {
-  if (alwaysPublic) {
-    return <span className="pf-badge pf-badge--public">zawsze publiczne</span>
-  }
+  const { t } = useI18n()
+  if (alwaysPublic) return <span className="pf-badge pf-badge--public">{t('profile.vis.always')}</span>
   return visible
-    ? <span className="pf-badge pf-badge--public">publiczne</span>
-    : <span className="pf-badge pf-badge--private">prywatne</span>
+    ? <span className="pf-badge pf-badge--public">{t('profile.vis.public')}</span>
+    : <span className="pf-badge pf-badge--private">{t('profile.vis.private')}</span>
 }
 
 function SectionCard({ title, eyebrow, badge, children }: {
@@ -197,6 +203,7 @@ function BadgeChip({
   onToggle: () => void
   onToggleFeatured: () => void
 }) {
+  const { t } = useI18n()
   return (
     <div
       style={{
@@ -228,7 +235,7 @@ function BadgeChip({
           type="button"
           onClick={onToggleFeatured}
           disabled={!canFeature}
-          title={featured ? 'Usuń z wyróżnionych' : 'Wyróżnij — pokaże się w wynikach wyszukiwania'}
+          title={featured ? t('profile.badges.unfeature') : t('profile.badges.feature')}
           style={{
             appearance: 'none', border: 'none', background: 'none',
             cursor: canFeature ? 'pointer' : 'not-allowed',
@@ -249,11 +256,13 @@ function BadgeChip({
 // ═════════════════════════════════════════════════════════════════════════════
 
 export default function ProfileTab({ token }: Props) {
+  const { t, tApi, locale } = useI18n()
+  const dayNames = useMemo(() => weekdayNames(locale), [locale])
   const [profile, setProfile]   = useState<CafeProfileData | null>(null)
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
   const [saveMsg, setSaveMsg]   = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<{ key: string; params?: Record<string, string | number> } | null>(null)
 
   // Draft state — edytowalna kopia profilu
   const [ownerName, setOwnerName]   = useState('')
@@ -354,10 +363,10 @@ export default function ProfileTab({ token }: Props) {
         setGalleryVisible(data.gallery_visible)
         setGalleryImages(data.gallery_images ?? [])
       } else {
-        setLoadError(`Nie udało się wczytać profilu (błąd ${res.status}). Spróbuj ponownie lub sprawdź logi serwera.`)
+        setLoadError({ key: 'profile.err.load', params: { status: res.status } })
       }
     } catch {
-      setLoadError('Brak połączenia z serwerem — nie udało się wczytać profilu.')
+      setLoadError({ key: 'profile.err.network' })
     }
     finally { setLoading(false) }
   }, [token])
@@ -380,14 +389,14 @@ export default function ProfileTab({ token }: Props) {
         body: fd,
       })
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || 'Błąd wgrywania logo.')
+        const err = await res.json().catch(() => null)
+        throw new Error(tApi(err?.detail, 'profile.err.logoUpload'))
       }
       const data: CafeProfileData = await res.json()
       setLogoUrl(data.logo_url)
       setProfile(data)
     } catch (err: unknown) {
-      setLogoError(err instanceof Error ? err.message : 'Wystąpił błąd. Spróbuj ponownie.')
+      setLogoError(err instanceof Error ? err.message : t('common.genericError'))
     } finally {
       setLogoUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -395,7 +404,7 @@ export default function ProfileTab({ token }: Props) {
   }
 
   const handleLogoDelete = async () => {
-    if (!confirm('Czy na pewno chcesz usunąć logo?')) return
+    if (!confirm(t('profile.logo.confirmDelete'))) return
     try {
       const res = await fetch(`${API_URL}/profile/logo`, {
         method: 'DELETE',
@@ -421,7 +430,7 @@ export default function ProfileTab({ token }: Props) {
     const selected = Array.from(files)
     const toUpload = selected.slice(0, Math.max(slotsLeft, 0))
     if (toUpload.length < selected.length) {
-      setGalleryError(`Można dodać maksymalnie ${MAX_GALLERY_IMAGES} zdjęć — część wybranych plików nie została wgrana.`)
+      setGalleryError(t('profile.gallery.errTooMany', { max: MAX_GALLERY_IMAGES }))
     }
 
     try {
@@ -434,8 +443,8 @@ export default function ProfileTab({ token }: Props) {
           body: fd,
         })
         if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err.detail || 'Błąd wgrywania zdjęcia.')
+          const err = await res.json().catch(() => null)
+          throw new Error(tApi(err?.detail, 'profile.err.galleryUpload'))
         }
         const data: CafeProfileData = await res.json()
         setGalleryImages(data.gallery_images)
@@ -443,7 +452,7 @@ export default function ProfileTab({ token }: Props) {
         setProfile(data)
       }
     } catch (err: unknown) {
-      setGalleryError(err instanceof Error ? err.message : 'Wystąpił błąd. Spróbuj ponownie.')
+      setGalleryError(err instanceof Error ? err.message : t('common.genericError'))
     } finally {
       setGalleryUploading(false)
       if (galleryFileInputRef.current) galleryFileInputRef.current.value = ''
@@ -451,7 +460,7 @@ export default function ProfileTab({ token }: Props) {
   }
 
   const handleGalleryDelete = async (imageId: string) => {
-    if (!confirm('Czy na pewno chcesz usunąć to zdjęcie z galerii?')) return
+    if (!confirm(t('profile.gallery.confirmDelete'))) return
     setGalleryError(null)
     try {
       const res = await fetch(`${API_URL}/profile/gallery/${imageId}`, {
@@ -459,15 +468,15 @@ export default function ProfileTab({ token }: Props) {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || 'Błąd usuwania zdjęcia.')
+        const err = await res.json().catch(() => null)
+        throw new Error(tApi(err?.detail, 'profile.err.galleryDelete'))
       }
       const data: CafeProfileData = await res.json()
       setGalleryImages(data.gallery_images)
       setGalleryVisible(data.gallery_visible)
       setProfile(data)
     } catch (err: unknown) {
-      setGalleryError(err instanceof Error ? err.message : 'Błąd usuwania zdjęcia.')
+      setGalleryError(err instanceof Error ? err.message : t('profile.err.galleryDelete'))
     }
   }
 
@@ -498,8 +507,8 @@ export default function ProfileTab({ token }: Props) {
         body: JSON.stringify(exc),
       })
       if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd zapisu wyjątku.')
+        const e = await res.json().catch(() => null)
+        throw new Error(tApi(e?.detail, 'profile.err.exceptionSave'))
       }
       const saved: HourException = await res.json()
       setExceptions(prev => {
@@ -507,7 +516,7 @@ export default function ProfileTab({ token }: Props) {
         return exists ? prev.map(x => x.date === saved.date ? saved : x) : [...prev, saved]
       })
     } catch (err: unknown) {
-      setSaveMsg({ type: 'err', text: err instanceof Error ? err.message : 'Błąd zapisu wyjątku.' })
+      setSaveMsg({ type: 'err', text: err instanceof Error ? err.message : t('profile.err.exceptionSave') })
     } finally { setExceptionsLoading(false) }
   }
 
@@ -558,11 +567,11 @@ export default function ProfileTab({ token }: Props) {
   const handleInvite = async (idx: number) => {
     const emp = employees[idx]
     if (!emp.id) {
-      setInviteMsg({ idx, type: 'err', text: 'Zapisz najpierw profil, żeby móc zaprosić tego pracownika.' })
+      setInviteMsg({ idx, type: 'err', text: t('profile.team.errSaveFirst') })
       return
     }
     if (!emp.email) {
-      setInviteMsg({ idx, type: 'err', text: 'Podaj adres e-mail pracownika.' })
+      setInviteMsg({ idx, type: 'err', text: t('profile.team.errEmail') })
       return
     }
     setInviteBusy(emp.id)
@@ -573,19 +582,19 @@ export default function ProfileTab({ token }: Props) {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd wysyłania zaproszenia.')
+        const e = await res.json().catch(() => null)
+        throw new Error(tApi(e?.detail, 'profile.err.invite'))
       }
-      setInviteMsg({ idx, type: 'ok', text: 'Zaproszenie zostało wysłane (ważne 30 minut).' })
+      setInviteMsg({ idx, type: 'ok', text: t('profile.team.inviteSent') })
     } catch (err: unknown) {
-      setInviteMsg({ idx, type: 'err', text: err instanceof Error ? err.message : 'Błąd.' })
+      setInviteMsg({ idx, type: 'err', text: err instanceof Error ? err.message : t('common.genericError') })
     } finally { setInviteBusy(null) }
   }
 
   const handleRevoke = async (idx: number) => {
     const emp = employees[idx]
     if (!emp.id) return
-    if (!confirm(`Usunąć dostęp pracownika „${emp.full_name}” do aplikacji?`)) return
+    if (!confirm(t('profile.team.confirmRevoke', { name: emp.full_name }))) return
     setInviteBusy(emp.id)
     try {
       await fetch(`${API_URL}/employee-auth/employees/${emp.id}/access`, {
@@ -678,8 +687,8 @@ export default function ProfileTab({ token }: Props) {
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd zapisu profilu.')
+        const e = await res.json().catch(() => null)
+        throw new Error(tApi(e?.detail, 'profile.err.save'))
       }
       const data: CafeProfileData = await res.json()
       setProfile(data)
@@ -703,10 +712,10 @@ export default function ProfileTab({ token }: Props) {
       setLocationShowGmapsLink(data.location_show_gmaps_link)
       setGalleryVisible(data.gallery_visible)
       setGalleryImages(data.gallery_images)
-      setSaveMsg({ type: 'ok', text: 'Profil kawiarni został zapisany.' })
+      setSaveMsg({ type: 'ok', text: t('profile.saved') })
       window.dispatchEvent(new Event('caffenacci:profile-saved'))
     } catch (err: unknown) {
-      setSaveMsg({ type: 'err', text: err instanceof Error ? err.message : 'Błąd zapisu.' })
+      setSaveMsg({ type: 'err', text: err instanceof Error ? err.message : t('profile.err.save') })
     } finally { setSaving(false) }
   }
 
@@ -716,7 +725,7 @@ export default function ProfileTab({ token }: Props) {
     return (
       <div className="loading-state">
         <div className="loading-spinner" />
-        <p>Wczytywanie profilu kawiarni…</p>
+        <p>{t('profile.loading')}</p>
       </div>
     )
   }
@@ -728,24 +737,22 @@ export default function ProfileTab({ token }: Props) {
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div className="page-header__eyebrow" style={{ marginBottom: '0.25rem' }}>
-            Zarządzanie
+            {t('common.management')}
           </div>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
-            Profil kawiarni
+            {t('profile.title')}
           </h2>
         </div>
         {profile && !profile.profile_complete && (
           <span className="pf-badge pf-badge--warn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}>
             <AlertTriangle size={14} />
-            Profil niekompletny — uzupełnij wymagane pola
+            {t('profile.incomplete')}
           </span>
         )}
       </div>
 
       <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '70ch' }}>
-        Te dane będą w przyszłości widoczne na publicznej stronie-wizytówce Twojej kawiarni.
-        Dla każdego pola możesz zdecydować, czy ma być publiczne — z wyjątkiem pól oznaczonych
-        jako zawsze publiczne lub zawsze prywatne.
+        {t('profile.intro')}
       </p>
 
       {saveMsg && (
@@ -756,8 +763,8 @@ export default function ProfileTab({ token }: Props) {
 
       {loadError && (
         <div className="form-error" role="alert">
-          {loadError}{' '}
-          <button type="button" className="link-btn" onClick={fetchProfile}>Spróbuj ponownie</button>
+          {t(loadError.key, loadError.params)}{' '}
+          <button type="button" className="link-btn" onClick={fetchProfile}>{t('profile.retry')}</button>
         </div>
       )}
 
@@ -765,100 +772,100 @@ export default function ProfileTab({ token }: Props) {
 
         {/* ── Właściciel (zawsze prywatne) ──────────────────────────────── */}
         <SectionCard
-          eyebrow="Z rejestracji"
-          title="Dane właściciela"
+          eyebrow={t('profile.eyebrow.registration')}
+          title={t('profile.owner.title')}
           badge={<VisibilityBadge visible={false} alwaysPublic={false} />}
         >
           <div className="field">
-            <label className="field__label">Imię i nazwisko</label>
+            <label className="field__label">{t('profile.owner.name')}</label>
             <input className="field__input" value={ownerName} onChange={e => setOwnerName(e.target.value)} />
           </div>
           <div className="field">
-            <label className="field__label">E-mail (login)</label>
+            <label className="field__label">{t('profile.owner.email')}</label>
             <input className="field__input" value={profile?.email ?? ''} disabled style={{ opacity: 0.6 }} />
           </div>
           <div className="field">
-            <label className="field__label">Telefon</label>
+            <label className="field__label">{t('profile.owner.phone')}</label>
             <input className="field__input" value={phone} onChange={e => setPhone(e.target.value)} />
           </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Te dane nigdy nie są publiczne.
+            {t('profile.owner.private')}
           </p>
         </SectionCard>
 
         {/* ── Nazwa kawiarni (zawsze publiczna) ─────────────────────────── */}
         <SectionCard
-          eyebrow="Z rejestracji"
-          title="Nazwa kawiarni"
+          eyebrow={t('profile.eyebrow.registration')}
+          title={t('profile.cafe.title')}
           badge={<VisibilityBadge visible alwaysPublic />}
         >
           <div className="field">
-            <label className="field__label">Nazwa</label>
+            <label className="field__label">{t('profile.cafe.name')}</label>
             <input className="field__input" value={cafeName} onChange={e => setCafeName(e.target.value)} />
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: '0.25rem 0 0' }}>
-              Zmiana nazwy lub miasta zmienia adres strony; stary adres będzie przekierowywał.
+              {t('profile.cafe.slugNote')}
             </p>
           </div>
           <div className="field">
-            <label className="field__label">Identyfikator</label>
+            <label className="field__label">{t('profile.cafe.id')}</label>
             <input className="field__input info-row__value--mono" value={profile?.cafe_id ?? ''} disabled style={{ opacity: 0.6 }} />
           </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Identyfikator nie jest edytowalny ani publiczny.
+            {t('profile.cafe.idNote')}
           </p>
         </SectionCard>
 
         {/* ── Adres (zawsze publiczny) ───────────────────────────────────── */}
         <SectionCard
-          eyebrow="Z rejestracji"
-          title="Adres"
+          eyebrow={t('profile.eyebrow.registration')}
+          title={t('profile.address.title')}
           badge={<VisibilityBadge visible alwaysPublic />}
         >
           <div className="field-row">
             <div className="field field--grow">
-              <label className="field__label">Ulica</label>
+              <label className="field__label">{t('profile.address.street')}</label>
               <input className="field__input" value={street} onChange={e => setStreet(e.target.value)} />
             </div>
             <div className="field field--small">
-              <label className="field__label">Nr</label>
+              <label className="field__label">{t('profile.address.number')}</label>
               <input className="field__input" value={buildingNumber} onChange={e => setBuildingNumber(e.target.value)} />
             </div>
           </div>
           <div className="field-row">
             <div className="field field--small">
-              <label className="field__label">Kod pocztowy</label>
+              <label className="field__label">{t('profile.address.postalCode')}</label>
               <input className="field__input" value={postalCode} onChange={e => setPostalCode(e.target.value)} />
             </div>
             <div className="field field--grow">
-              <label className="field__label">Miasto</label>
+              <label className="field__label">{t('profile.address.city')}</label>
               <input className="field__input" value={city} onChange={e => setCity(e.target.value)} />
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: '0.25rem 0 0' }}>
-                Zmiana nazwy lub miasta zmienia adres strony; stary adres będzie przekierowywał.
+                {t('profile.cafe.slugNote')}
               </p>
             </div>
           </div>
           <div className="field">
-            <label className="field__label">Kraj</label>
+            <label className="field__label">{t('profile.address.country')}</label>
             <input className="field__input" value={country} onChange={e => setCountry(e.target.value)} />
           </div>
         </SectionCard>
 
         {/* ── Kontakt kawiarni ───────────────────────────────────────────── */}
-        <SectionCard eyebrow="Nowe dane" title="Kontakt kawiarni">
+        <SectionCard eyebrow={t('profile.eyebrow.new')} title={t('profile.contact.title')}>
           <div className="field">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="field__label">E-mail kawiarni (opcjonalnie)</label>
+              <label className="field__label">{t('profile.contact.email')}</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <VisibilityBadge visible={contactEmailVisible} />
                 <Toggle checked={contactEmailVisible} onChange={setContactEmailVisible} disabled={!contactEmail.trim()} />
               </div>
             </div>
             <input className="field__input" value={contactEmail}
-              onChange={e => setContactEmail(e.target.value)} placeholder="kontakt@kawiarnia.pl" />
+              onChange={e => setContactEmail(e.target.value)} placeholder={t('profile.contact.emailPlaceholder')} />
           </div>
           <div className="field">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="field__label">Telefon kawiarni (opcjonalnie)</label>
+              <label className="field__label">{t('profile.contact.phone')}</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <VisibilityBadge visible={contactPhoneVisible} />
                 <Toggle checked={contactPhoneVisible} onChange={setContactPhoneVisible} disabled={!contactPhone.trim()} />
@@ -870,10 +877,10 @@ export default function ProfileTab({ token }: Props) {
         </SectionCard>
 
         {/* ── Opis ────────────────────────────────────────────────────────── */}
-        <SectionCard eyebrow="Nowe dane" title="Krótki opis kawiarni">
+        <SectionCard eyebrow={t('profile.eyebrow.new')} title={t('profile.desc.title')}>
           <div className="field">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="field__label">Opis</label>
+              <label className="field__label">{t('profile.desc.label')}</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <VisibilityBadge visible={descriptionVisible} />
                 <Toggle checked={descriptionVisible} onChange={setDescriptionVisible} disabled={!description.trim()} />
@@ -885,7 +892,7 @@ export default function ProfileTab({ token }: Props) {
               value={description}
               maxLength={2000}
               onChange={e => setDescription(e.target.value)}
-              placeholder="Kameralna kawiarnia w sercu miasta, specjalizująca się w kawie z lokalnej palarni…"
+              placeholder={t('profile.desc.placeholder')}
             />
             <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', textAlign: 'right' }}>{description.length}/2000</span>
           </div>
@@ -893,17 +900,14 @@ export default function ProfileTab({ token }: Props) {
 
         {/* ── Logo ────────────────────────────────────────────────────────── */}
         <SectionCard
-          eyebrow="Nowe dane · wymagane *"
-          title="Logo"
+          eyebrow={t('profile.eyebrow.newRequired')}
+          title={t('profile.logo.title')}
           badge={<VisibilityBadge visible alwaysPublic />}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
             <div className="pf-logo-circle">
               {logoUrl ? (
-                <img
-                  src={thumbUrl(logoUrl, 256)}
-                  alt="Logo kawiarni"
-                />
+                <img src={thumbUrl(logoUrl, 256)} alt={t('profile.logo.alt')} />
               ) : (
                 <Coffee size={30} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
               )}
@@ -916,21 +920,21 @@ export default function ProfileTab({ token }: Props) {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={logoUploading}
                 >
-                  {logoUploading ? 'Wgrywanie…' : logoUrl ? 'Zmień logo' : 'Wgraj logo'}
+                  {logoUploading ? t('profile.logo.uploading') : logoUrl ? t('profile.logo.change') : t('profile.logo.upload')}
                 </button>
                 {logoUrl && (
                   <button
                     type="button" className="me-remove-btn me-remove-item"
-                    onClick={handleLogoDelete} title="Usuń logo"
+                    onClick={handleLogoDelete} title={t('profile.logo.remove')} aria-label={t('profile.logo.remove')}
                   ><X size={13} /></button>
                 )}
               </div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Kwadrat (1:1), min. 512×512 px, max 10 MB.
+                {t('profile.logo.hint')}
               </span>
               {!logoUrl && (
                 <span style={{ fontSize: '0.75rem', color: 'var(--error)' }}>
-                  * Pole wymagane do pełnej publikacji wizytówki
+                  {t('profile.logo.required')}
                 </span>
               )}
             </div>
@@ -952,23 +956,23 @@ export default function ProfileTab({ token }: Props) {
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
-              Nowe dane · wymagane *
+              {t('profile.eyebrow.newRequired')}
             </div>
             <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
-              Godziny otwarcia
+              {t('profile.hours.title')}
             </h2>
           </div>
           <VisibilityBadge visible alwaysPublic />
         </div>
         <div className="info-card__body">
-          <div className="res-settings-block__title">Plan tygodniowy (obowiązuje domyślnie)</div>
+          <div className="res-settings-block__title">{t('profile.hours.weekly')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', marginBottom: '1.5rem' }}>
             {weeklyHours.map(h => {
               const isOpen = h.open_time !== null
               return (
                 <div key={h.day_of_week} style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', flexWrap: 'wrap' }}>
                   <div style={{ width: 110, fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-dark)' }}>
-                    {DAYS[h.day_of_week]}
+                    {dayNames[h.day_of_week]}
                   </div>
                   <Toggle checked={isOpen} onChange={v => toggleDay(h.day_of_week, v)} />
                   {isOpen ? (
@@ -982,7 +986,7 @@ export default function ProfileTab({ token }: Props) {
                         onChange={e => updateHours(h.day_of_week, 'close_time', e.target.value)} />
                     </div>
                   ) : (
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Zamknięte</span>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('res.closed')}</span>
                   )}
                 </div>
               )
@@ -991,10 +995,10 @@ export default function ProfileTab({ token }: Props) {
 
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
             <div className="res-settings-block__title">
-              Wyjątki w konkretne dni (do {MAX_EXCEPTION_DAYS_AHEAD} dni / 3 tygodni do przodu)
+              {t('profile.hours.exceptions', { days: MAX_EXCEPTION_DAYS_AHEAD })}
             </div>
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.875rem', lineHeight: 1.6 }}>
-              Np. inne godziny w święto. Wyjątek nadpisuje plan tygodniowy tylko dla wybranej daty.
+              {t('profile.hours.exceptionsHint')}
             </p>
             <ExceptionEditor
               exceptions={exceptions}
@@ -1013,22 +1017,20 @@ export default function ProfileTab({ token }: Props) {
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
-              Nowe dane · opcjonalne
+              {t('profile.eyebrow.newOptional')}
             </div>
             <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
-              Plakietki
+              {t('profile.badges.title')}
             </h2>
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             <Star size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-            {featuredBadgeCount}/{MAX_FEATURED_BADGES} wyróżnionych
+            {t('profile.badges.featuredCount', { count: featuredBadgeCount, max: MAX_FEATURED_BADGES })}
           </span>
         </div>
         <div className="info-card__body">
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem', lineHeight: 1.6 }}>
-            Wybierz to, co pasuje do Twojej kawiarni — pomoże to gościom znaleźć ją w wyszukiwarce.
-            Kliknij gwiazdkę przy wybranej plakietce, aby wyróżnić ją w kafelku kawiarni na liście
-            wyszukiwania (maksymalnie {MAX_FEATURED_BADGES}).
+            {t('profile.badges.intro', { max: MAX_FEATURED_BADGES })}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem' }}>
             {BADGE_CATALOG.map(def => {
@@ -1037,9 +1039,9 @@ export default function ProfileTab({ token }: Props) {
               return (
                 <BadgeChip
                   key={def.key}
-                  label={def.label}
+                  label={t(`badge.${def.key}`)}
                   icon={def.icon}
-                  info={def.info}
+                  info={def.hasInfo ? t(`badge.${def.key}.info`) : undefined}
                   selected={selected}
                   featured={featured}
                   canFeature={featured || featuredBadgeCount < MAX_FEATURED_BADGES}
@@ -1057,20 +1059,17 @@ export default function ProfileTab({ token }: Props) {
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
-              Nowe dane · opcjonalne
+              {t('profile.eyebrow.newOptional')}
             </div>
             <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
-              Lokalizacja na mapie
+              {t('profile.location.title')}
             </h2>
           </div>
-          {locationVisible
-            ? <span className="pf-badge pf-badge--public">publiczne</span>
-            : <span className="pf-badge pf-badge--private">prywatne</span>}
+          <VisibilityBadge visible={locationVisible} />
         </div>
         <div className="info-card__body">
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.5rem', lineHeight: 1.6 }}>
-            To osobna pinezka od adresu — dzięki temu możesz dokładnie wskazać wejście do lokalu,
-            nawet jeśli adres pocztowy wskazuje na środek budynku lub podwórko.
+            {t('profile.location.intro')}
           </p>
           <LocationPicker
             latitude={latitude}
@@ -1091,10 +1090,10 @@ export default function ProfileTab({ token }: Props) {
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
-              Nowe dane · opcjonalne
+              {t('profile.eyebrow.newOptional')}
             </div>
             <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
-              Galeria zdjęć
+              {t('profile.gallery.title')}
             </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1104,9 +1103,7 @@ export default function ProfileTab({ token }: Props) {
         </div>
         <div className="info-card__body">
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
-            Dodaj do {MAX_GALLERY_IMAGES} zdjęć swojej kawiarni. W zależności od wybranego szablonu strony
-            (zakładka „Strona WWW") galeria pojawi się jako przewijany pasek, siatka zdjęć albo — w motywie
-            magicznym — unoszące się fotografie wychodzące poza treść strony.
+            {t('profile.gallery.intro', { max: MAX_GALLERY_IMAGES })}
           </p>
 
           {galleryError && <div className="form-error" style={{ marginBottom: '0.75rem' }}>{galleryError}</div>}
@@ -1114,12 +1111,13 @@ export default function ProfileTab({ token }: Props) {
           <div className="pf-gallery-grid">
             {galleryImages.map((img, idx) => (
               <div key={img.id} className="pf-gallery-item">
-                <img src={thumbUrl(img.url, 480)} alt={`Zdjęcie ${idx + 1} z galerii`} loading="lazy" decoding="async" />
+                <img src={thumbUrl(img.url, 480)} alt={t('profile.gallery.alt', { n: idx + 1 })} loading="lazy" decoding="async" />
                 <div className="pf-gallery-item__actions">
                   <button
                     type="button"
                     className="pf-gallery-item__btn pf-gallery-item__btn--danger"
-                    title="Usuń zdjęcie"
+                    title={t('profile.gallery.remove')}
+                    aria-label={t('profile.gallery.remove')}
                     onClick={() => handleGalleryDelete(img.id)}
                   ><X size={14} /></button>
                 </div>
@@ -1133,7 +1131,7 @@ export default function ProfileTab({ token }: Props) {
                 onClick={() => galleryFileInputRef.current?.click()}
                 disabled={galleryUploading}
               >
-                {galleryUploading ? 'Wgrywanie…' : '+ Dodaj zdjęcie'}
+                {galleryUploading ? t('profile.logo.uploading') : t('profile.gallery.add')}
               </button>
             )}
           </div>
@@ -1148,7 +1146,7 @@ export default function ProfileTab({ token }: Props) {
           />
 
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.75rem' }}>
-            {galleryImages.length}/{MAX_GALLERY_IMAGES} zdjęć · max 10 MB na zdjęcie (PNG, JPEG, WEBP)
+            {t('profile.gallery.counter', { count: galleryImages.length, max: MAX_GALLERY_IMAGES })}
           </span>
         </div>
       </div>
@@ -1158,56 +1156,56 @@ export default function ProfileTab({ token }: Props) {
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
-              Nowe dane · opcjonalne
+              {t('profile.eyebrow.newOptional')}
             </div>
             <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
-              Social media
+              {t('profile.social.title')}
             </h2>
           </div>
         </div>
         <div className="info-card__body">
           {socialLinks.length === 0 && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nie dodano jeszcze żadnych linków.</p>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('profile.social.none')}</p>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {socialLinks.map((s, idx) => (
               <div key={s.id ?? idx} className="res-table-row">
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   <div className="field" style={{ width: 150 }}>
-                    <label className="me-label">Platforma</label>
+                    <label className="me-label">{t('profile.social.platform')}</label>
                     <select className="me-input" style={{ cursor: 'pointer' }}
                       value={s.platform} onChange={e => updateSocialLink(idx, { platform: e.target.value })}>
                       {PLATFORM_OPTIONS.map(p => (
-                        <option key={p.value} value={p.value}>{p.label}</option>
+                        <option key={p.value} value={p.value}>{p.label ?? t('profile.platform.other')}</option>
                       ))}
                     </select>
                   </div>
                   <div className="field" style={{ flex: '2 1 200px' }}>
-                    <label className="me-label">Link</label>
+                    <label className="me-label">{t('profile.social.link')}</label>
                     <input className="me-input" value={s.url}
                       onChange={e => updateSocialLink(idx, { url: e.target.value })}
-                      placeholder="https://instagram.com/twojakawiarnia" />
+                      placeholder="https://instagram.com/yourcafe" />
                   </div>
                   {s.platform === 'other' && (
                     <div className="field" style={{ flex: '1 1 140px' }}>
-                      <label className="me-label">Etykieta</label>
+                      <label className="me-label">{t('profile.social.label')}</label>
                       <input className="me-input" value={s.label ?? ''}
                         onChange={e => updateSocialLink(idx, { label: e.target.value })}
-                        placeholder="np. Pinterest" />
+                        placeholder={t('profile.social.labelPlaceholder')} />
                     </div>
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingBottom: '0.5rem' }}>
                     <VisibilityBadge visible={s.visible} />
                     <Toggle checked={s.visible} onChange={v => updateSocialLink(idx, { visible: v })} />
                     <button type="button" className="me-remove-btn me-remove-item"
-                      onClick={() => removeSocialLink(idx)} title="Usuń"><X size={13} /></button>
+                      onClick={() => removeSocialLink(idx)} title={t('profile.remove')} aria-label={t('profile.remove')}><X size={13} /></button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
           <button type="button" className="me-add-item-btn" style={{ marginTop: '0.875rem' }} onClick={addSocialLink}>
-            + Dodaj link
+            {t('profile.social.add')}
           </button>
         </div>
       </div>
@@ -1217,71 +1215,71 @@ export default function ProfileTab({ token }: Props) {
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
-              Nowe dane · opcjonalne
+              {t('profile.eyebrow.newOptional')}
             </div>
             <h2 className="info-card__title" style={{ textTransform: 'none', fontSize: '0.9375rem', marginTop: '0.125rem' }}>
-              Zespół
+              {t('profile.team.title')}
             </h2>
           </div>
         </div>
         <div className="info-card__body">
           {employees.length === 0 && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nie dodano jeszcze żadnych pracowników.</p>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('profile.team.none')}</p>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {employees.map((e, idx) => (
               <div key={e.id ?? idx} className="res-table-row">
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.625rem' }}>
                   <div className="field" style={{ flex: '1 1 180px' }}>
-                    <label className="me-label">Imię i nazwisko</label>
+                    <label className="me-label">{t('profile.owner.name')}</label>
                     <input className="me-input" value={e.full_name}
                       onChange={ev => updateEmployee(idx, { full_name: ev.target.value })}
-                      placeholder="Jan Kowalski" />
+                      placeholder={t('register.ownerNamePlaceholder')} />
                   </div>
                   <div className="field" style={{ flex: '1 1 140px' }}>
-                    <label className="me-label">Rola</label>
+                    <label className="me-label">{t('profile.team.role')}</label>
                     <input className="me-input" value={e.role}
                       onChange={ev => updateEmployee(idx, { role: ev.target.value })}
-                      placeholder="np. Barista" />
+                      placeholder={t('profile.team.rolePlaceholder')} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingBottom: '0.5rem' }}>
                     <VisibilityBadge visible={e.visible} />
                     <Toggle checked={e.visible} onChange={v => updateEmployee(idx, { visible: v })} />
                     <button type="button" className="me-remove-btn me-remove-item"
-                      onClick={() => removeEmployee(idx)} title="Usuń"><X size={13} /></button>
+                      onClick={() => removeEmployee(idx)} title={t('profile.remove')} aria-label={t('profile.remove')}><X size={13} /></button>
                   </div>
                 </div>
                 <div className="field">
-                  <label className="me-label">Krótkie bio (opcjonalnie)</label>
+                  <label className="me-label">{t('profile.team.bio')}</label>
                   <input className="me-input" value={e.bio ?? ''}
                     onChange={ev => updateEmployee(idx, { bio: ev.target.value })}
-                    placeholder="np. Mistrz Polski Baristów 2023" />
+                    placeholder={t('profile.team.bioPlaceholder')} />
                 </div>
 
                 <div className="field">
-                  <label className="me-label">E-mail (do zaproszenia w aplikacji — nigdy niepubliczny)</label>
+                  <label className="me-label">{t('profile.team.email')}</label>
                   <input className="me-input" type="email" value={e.email ?? ''}
                     onChange={ev => updateEmployeeEmail(idx, ev.target.value)}
-                    placeholder="pracownik@example.com" />
+                    placeholder="employee@example.com" />
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap' }}>
                   {e.access_enabled ? (
-                    <span className="pf-badge pf-badge--public">Ma dostęp do aplikacji</span>
+                    <span className="pf-badge pf-badge--public">{t('profile.team.hasAccess')}</span>
                   ) : e.invited_at ? (
-                    <span className="pf-badge pf-badge--warn">Zaproszenie wysłane, czeka na logowanie</span>
+                    <span className="pf-badge pf-badge--warn">{t('profile.team.invited')}</span>
                   ) : (
-                    <span className="pf-badge pf-badge--private">Brak zaproszenia</span>
+                    <span className="pf-badge pf-badge--private">{t('profile.team.noInvite')}</span>
                   )}
                   <button type="button" className="btn btn--outline-dark btn--sm" style={{ width: 'auto' }}
                     onClick={() => handleInvite(idx)} disabled={inviteBusy === e.id || !e.id}>
-                    {e.invited_at ? 'Wyślij ponownie' : 'Zaproś'}
+                    {e.invited_at ? t('profile.team.resend') : t('profile.team.invite')}
                   </button>
                   {(e.access_enabled || e.invited_at) && (
                     <button type="button" className="btn btn--outline-dark btn--sm"
                       style={{ width: 'auto', color: 'var(--error)' }}
                       onClick={() => handleRevoke(idx)} disabled={inviteBusy === e.id}>
-                      Usuń dostęp
+                      {t('profile.team.revoke')}
                     </button>
                   )}
                   {inviteMsg?.idx === idx && (
@@ -1294,7 +1292,7 @@ export default function ProfileTab({ token }: Props) {
             ))}
           </div>
           <button type="button" className="me-add-item-btn" style={{ marginTop: '0.875rem' }} onClick={addEmployee}>
-            + Dodaj pracownika
+            {t('profile.team.add')}
           </button>
         </div>
       </div>
@@ -1306,7 +1304,7 @@ export default function ProfileTab({ token }: Props) {
           style={{ width: 'auto', minWidth: 200 }}
           onClick={handleSave} disabled={saving || !profile}
         >
-          {saving ? 'Zapisywanie…' : 'Zapisz profil kawiarni'}
+          {saving ? t('common.saving') : t('profile.save')}
         </button>
       </div>
     </div>
@@ -1324,6 +1322,7 @@ function ExceptionEditor({ exceptions, maxDate, minDate, loading, onSave, onDele
   onSave: (exc: HourException) => void
   onDelete: (date: string) => void
 }) {
+  const { t, locale } = useI18n()
   const [date, setDate]           = useState(minDate)
   const [isClosed, setIsClosed]   = useState(false)
   const [openTime, setOpenTime]   = useState('09:00')
@@ -1340,7 +1339,7 @@ function ExceptionEditor({ exceptions, maxDate, minDate, loading, onSave, onDele
 
   const formatDate = (ds: string) => {
     const d = new Date(ds + 'T00:00:00')
-    return d.toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'long' })
+    return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'long' })
   }
 
   return (
@@ -1358,7 +1357,7 @@ function ExceptionEditor({ exceptions, maxDate, minDate, loading, onSave, onDele
                     {formatDate(exc.date)}
                   </span>
                   {exc.is_closed ? (
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--error)' }}>Zamknięte</span>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--error)' }}>{t('res.closed')}</span>
                   ) : (
                     <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                       {exc.open_time}–{exc.close_time}
@@ -1366,7 +1365,8 @@ function ExceptionEditor({ exceptions, maxDate, minDate, loading, onSave, onDele
                   )}
                 </div>
                 <button type="button" className="me-remove-btn me-remove-item"
-                  onClick={() => onDelete(exc.date)} title="Usuń wyjątek" disabled={loading}><X size={13} /></button>
+                  onClick={() => onDelete(exc.date)} title={t('profile.exc.remove')}
+                  aria-label={t('profile.exc.remove')} disabled={loading}><X size={13} /></button>
               </div>
           ))}
         </div>
@@ -1376,14 +1376,14 @@ function ExceptionEditor({ exceptions, maxDate, minDate, loading, onSave, onDele
       <div className="res-table-row">
         <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div className="field" style={{ width: 170 }}>
-            <label className="me-label">Data</label>
+            <label className="me-label">{t('profile.exc.date')}</label>
             <input type="date" className="me-input" value={date} min={minDate} max={maxDate}
               onChange={e => setDate(e.target.value)} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingBottom: '0.5rem' }}>
             <Toggle checked={!isClosed} onChange={v => setIsClosed(!v)} />
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-dark)' }}>
-              {isClosed ? 'Zamknięte' : 'Otwarte'}
+              {isClosed ? t('res.closed') : t('profile.exc.open')}
             </span>
           </div>
           {!isClosed && (
@@ -1397,7 +1397,7 @@ function ExceptionEditor({ exceptions, maxDate, minDate, loading, onSave, onDele
           )}
           <button type="button" className="btn btn--primary" style={{ width: 'auto', padding: '0.5rem 1.125rem', fontSize: '0.8125rem' }}
             onClick={handleAdd} disabled={loading}>
-            + Ustaw wyjątek
+            {t('profile.exc.set')}
           </button>
         </div>
       </div>

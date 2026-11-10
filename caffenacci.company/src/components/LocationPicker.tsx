@@ -2,12 +2,10 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { ExternalLink, X } from 'lucide-react'
+import { useI18n } from '../i18n'
 
-// Styl mapy: OpenFreeMap „Liberty" — darmowe na zawsze, bez limitów, bez
-// klucza API, można używać komercyjnie (dane © OpenStreetMap contributors,
-// atrybucję dorzuca automatycznie MapLibre). Alternatywa: „positron" —
-// bardziej stonowany, szary styl, jeśli „liberty" jest zbyt kolorowe.
-// https://openfreemap.org
+// Styl mapy: OpenFreeMap „Liberty" — darmowe, bez klucza API, komercyjnie OK
+// (dane © OpenStreetMap contributors, atrybucję dodaje MapLibre).
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty'
 
 interface NominatimResult {
@@ -67,6 +65,7 @@ export default function LocationPicker({
   showMap, onShowMapChange,
   showGmapsLink, onShowGmapsLinkChange,
 }: Props) {
+  const { t, lang } = useI18n()
   const [query, setQuery]       = useState('')
   const [results, setResults]   = useState<NominatimResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -79,8 +78,6 @@ export default function LocationPicker({
 
   const hasPin = latitude !== null && longitude !== null
 
-  // Ref na najnowszy callback, żeby nie przebudowywać mapy (i nie tracić
-  // jej zoomu/pozycji) za każdym razem, gdy rodzic przekaże nową funkcję.
   const onPositionChangeRef = useRef(onPositionChange)
   onPositionChangeRef.current = onPositionChange
 
@@ -139,6 +136,7 @@ export default function LocationPicker({
   }, [hasPin, latitude, longitude])
 
   // ── Wyszukiwanie adresu przez Nominatim (OpenStreetMap) ────────────────
+  // Język wyników podąża za językiem panelu.
 
   const runSearch = useCallback(async (q: string) => {
     if (q.trim().length < 3) {
@@ -149,7 +147,7 @@ export default function LocationPicker({
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`,
-        { headers: { 'Accept-Language': 'pl' } },
+        { headers: { 'Accept-Language': lang } },
       )
       if (res.ok) {
         const data: NominatimResult[] = await res.json()
@@ -158,7 +156,7 @@ export default function LocationPicker({
       }
     } catch { /* ignore */ }
     finally { setSearching(false) }
-  }, [])
+  }, [lang])
 
   const handleQueryChange = (v: string) => {
     setQuery(v)
@@ -194,11 +192,11 @@ export default function LocationPicker({
           value={query}
           onChange={e => handleQueryChange(e.target.value)}
           onFocus={() => results.length > 0 && setShowResults(true)}
-          placeholder="Wpisz adres, aby wyszukać na mapie (np. Marszałkowska 12, Warszawa)"
+          placeholder={t('loc.search.placeholder')}
         />
         {searching && (
           <span style={{ position: 'absolute', right: '0.875rem', top: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            szukam…
+            {t('loc.searching')}
           </span>
         )}
         {showResults && results.length > 0 && (
@@ -212,6 +210,7 @@ export default function LocationPicker({
               <button
                 key={r.place_id}
                 type="button"
+                translate="no"
                 onClick={() => selectResult(r)}
                 style={{
                   display: 'block', width: '100%', textAlign: 'left',
@@ -233,7 +232,7 @@ export default function LocationPicker({
       <div className="loc-map-container" ref={mapContainerRef} />
 
       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-        Kliknij na mapie, aby postawić pinezkę, albo przeciągnij istniejącą. Możesz też wyszukać adres powyżej.
+        {t('loc.hint')}
       </p>
 
       {/* Współrzędne + link + reset */}
@@ -245,15 +244,16 @@ export default function LocationPicker({
             </span>
             {gmapsUrl && (
               <a href={gmapsUrl} target="_blank" rel="noreferrer" className="link" style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                Podgląd w Google Maps <ExternalLink size={13} />
+                {t('loc.gmapsPreview')} <ExternalLink size={13} />
               </a>
             )}
-            <button type="button" className="me-remove-btn me-remove-item" onClick={clearPin} title="Usuń pinezkę">
+            <button type="button" className="me-remove-btn me-remove-item" onClick={clearPin}
+              title={t('loc.removePin')} aria-label={t('loc.removePin')}>
               <X size={13} />
             </button>
           </>
         ) : (
-          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Pinezka nie została jeszcze ustawiona.</span>
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('loc.noPin')}</span>
         )}
       </div>
 
@@ -261,25 +261,25 @@ export default function LocationPicker({
       <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-dark)' }}>Pokazuj lokalizację na wizytówce</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Główny przełącznik — wyłączenie ukrywa całą sekcję lokalizacji.</div>
+            <div style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-dark)' }}>{t('loc.visible.title')}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('loc.visible.hint')}</div>
           </div>
           <Toggle checked={locationVisible} onChange={onLocationVisibleChange} disabled={!hasPin} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: locationVisible ? 1 : 0.45 }}>
-          <div style={{ fontSize: '0.875rem', color: 'var(--text-dark)' }}>Pokaż mapę z pinezką</div>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-dark)' }}>{t('loc.showMap')}</div>
           <Toggle checked={showMap} onChange={onShowMapChange} disabled={!locationVisible} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: locationVisible ? 1 : 0.45 }}>
-          <div style={{ fontSize: '0.875rem', color: 'var(--text-dark)' }}>Pokaż link do Google Maps</div>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-dark)' }}>{t('loc.showGmaps')}</div>
           <Toggle checked={showGmapsLink} onChange={onShowGmapsLinkChange} disabled={!locationVisible} />
         </div>
 
         {!hasPin && (
           <p style={{ fontSize: '0.75rem', color: 'var(--error)' }}>
-            Ustaw pinezkę na mapie, aby móc włączyć widoczność lokalizacji.
+            {t('loc.needPin')}
           </p>
         )}
       </div>

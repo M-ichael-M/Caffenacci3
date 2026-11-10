@@ -1,18 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  CreditCard,
-  Ticket,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Globe,
-  Rocket,
-  AlertTriangle,
-  RefreshCw,
-  ExternalLink,
-  Users,
+  CreditCard, Ticket, CheckCircle2, XCircle, Clock, Globe, Rocket,
+  AlertTriangle, RefreshCw, ExternalLink, Users,
 } from 'lucide-react'
 import { API_URL, CUSTOMER_URL } from '../config'
+import { useI18n } from '../i18n'
 
 interface Props {
   token: string
@@ -43,37 +35,39 @@ interface PublishStatusOut {
   published_at: string | null
 }
 
-function formatDate(s: string | null) {
+function formatDate(s: string | null, locale: string) {
   if (!s) return '—'
-  return new Date(s).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
+  return new Date(s).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function SubBadge({ status }: { status: SubStatus }) {
+  const { t } = useI18n()
   if (status === 'active') {
     return (
       <span className="pf-badge pf-badge--public" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-        <CheckCircle2 size={13} />Aktywna
+        <CheckCircle2 size={13} />{t('billing.badge.active')}
       </span>
     )
   }
   if (status === 'cancelling') {
     return (
       <span className="pf-badge pf-badge--warn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-        <Clock size={13} />Kończy się
+        <Clock size={13} />{t('billing.badge.cancelling')}
       </span>
     )
   }
   if (status === 'expired') {
     return (
       <span className="pf-badge pf-badge--private" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-        <XCircle size={13} />Wygasła
+        <XCircle size={13} />{t('billing.badge.expired')}
       </span>
     )
   }
-  return <span className="pf-badge pf-badge--private">Brak subskrypcji</span>
+  return <span className="pf-badge pf-badge--private">{t('billing.badge.none')}</span>
 }
 
 export default function BillingTab({ token, cafeId: _cafeId }: Props) {
+  const { t, tApi, locale } = useI18n()
   const [sub, setSub] = useState<SubscriptionStatusOut | null>(null)
   const [pub, setPub] = useState<PublishStatusOut | null>(null)
   const [staffCode, setStaffCode] = useState<string | null>(null)
@@ -98,7 +92,7 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
   }, [token])
 
   useEffect(() => { fetchAll() }, [fetchAll])
-    useEffect(() => {
+  useEffect(() => {
     window.addEventListener('caffenacci:profile-saved', fetchAll)
     return () => window.removeEventListener('caffenacci:profile-saved', fetchAll)
   }, [fetchAll])
@@ -112,38 +106,40 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: body ? JSON.stringify(body) : undefined,
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Wystąpił błąd.')
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(tApi(data?.detail))
       return data
     } finally {
       setBusy(false)
     }
   }
 
+  const errText = (e: unknown) => (e instanceof Error ? e.message : t('common.genericError'))
+
   const handleSubscribe = async () => {
     try {
       const data = await call('/billing/subscribe')
       setSub(data)
-      setMsg({ type: 'ok', text: 'Subskrypcja została aktywowana (symulacja płatności).' })
+      setMsg({ type: 'ok', text: t('billing.msg.subscribed') })
       fetchAll()
-    } catch (e) { setMsg({ type: 'err', text: e instanceof Error ? e.message : 'Błąd.' }) }
+    } catch (e) { setMsg({ type: 'err', text: errText(e) }) }
   }
 
   const handleCancel = async () => {
-    if (!confirm('Anulować subskrypcję? Dostęp pozostanie aktywny do końca opłaconego okresu.')) return
+    if (!confirm(t('billing.confirm.cancel'))) return
     try {
       const data = await call('/billing/cancel')
       setSub(data)
-      setMsg({ type: 'ok', text: 'Subskrypcja została anulowana — pozostanie aktywna do końca opłaconego okresu.' })
-    } catch (e) { setMsg({ type: 'err', text: e instanceof Error ? e.message : 'Błąd.' }) }
+      setMsg({ type: 'ok', text: t('billing.msg.cancelled') })
+    } catch (e) { setMsg({ type: 'err', text: errText(e) }) }
   }
 
   const handleResume = async () => {
     try {
       const data = await call('/billing/resume')
       setSub(data)
-      setMsg({ type: 'ok', text: 'Anulowanie zostało cofnięte — subskrypcja będzie się odnawiać.' })
-    } catch (e) { setMsg({ type: 'err', text: e instanceof Error ? e.message : 'Błąd.' }) }
+      setMsg({ type: 'ok', text: t('billing.msg.resumed') })
+    } catch (e) { setMsg({ type: 'err', text: errText(e) }) }
   }
 
   const handlePromo = async () => {
@@ -152,58 +148,58 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
       const data = await call('/billing/promo', { code: promoCode.trim() })
       setSub(data)
       setPromoCode('')
-      setMsg({ type: 'ok', text: 'Kod promocyjny został aktywowany.' })
+      setMsg({ type: 'ok', text: t('billing.msg.promo') })
       fetchAll()
-    } catch (e) { setMsg({ type: 'err', text: e instanceof Error ? e.message : 'Błąd.' }) }
+    } catch (e) { setMsg({ type: 'err', text: errText(e) }) }
   }
 
   const handlePublish = async () => {
     try {
       const data = await call('/site/publish')
       setPub(data)
-      setMsg({ type: 'ok', text: 'Strona została opublikowana i jest teraz widoczna w wyszukiwarce Caffenacci.' })
-    } catch (e) { setMsg({ type: 'err', text: e instanceof Error ? e.message : 'Błąd.' }) }
+      setMsg({ type: 'ok', text: t('billing.msg.published') })
+    } catch (e) { setMsg({ type: 'err', text: errText(e) }) }
   }
 
   const handleUnpublish = async () => {
-    if (!confirm('Wycofać publikację strony? Zniknie z wyszukiwarki, ale subskrypcja pozostanie aktywna.')) return
+    if (!confirm(t('billing.confirm.unpublish'))) return
     try {
       const data = await call('/site/unpublish')
       setPub(data)
-      setMsg({ type: 'ok', text: 'Publikacja strony została wycofana.' })
-    } catch (e) { setMsg({ type: 'err', text: e instanceof Error ? e.message : 'Błąd.' }) }
+      setMsg({ type: 'ok', text: t('billing.msg.unpublished') })
+    } catch (e) { setMsg({ type: 'err', text: errText(e) }) }
   }
 
   if (loading) {
     return (
       <div className="loading-state">
         <div className="loading-spinner" />
-        <p>Wczytywanie danych rozliczeniowych…</p>
+        <p>{t('billing.loading')}</p>
       </div>
     )
   }
 
   const status = sub?.status ?? 'none'
+  const periodEnd = formatDate(sub?.period_end ?? null, locale)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div className="page-header__eyebrow">Zarządzanie</div>
+          <div className="page-header__eyebrow">{t('common.management')}</div>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
-            Płatności i publikacja
+            {t('billing.title')}
           </h2>
         </div>
         <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={fetchAll}>
           <RefreshCw size={15} />
-          Odśwież
+          {t('common.refresh')}
         </button>
       </div>
 
       <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '70ch' }}>
-        Płatności są na razie w pełni symulowane — prawdziwa integracja (Stripe) zostanie podłączona później.
-        Żadne rzeczywiste obciążenie karty nie następuje.
+        {t('billing.simulatedNote')}
       </p>
 
       {msg && <div className={msg.type === 'ok' ? 'form-success' : 'form-error'}>{msg.text}</div>}
@@ -213,7 +209,7 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
             <span className="info-card__icon"><CreditCard size={20} /></span>
-            <h2 className="info-card__title">Subskrypcja</h2>
+            <h2 className="info-card__title">{t('billing.sub.title')}</h2>
           </div>
           <SubBadge status={status} />
         </div>
@@ -222,25 +218,25 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
           {status === 'none' && (
             <>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                Nie masz jeszcze aktywnej subskrypcji. Aktywuj ją (symulacja), aby móc opublikować stronę kawiarni.
+                {t('billing.sub.noneText')}
               </p>
               <button className="btn btn--primary" style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }} onClick={handleSubscribe} disabled={busy}>
                 <Rocket size={17} />
-                Aktywuj subskrypcję (symulacja)
+                {t('billing.sub.activate')}
               </button>
 
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '0.5rem' }}>
-                <div className="me-label" style={{ marginBottom: '0.5rem' }}>Masz kod promocyjny?</div>
+                <div className="me-label" style={{ marginBottom: '0.5rem' }}>{t('billing.promo.question')}</div>
                 <div style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap' }}>
                   <input
                     className="field__input" style={{ maxWidth: 220 }}
                     value={promoCode}
                     onChange={e => setPromoCode(e.target.value.toUpperCase())}
-                    placeholder="np. DEMO14"
+                    placeholder={t('billing.promo.placeholder')}
                   />
                   <button className="btn btn--outline-dark" style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }} onClick={handlePromo} disabled={busy || !promoCode.trim()}>
                     <Ticket size={16} />
-                    Aktywuj kod
+                    {t('billing.promo.activate')}
                   </button>
                 </div>
               </div>
@@ -251,25 +247,29 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
             <>
               <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
                 <div>
-                  <div className="info-row__label">{sub?.kind === 'promo' ? 'Kod promocyjny' : 'Rodzaj'}</div>
-                  <div className="info-row__value">{sub?.kind === 'promo' ? sub?.promo_code : 'Subskrypcja miesięczna'}</div>
+                  <div className="info-row__label">{sub?.kind === 'promo' ? t('billing.label.promoCode') : t('billing.label.kind')}</div>
+                  <div className="info-row__value">{sub?.kind === 'promo' ? sub?.promo_code : t('billing.kind.monthly')}</div>
                 </div>
                 <div>
-                  <div className="info-row__label">Aktywna od</div>
-                  <div className="info-row__value">{formatDate(sub?.period_start ?? null)}</div>
+                  <div className="info-row__label">{t('billing.label.activeSince')}</div>
+                  <div className="info-row__value">{formatDate(sub?.period_start ?? null, locale)}</div>
                 </div>
                 <div>
                   <div className="info-row__label">
-                    {sub?.kind === 'promo' ? 'Wygasa' : status === 'cancelling' ? 'Aktywna do' : 'Następne odnowienie'}
+                    {sub?.kind === 'promo'
+                      ? t('billing.label.expires')
+                      : status === 'cancelling'
+                        ? t('billing.label.activeUntil')
+                        : t('billing.label.nextRenewal')}
                   </div>
-                  <div className="info-row__value">{formatDate(sub?.period_end ?? null)}</div>
+                  <div className="info-row__value">{periodEnd}</div>
                 </div>
               </div>
 
               {status === 'cancelling' && (
                 <div className="form-error" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <AlertTriangle size={16} />
-                  Subskrypcja jest anulowana i zakończy się {formatDate(sub?.period_end ?? null)}. Do tego czasu pozostaje aktywna.
+                  {t('billing.cancellingNotice', { date: periodEnd })}
                 </div>
               )}
 
@@ -277,7 +277,7 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                   {status === 'cancelling' ? (
                     <button className="btn btn--outline-dark" style={{ width: 'auto' }} onClick={handleResume} disabled={busy}>
-                      Cofnij anulowanie
+                      {t('billing.resume')}
                     </button>
                   ) : (
                     <button
@@ -285,16 +285,16 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
                       style={{ width: 'auto', color: 'var(--error)' }}
                       onClick={handleCancel}
                       disabled={busy || !sub?.can_cancel}
-                      title={!sub?.can_cancel ? 'Za mało czasu do najbliższego odnowienia — spróbuj ponownie po tej dacie.' : undefined}
+                      title={!sub?.can_cancel ? t('billing.cancel.tooSoon') : undefined}
                     >
-                      Anuluj subskrypcję
+                      {t('billing.cancel')}
                     </button>
                   )}
                 </div>
               )}
               {sub?.kind === 'promo' && (
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  Kody promocyjne nie odnawiają się automatycznie — dostęp wygaśnie {formatDate(sub?.period_end ?? null)}.
+                  {t('billing.promo.noRenew', { date: periodEnd })}
                 </p>
               )}
             </>
@@ -303,10 +303,10 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
           {status === 'expired' && (
             <>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                Twoja subskrypcja wygasła {formatDate(sub?.period_end ?? null)}. Aktywuj ją ponownie, aby móc publikować stronę.
+                {t('billing.expired.text', { date: periodEnd })}
               </p>
               <button className="btn btn--primary" style={{ width: 'auto' }} onClick={handleSubscribe} disabled={busy}>
-                Wznów subskrypcję
+                {t('billing.resumeSub')}
               </button>
             </>
           )}
@@ -318,32 +318,30 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
             <span className="info-card__icon"><Globe size={20} /></span>
-            <h2 className="info-card__title">Publikacja strony</h2>
+            <h2 className="info-card__title">{t('billing.pub.title')}</h2>
           </div>
           {pub?.is_published ? (
             <span className="pf-badge pf-badge--public" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-              <CheckCircle2 size={13} />Opublikowana
+              <CheckCircle2 size={13} />{t('billing.pub.badge.published')}
             </span>
           ) : (
-            <span className="pf-badge pf-badge--private">Nieopublikowana</span>
+            <span className="pf-badge pf-badge--private">{t('billing.pub.badge.unpublished')}</span>
           )}
         </div>
         <div className="info-card__body">
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Dopóki strona nie zostanie opublikowana, nie jest dostępna publicznie, nie pojawia się w wyszukiwarce
-            Caffenacci i nie będzie w przyszłości indeksowana przez Google. Możesz jednak w każdej chwili zobaczyć
-            jej podgląd w zakładce „Strona WWW".
+            {t('billing.pub.text')}
           </p>
 
           {pub?.slug && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Adres strony:</span>
-              <code style={{ fontSize: '0.8rem', color: 'var(--gold)', background: 'rgba(169,114,47,0.08)', borderRadius: 4, padding: '2px 8px' }}>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('billing.pub.address')}</span>
+              <code translate="no" style={{ fontSize: '0.8rem', color: 'var(--gold)', background: 'rgba(169,114,47,0.08)', borderRadius: 4, padding: '2px 8px' }}>
                 caffenacci.com{pub.public_path}
               </code>
               {pub.is_published && (
                 <a href={`${CUSTOMER_URL}/kawiarnia/${pub.slug}`} target="_blank" rel="noreferrer" className="link" style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                  Otwórz <ExternalLink size={13} />
+                  {t('common.open')} <ExternalLink size={13} />
                 </a>
               )}
             </div>
@@ -351,10 +349,10 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
 
           {!pub?.can_publish && !pub?.is_published && pub && pub.missing_reasons.length > 0 && (
             <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-sm)', padding: '0.875rem 1.125rem' }}>
-              <div className="me-label" style={{ marginBottom: '0.5rem' }}>Aby opublikować, uzupełnij jeszcze:</div>
+              <div className="me-label" style={{ marginBottom: '0.5rem' }}>{t('billing.pub.missing')}</div>
               <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 {pub.missing_reasons.map((r, i) => (
-                  <li key={i} style={{ fontSize: '0.8125rem', color: 'var(--text-body)' }}>{r}</li>
+                  <li key={i} style={{ fontSize: '0.8125rem', color: 'var(--text-body)' }}>{tApi(r)}</li>
                 ))}
               </ul>
             </div>
@@ -363,7 +361,7 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             {pub?.is_published ? (
               <button className="btn btn--outline-dark" style={{ width: 'auto', color: 'var(--error)' }} onClick={handleUnpublish} disabled={busy}>
-                Wycofaj publikację
+                {t('billing.pub.unpublish')}
               </button>
             ) : (
               <button
@@ -373,7 +371,7 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
                 disabled={busy || !pub?.can_publish}
               >
                 <Rocket size={17} />
-                Opublikuj stronę
+                {t('billing.pub.publish')}
               </button>
             )}
           </div>
@@ -384,14 +382,13 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
       <div className="info-card">
         <div className="info-card__header">
           <span className="info-card__icon"><Users size={20} /></span>
-          <h2 className="info-card__title">Kod kawiarni dla pracowników</h2>
+          <h2 className="info-card__title">{t('billing.staff.title')}</h2>
         </div>
         <div className="info-card__body">
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Ten stały kod, razem z osobistym kodem z zaproszenia, pracownik podaje przy
-            pierwszym logowaniu w aplikacji Caffenacci Business. Udostępnij go zespołowi.
+            {t('billing.staff.text')}
           </p>
-          <code style={{
+          <code translate="no" style={{
             fontSize: '1.25rem', fontWeight: 700, letterSpacing: '0.15em',
             color: 'var(--gold)', background: 'rgba(169,114,47,0.08)',
             borderRadius: 6, padding: '0.5rem 1rem', display: 'inline-block',

@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { Info } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 interface Props {
   text: string
 }
 
 export default function InfoTooltip({ text }: Props) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef<HTMLSpanElement>(null)
 
@@ -36,7 +38,7 @@ export default function InfoTooltip({ text }: Props) {
         type="button"
         className="info-tooltip__trigger"
         onClick={e => { e.stopPropagation(); setOpen(v => !v) }}
-        aria-label="Więcej informacji"
+        aria-label={t('common.moreInfo')}
         aria-expanded={open}
       >
         <Info size={13} />

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Languages, Download, Upload, Loader2, FileText, CheckCircle2, AlertTriangle, Search } from 'lucide-react'
 import { API_URL } from '../config'
 import { formatCurrency, formatDate, makeCollator, type LocaleFormat } from '../utils/localeFormat'
+import { useI18n } from '../i18n'
 
 // ── Types (zgodne z backend/app/schemas/translation.py) ───────────────────
 
@@ -54,28 +55,20 @@ interface Props {
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
+/** Błąd API z surowym `detail` — tłumaczenie robi komponent (errMsg). */
+class ApiError extends Error {
+  detail: unknown
+  constructor(detail: unknown) { super('api'); this.detail = detail }
+}
+
 async function api<T>(token: string, path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: { ...(init.headers as Record<string, string> | undefined), Authorization: `Bearer ${token}` },
   })
   const data = await res.json().catch(() => null)
-  if (!res.ok) {
-    const d = data?.detail
-    const msg =
-      typeof d === 'string' ? d
-      : Array.isArray(d) ? d.map((e: { msg?: string }) => e.msg ?? '').join(' ')
-      : 'Wystąpił błąd. Spróbuj ponownie.'
-    throw new Error(msg.replace(/^Value error, /, ''))
-  }
+  if (!res.ok) throw new ApiError(data?.detail)
   return data as T
-}
-
-function textsLabel(n: number): string {
-  const mod10 = n % 10, mod100 = n % 100
-  if (n === 1) return '1 tekst'
-  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return `${n} teksty`
-  return `${n} tekstów`
 }
 
 function triggerDownload(p: { filename: string; content: string }) {
@@ -106,6 +99,7 @@ function SearchableSelect({ label, value, onChange, options, placeholder, emptyL
   placeholder: string
   emptyLabel?: string
 }) {
+  const { t } = useI18n()
   const [query, setQuery] = useState('')
   const filtered = options.filter(option => `${option.label} ${option.searchText ?? ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
   const visible = filtered.some(option => option.value === value) || !value
@@ -118,35 +112,36 @@ function SearchableSelect({ label, value, onChange, options, placeholder, emptyL
       <div className="language-picker__search">
         <Search size={16} aria-hidden="true" />
         <input className="me-input" type="search" value={query} placeholder={placeholder}
-          aria-label={`Szukaj: ${label.toLocaleLowerCase()}`} onChange={e => setQuery(e.target.value)} />
+          aria-label={t('languages.search.aria', { label: label.toLocaleLowerCase() })} onChange={e => setQuery(e.target.value)} />
       </div>
       <select className="me-input language-picker__select" value={value}
         onChange={e => onChange(e.target.value)} size={Math.min(Math.max(visible.length, 2), 6)}>
         {emptyLabel && <option value="">{emptyLabel}</option>}
         {visible.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-        {!filtered.length && <option value={value} disabled>Brak wyników wyszukiwania</option>}
+        {!filtered.length && <option value={value} disabled>{t('languages.search.noResults')}</option>}
       </select>
-      <span className="language-picker__count">{filtered.length} {filtered.length === 1 ? 'wynik' : 'wyników'}</span>
+      <span className="language-picker__count">{t('languages.results', { count: filtered.length })}</span>
     </div>
   )
 }
 
-const STATE_BADGE: Record<TrState, { cls: string; label: string }> = {
-  disabled:        { cls: 'pf-badge--private', label: 'Brak języka dodatkowego' },
-  not_generated:   { cls: 'pf-badge--private', label: 'Plik niewygenerowany' },
-  awaiting_upload: { cls: 'pf-badge--warn',    label: 'Czeka na wgranie tłumaczenia' },
-  current:         { cls: 'pf-badge--public',  label: 'Tłumaczenie aktualne' },
-  stale:           { cls: 'pf-badge--warn',    label: 'Tłumaczenie nieaktualne' },
+const STATE_BADGE: Record<TrState, string> = {
+  disabled:        'pf-badge--private',
+  not_generated:   'pf-badge--private',
+  awaiting_upload: 'pf-badge--warn',
+  current:         'pf-badge--public',
+  stale:           'pf-badge--warn',
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
 
 export default function LanguagesCard({ token }: Props) {
+  const { t, tApi } = useI18n()
   const [languages, setLanguages]   = useState<LanguageInfo[]>([])
   const [currencies, setCurrencies] = useState<string[]>([])
   const [overview, setOverview]     = useState<Overview | null>(null)
   const [loading, setLoading]       = useState(true)
-  const [loadError, setLoadError]   = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const [primary, setPrimary]     = useState('pl')
   const [secondary, setSecondary] = useState('')
@@ -166,6 +161,19 @@ export default function LanguagesCard({ token }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const zones = useMemo(timeZones, [])
+
+  /** Błąd API (string lub lista błędów walidacji) → komunikat w języku panelu. */
+  const errMsg = (e: unknown, fallbackKey: string): string => {
+    if (!(e instanceof ApiError)) return t(fallbackKey)
+    const d = e.detail
+    if (Array.isArray(d)) {
+      const msgs = d
+        .map(x => String((x as { msg?: string }).msg ?? '').replace(/^Value error, /, ''))
+        .filter(Boolean)
+      return msgs.length ? msgs.map(m => tApi(m, fallbackKey)).join(' ') : t(fallbackKey)
+    }
+    return tApi(d, fallbackKey)
+  }
 
   const applyOverview = useCallback((o: Overview) => {
     setOverview(o)
@@ -191,8 +199,8 @@ export default function LanguagesCard({ token }: Props) {
         setLanguages(opts.languages)
         setCurrencies(opts.currencies)
         applyOverview(ov)
-      } catch (e) {
-        setLoadError(e instanceof Error ? e.message : 'Nie udało się wczytać ustawień języków.')
+      } catch {
+        setLoadFailed(true)
       } finally {
         setLoading(false)
       }
@@ -205,7 +213,7 @@ export default function LanguagesCard({ token }: Props) {
     return () => window.removeEventListener('caffenacci:profile-saved', refresh)
   }, [refresh])
 
-  // ── Nazwy języków: angielska i lokalna ───────────────────────────────────
+  // ── Nazwy języków: angielska i lokalna (zostają takie same w obu językach panelu) ──
 
   const labelOf = useMemo(() => {
     const byCode = new Map(languages.map(l => [l.code, l]))
@@ -246,10 +254,10 @@ export default function LanguagesCard({ token }: Props) {
       })
       applyOverview(ov)
       setReadyPkg(null)
-      setMsg({ type: 'ok', text: 'Ustawienia językowe zostały zapisane.' })
+      setMsg({ type: 'ok', text: t('languages.saved') })
       window.dispatchEvent(new Event('caffenacci:profile-saved'))
     } catch (e) {
-      setMsg({ type: 'err', text: e instanceof Error ? e.message : 'Błąd zapisu.' })
+      setMsg({ type: 'err', text: errMsg(e, 'languages.err.save') })
     } finally { setSaving(false) }
   }
 
@@ -259,7 +267,7 @@ export default function LanguagesCard({ token }: Props) {
       setReadyPkg(await api<PackageFile>(token, '/i18n/packages', { method: 'POST' }))
       await refresh()
     } catch (e) {
-      setGenError(e instanceof Error ? e.message : 'Nie udało się wygenerować pliku.')
+      setGenError(errMsg(e, 'languages.err.generate'))
     } finally { setGenerating(false) }
   }
 
@@ -268,7 +276,7 @@ export default function LanguagesCard({ token }: Props) {
     try {
       triggerDownload(await api<PackageFile>(token, `/i18n/packages/${id}`))
     } catch (e) {
-      setGenError(e instanceof Error ? e.message : 'Nie udało się pobrać pliku.')
+      setGenError(errMsg(e, 'languages.err.download'))
     }
   }
 
@@ -279,15 +287,15 @@ export default function LanguagesCard({ token }: Props) {
       const fd = new FormData()
       fd.append('file', file)
       applyOverview(await api<Overview>(token, '/i18n/upload', { method: 'POST', body: fd }))
-      setUploadMsg({ type: 'ok', text: 'Tłumaczenie zostało zapisane i jest już aktywne na stronie.' })
+      setUploadMsg({ type: 'ok', text: t('languages.uploaded') })
       setFile(null); setReadyPkg(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
     } catch (e) {
-      setUploadMsg({ type: 'err', text: e instanceof Error ? e.message : 'Błąd wgrywania pliku.' })
+      setUploadMsg({ type: 'err', text: errMsg(e, 'languages.err.upload') })
     } finally { setUploading(false) }
   }
 
-  // ── Podgląd formatowania (używa tych samych helperów co przyszła strona klienta) ──
+  // ── Podgląd formatowania (te same helpery co strona klienta) ──
 
   const previewFor = (code: string): { f: LocaleFormat; dir: string } | null => {
     const l = languages.find(x => x.code === code)
@@ -299,55 +307,58 @@ export default function LanguagesCard({ token }: Props) {
   // ── Render ───────────────────────────────────────────────────────────────
 
   if (loading) {
-    return <div className="loading-state"><div className="loading-spinner" /><p>Wczytywanie języków…</p></div>
+    return <div className="loading-state"><div className="loading-spinner" /><p>{t('languages.loading')}</p></div>
   }
-  if (loadError || !overview) {
-    return <div className="form-error" role="alert">{loadError ?? 'Nie udało się wczytać ustawień języków.'}</div>
+  if (loadFailed || !overview) {
+    return <div className="form-error" role="alert">{t('languages.err.load')}</div>
   }
 
   const st = overview.status
-  const badge = STATE_BADGE[st.state]
   const secLabel = saved?.secondary_language ? labelOf(saved.secondary_language) : ''
   const readyInfo: { id: string; version: number } | null =
     readyPkg ?? (st.latest_package?.is_current ? st.latest_package : null)
+  const changesText = st.changes
+    ? t('languages.stale.changes', { added: st.changes.added, removed: st.changes.removed })
+    : ''
 
   return (
     <div className="info-card">
       <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
           <span className="info-card__icon"><Languages size={20} /></span>
-          <h2 className="info-card__title">Języki strony</h2>
+          <h2 className="info-card__title">{t('languages.title')}</h2>
         </div>
-        {saved?.secondary_language && <span className={`pf-badge ${badge.cls}`}>{badge.label}</span>}
+        {saved?.secondary_language && (
+          <span className={`pf-badge ${STATE_BADGE[st.state]}`}>{t(`languages.state.${st.state}`)}</span>
+        )}
       </div>
 
       <div className="info-card__body">
         <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem', lineHeight: 1.6 }}>
-          Napisy systemowe (np. „Menu”, „Zarezerwuj stolik”, „Opinie”) strona tłumaczy sama.
-          Teksty wpisane przez Ciebie — menu, opis, aktualności — przetłumaczysz plikiem, który tu wygenerujesz.
+          {t('languages.intro')}
         </p>
 
         {msg && <div className={msg.type === 'ok' ? 'form-success' : 'form-error'}>{msg.text}</div>}
 
         <details className="language-settings-group">
-          <summary className="language-settings-group__heading"><strong>Języki</strong><span>Wybierz języki wyświetlane na stronie</span></summary>
+          <summary className="language-settings-group__heading"><strong>{t('languages.group.languages')}</strong><span>{t('languages.group.languages.hint')}</span></summary>
           <div className="language-picker-grid">
-            <SearchableSelect label="Język podstawowy" value={primary}
+            <SearchableSelect label={t('languages.primary')} value={primary}
               onChange={value => { setPrimary(value); if (value === secondary) setSecondary('') }}
-              placeholder="Szukaj języka…" options={sortedLanguages.map(l => ({ value: l.code, label: labelOf(l.code), searchText: `${l.code} ${l.name_en} ${l.native_name}` }))} />
-            <SearchableSelect label="Język dodatkowy (opcjonalnie)" value={secondary}
-              onChange={setSecondary} placeholder="Szukaj języka…" emptyLabel="— brak —"
+              placeholder={t('languages.searchLanguage')} options={sortedLanguages.map(l => ({ value: l.code, label: labelOf(l.code), searchText: `${l.code} ${l.name_en} ${l.native_name}` }))} />
+            <SearchableSelect label={t('languages.secondary')} value={secondary}
+              onChange={setSecondary} placeholder={t('languages.searchLanguage')} emptyLabel={t('languages.none')}
               options={sortedLanguages.filter(l => l.code !== primary).map(l => ({ value: l.code, label: labelOf(l.code), searchText: `${l.code} ${l.name_en} ${l.native_name}` }))} />
           </div>
         </details>
 
         <details className="language-settings-group">
-          <summary className="language-settings-group__heading"><strong>Formatowanie regionalne</strong><span>Wpływa na ceny, daty i godziny wyświetlane klientom</span></summary>
+          <summary className="language-settings-group__heading"><strong>{t('languages.group.regional')}</strong><span>{t('languages.group.regional.hint')}</span></summary>
           <div className="language-picker-grid">
-            <SearchableSelect label="Waluta cen w menu" value={currency} onChange={setCurrency}
-              placeholder="Szukaj waluty…" options={currencies.map(c => ({ value: c, label: c }))} />
-            <SearchableSelect label="Strefa czasowa kawiarni" value={timeZone} onChange={setTimeZone}
-              placeholder="Szukaj strefy czasowej…" options={[...new Set([timeZone, ...zones])].map(z => ({ value: z, label: z, searchText: z.replaceAll('_', ' ') }))} />
+            <SearchableSelect label={t('languages.currency')} value={currency} onChange={setCurrency}
+              placeholder={t('languages.searchCurrency')} options={currencies.map(c => ({ value: c, label: c }))} />
+            <SearchableSelect label={t('languages.timeZone')} value={timeZone} onChange={setTimeZone}
+              placeholder={t('languages.searchTimeZone')} options={[...new Set([timeZone, ...zones])].map(z => ({ value: z, label: z, searchText: z.replaceAll('_', ' ') }))} />
           </div>
         </details>
 
@@ -368,7 +379,7 @@ export default function LanguagesCard({ token }: Props) {
         <div>
           <button type="button" className="btn btn--primary" style={{ width: 'auto', marginTop: 0 }}
             onClick={handleSave} disabled={saving || !dirty}>
-            {saving ? 'Zapisywanie…' : 'Zapisz języki'}
+            {saving ? t('common.saving') : t('languages.save')}
           </button>
         </div>
 
@@ -376,45 +387,40 @@ export default function LanguagesCard({ token }: Props) {
         {saved?.secondary_language && (
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="res-settings-block__title" style={{ marginBottom: 0 }}>
-              Tłumaczenie: {secLabel}
+              {t('languages.translation', { lang: secLabel })}
             </div>
 
             {dirty && (
-              <div className="form-error">Zapisz zmiany języków, zanim wygenerujesz plik lub wgrasz tłumaczenie.</div>
+              <div className="form-error">{t('languages.dirty')}</div>
             )}
 
             {st.state === 'stale' && (
               <div className="form-error" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
                 <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                <span>
-                  Treść strony zmieniła się od ostatniego tłumaczenia
-                  {st.changes && ` (nowe lub zmienione: ${st.changes.added}, usunięte: ${st.changes.removed})`}.
-                  Wygeneruj nowy plik, przetłumacz go i wgraj ponownie. Do tego czasu odwiedzający
-                  nie zobaczą wersji „{secLabel}” — strona wyświetla się tylko w języku podstawowym.
-                </span>
+                <span>{t('languages.stale', { changes: changesText, lang: secLabel })}</span>
               </div>
             )}
 
             {st.state === 'current' && st.translation && (
               <div className="form-success" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <CheckCircle2 size={16} />
-                Aktywne tłumaczenie z pliku v{st.translation.package_version} ({textsLabel(st.translation.units_count)}).
+                {t('languages.current', { version: st.translation.package_version, texts: t('languages.texts', { count: st.translation.units_count }) })}
               </div>
             )}
 
             {/* Krok 1 — generowanie */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-              <div className="me-label">1. Wygeneruj plik z tekstami</div>
+              <div className="me-label">{t('languages.step1')}</div>
               <div>
                 <button type="button" className="btn btn--outline-dark"
                   style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
                   onClick={handleGenerate} disabled={generating || dirty}>
                   {generating ? <Loader2 size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <FileText size={16} />}
-                  Wygeneruj plik do tłumaczenia
+                  {t('languages.generate')}
                 </button>
                 {st.units_count > 0 && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.75rem' }}>
-                    {textsLabel(st.units_count)} do przetłumaczenia
+                    {t('languages.toTranslate', { texts: t('languages.texts', { count: st.units_count }) })}
                   </span>
                 )}
               </div>
@@ -423,15 +429,15 @@ export default function LanguagesCard({ token }: Props) {
               {readyInfo && (
                 <div className="res-table-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
                   <div style={{ fontSize: '0.875rem', color: 'var(--text-dark)' }}>
-                    <strong>{readyPkg ? readyPkg.filename : `Plik do tłumaczenia — wersja v${readyInfo.version}`}</strong>
+                    <strong translate="no">{readyPkg ? readyPkg.filename : t('languages.file.title', { version: readyInfo.version })}</strong>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      Wersja v{readyInfo.version} · odpowiada obecnej treści strony
+                      {t('languages.file.sub', { version: readyInfo.version })}
                     </div>
                   </div>
                   <button type="button" className="btn btn--primary btn--sm"
                     style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
                     onClick={() => readyPkg ? triggerDownload(readyPkg) : handleDownloadLatest(readyInfo.id)}>
-                    <Download size={15} /> Pobierz plik
+                    <Download size={15} /> {t('languages.download')}
                   </button>
                 </div>
               )}
@@ -439,31 +445,28 @@ export default function LanguagesCard({ token }: Props) {
 
             {/* Krok 2 — instrukcja */}
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.65 }}>
-              <div className="me-label" style={{ marginBottom: '0.25rem' }}>2. Przetłumacz cały plik na: {secLabel}</div>
-              Wklej całą zawartość (lub wgraj plik) do dowolnego tłumacza, np. Google Translate lub DeepL.
-              W pliku są linie typu <code>[[[0001]]]</code> — to numery tekstów, składają się z samych cyfr,
-              więc tłumacz ich nie zmieni. Nie usuwaj ich i nie przestawiaj. Wynik zapisz jako plik
-              tekstowy (.txt, UTF-8).
+              <div className="me-label" style={{ marginBottom: '0.25rem' }}>{t('languages.step2', { lang: secLabel })}</div>
+              {t('languages.step2.a')} <code>[[[0001]]]</code> {t('languages.step2.b')}
             </div>
 
             {/* Krok 3 — upload */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-              <div className="me-label">3. Wgraj przetłumaczony plik</div>
+              <div className="me-label">{t('languages.step3')}</div>
               <div className="translation-file-row">
                 <input ref={fileInputRef} className="translation-file-input" type="file" accept=".txt,text/plain"
                   onChange={e => { setFile(e.target.files?.[0] ?? null); setUploadMsg(null) }} />
                 <button type="button" className="btn btn--outline-dark translation-file-button"
                   onClick={() => fileInputRef.current?.click()}>
-                  <FileText size={16} /> {file ? 'Zmień plik' : 'Wybierz plik'}
+                  <FileText size={16} /> {file ? t('languages.file.change') : t('languages.file.choose')}
                 </button>
-                <span className={`translation-file-name${file ? ' translation-file-name--selected' : ''}`}>
-                  {file?.name ?? 'Nie wybrano pliku'}
+                <span className={`translation-file-name${file ? ' translation-file-name--selected' : ''}`} translate="no">
+                  {file?.name ?? t('languages.file.none')}
                 </span>
                 <button type="button" className="btn btn--primary"
                   style={{ width: 'auto', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
                   onClick={handleUpload} disabled={!file || uploading || dirty}>
                   {uploading ? <Loader2 size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Upload size={16} />}
-                  Zapisz tłumaczenie
+                  {t('languages.upload')}
                 </button>
               </div>
               {uploadMsg && <div className={uploadMsg.type === 'ok' ? 'form-success' : 'form-error'}>{uploadMsg.text}</div>}
