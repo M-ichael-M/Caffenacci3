@@ -1,16 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import SimpleReservationTab from './SimpleReservationTab'
 import {
-  Settings,
-  CalendarDays,
-  ClipboardList,
-  Plus,
-  X,
-  Ban,
-  CircleDot,
-  SlidersHorizontal,
+  Settings, CalendarDays, ClipboardList, Plus, X, Ban, CircleDot, SlidersHorizontal,
 } from 'lucide-react'
 import { API_URL } from '../config'
+import { useI18n } from '../i18n'
+
+type TFn = ReturnType<typeof useI18n>['t']
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -77,38 +73,45 @@ interface Props {
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const DAYS = ['Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota','Niedziela']
+const DAY_INDEXES = [0, 1, 2, 3, 4, 5, 6]   // 0 = poniedziałek … 6 = niedziela
 const SLOT_OPTIONS = [15,30,45,60,90,120]
-const TABLE_TYPE_LABELS: Record<TableTypeEnum, string> = {
-  standard: 'Zwykły stolik',
-  communal: 'Stół komunalny',
-  special:  'Stolik specjalny',
+
+/** Nazwy dni tygodnia w języku panelu (1 stycznia 2024 to poniedziałek). */
+function weekdayNames(locale: string): string[] {
+  return DAY_INDEXES.map(i => {
+    const s = new Date(2024, 0, 1 + i).toLocaleDateString(locale, { weekday: 'long' })
+    return s.charAt(0).toLocaleUpperCase(locale) + s.slice(1)
+  })
 }
 
 function uid() { return Math.random().toString(36).slice(2) }
 
 function defaultHours(): DayHours[] {
-  return DAYS.map((_, i) => ({
+  return DAY_INDEXES.map(i => ({
     day_of_week: i,
     open_time:  i < 5 ? '08:00' : i === 5 ? '09:00' : null,
     close_time: i < 5 ? '20:00' : i === 5 ? '21:00' : null,
   }))
 }
 
-function tableTypeBadge(type: string) {
-  const map: Record<string, { bg: string; color: string; label: string }> = {
-    standard: { bg: '#EEF2FF', color: '#3730A3', label: 'standard' },
-    communal: { bg: '#FBEED2', color: '#7A4E12', label: 'komunalny' },
-    special:  { bg: '#FDF0F7', color: '#9D174D', label: 'specjalny' },
+function tableTypeLabel(t: TFn, type: string) {
+  return ['standard', 'communal', 'special'].includes(type) ? t(`res.table.${type}`) : type
+}
+
+function tableTypeBadge(t: TFn, type: string) {
+  const map: Record<string, { bg: string; color: string }> = {
+    standard: { bg: '#EEF2FF', color: '#3730A3' },
+    communal: { bg: '#FBEED2', color: '#7A4E12' },
+    special:  { bg: '#FDF0F7', color: '#9D174D' },
   }
-  const s = map[type] ?? { bg: 'var(--surface-2)', color: 'var(--text-body)', label: type }
+  const s = map[type] ?? { bg: 'var(--surface-2)', color: 'var(--text-body)' }
   return (
     <span style={{
       background: s.bg, color: s.color,
       borderRadius: 100, padding: '1px 8px',
       fontSize: '0.68rem', fontWeight: 700,
       letterSpacing: '0.06em', textTransform: 'uppercase' as const,
-    }}>{s.label}</span>
+    }}>{map[type] ? t(`res.tableBadge.${type}`) : type}</span>
   )
 }
 
@@ -121,6 +124,9 @@ function todayStr() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export default function ReservationTab({ token, cafeId }: Props) {
+  const { t, tApi, locale } = useI18n()
+  const dayNames = useMemo(() => weekdayNames(locale), [locale])
+
   const [settings, setSettings]       = useState<ReservationSettings | null>(null)
   const [loading, setLoading]         = useState(true)
   const [saving, setSaving]           = useState(false)
@@ -159,7 +165,7 @@ export default function ReservationTab({ token, cafeId }: Props) {
           open_time:  x.open_time,
           close_time: x.close_time,
         })) : defaultHours()
-        const filled = DAYS.map((_, i) => h.find(d => d.day_of_week === i) ?? {
+        const filled = DAY_INDEXES.map(i => h.find(d => d.day_of_week === i) ?? {
           day_of_week: i, open_time: null, close_time: null,
         })
         setHours(filled)
@@ -217,20 +223,21 @@ export default function ReservationTab({ token, cafeId }: Props) {
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd zapisu.')
+        const e = await res.json().catch(() => null)
+        setSaveMsg({ type: 'err', text: tApi(e?.detail, 'res.err.save') })
+        return
       }
       const data = await res.json()
       setSettings(data)
-      setSaveMsg({ type: 'ok', text: 'Ustawienia zostały zapisane.' })
+      setSaveMsg({ type: 'ok', text: t('res.saved') })
       setSettingsOpen(false)
-    } catch (err: unknown) {
-      setSaveMsg({ type: 'err', text: err instanceof Error ? err.message : 'Błąd zapisu.' })
+    } catch {
+      setSaveMsg({ type: 'err', text: t('common.genericError') })
     } finally { setSaving(false) }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Czy na pewno chcesz usunąć tę rezerwację?')) return
+    if (!confirm(t('res.delete.confirm'))) return
     try {
       await fetch(`${API_URL}/reservations/${id}`, {
         method: 'DELETE',
@@ -243,7 +250,7 @@ export default function ReservationTab({ token, cafeId }: Props) {
   if (loading) return (
     <div className="loading-state">
       <div className="loading-spinner" />
-      <p>Wczytywanie ustawień rezerwacji…</p>
+      <p>{t('res.loading')}</p>
     </div>
   )
 
@@ -258,10 +265,10 @@ export default function ReservationTab({ token, cafeId }: Props) {
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div className="page-header__eyebrow" style={{ marginBottom: '0.25rem' }}>
-            Zarządzanie
+            {t('common.management')}
           </div>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
-            Rezerwacje stolików
+            {t('res.title')}
           </h2>
         </div>
         <button
@@ -270,7 +277,7 @@ export default function ReservationTab({ token, cafeId }: Props) {
           onClick={() => { setSettingsOpen(true); setSaveMsg(null) }}
         >
           <Settings size={17} />
-          Ustawienia rezerwacji
+          {t('res.settingsBtn')}
         </button>
       </div>
 
@@ -284,16 +291,14 @@ export default function ReservationTab({ token, cafeId }: Props) {
       {!settings?.enabled && (
         <div className="res-empty-card">
           <div className="res-empty-icon"><CalendarDays size={44} strokeWidth={1.4} /></div>
-          <div className="res-empty-title">System rezerwacji jest wyłączony</div>
-          <div className="res-empty-sub">
-            Włącz go w ustawieniach, by zacząć przyjmować rezerwacje od klientów.
-          </div>
+          <div className="res-empty-title">{t('res.disabled.title')}</div>
+          <div className="res-empty-sub">{t('res.disabled.sub')}</div>
           <button
             className="btn btn--primary"
             style={{ width: 'auto', marginTop: '1rem' }}
             onClick={() => setSettingsOpen(true)}
           >
-            Skonfiguruj rezerwacje
+            {t('res.disabled.cta')}
           </button>
         </div>
       )}
@@ -322,6 +327,7 @@ export default function ReservationTab({ token, cafeId }: Props) {
       {/* ── Panel ustawień ───────────────────────────────────────────────── */}
       {settingsOpen && (
         <SettingsPanel
+          dayNames={dayNames}
           enabled={enabled}          setEnabled={setEnabled}
           mode={mode}                setMode={setMode}
           slotDuration={slotDuration} setSlotDuration={setSlotDuration}
@@ -341,11 +347,12 @@ export default function ReservationTab({ token, cafeId }: Props) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 function SettingsPanel({
-  enabled, setEnabled, mode, setMode,
+  dayNames, enabled, setEnabled, mode, setMode,
   slotDuration, setSlotDuration,
   tables, setTables, hours, setHours,
   saving, onSave, onClose,
 }: {
+  dayNames: string[]
   enabled: boolean; setEnabled: (v: boolean) => void
   mode: ResModeType; setMode: (v: ResModeType) => void
   slotDuration: number; setSlotDuration: (v: number) => void
@@ -353,6 +360,8 @@ function SettingsPanel({
   hours: DayHours[]; setHours: (v: DayHours[]) => void
   saving: boolean; onSave: () => void; onClose: () => void
 }) {
+  const { t } = useI18n()
+
   const addTable = (type: TableTypeEnum) => {
     setTables([...tables, {
       _uid: uid(), table_type: type,
@@ -361,10 +370,10 @@ function SettingsPanel({
     }])
   }
 
-  const removeTable = (uid: string) => setTables(tables.filter(t => t._uid !== uid))
+  const removeTable = (id: string) => setTables(tables.filter(x => x._uid !== id))
 
-  const updateTable = (uid: string, patch: Partial<CafeTableDraft>) =>
-    setTables(tables.map(t => t._uid === uid ? { ...t, ...patch } : t))
+  const updateTable = (id: string, patch: Partial<CafeTableDraft>) =>
+    setTables(tables.map(x => x._uid === id ? { ...x, ...patch } : x))
 
   const updateHours = (day: number, field: 'open_time'|'close_time', val: string|null) =>
     setHours(hours.map(h => h.day_of_week === day ? { ...h, [field]: val } : h))
@@ -379,17 +388,17 @@ function SettingsPanel({
       <div className="menu-editor">
         <div className="me-header">
           <div>
-            <div className="me-eyebrow">Konfiguracja</div>
-            <h2 className="me-title">Ustawienia rezerwacji</h2>
+            <div className="me-eyebrow">{t('res.settings.eyebrow')}</div>
+            <h2 className="me-title">{t('res.settingsBtn')}</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij"><X size={16} /></button>
+          <button className="me-close" type="button" onClick={onClose} aria-label={t('common.close')}><X size={16} /></button>
         </div>
 
         <div className="me-body">
           <div className="res-settings-block">
-            <div className="res-settings-block__title">System rezerwacji</div>
+            <div className="res-settings-block__title">{t('res.settings.block.system')}</div>
             <ToggleRow
-              label="Przyjmuję rezerwacje stolików"
+              label={t('res.settings.accept')}
               checked={enabled}
               onChange={setEnabled}
             />
@@ -398,7 +407,7 @@ function SettingsPanel({
           {enabled && (
             <>
               <div className="res-settings-block">
-                <div className="res-settings-block__title">Tryb systemu</div>
+                <div className="res-settings-block__title">{t('res.settings.block.mode')}</div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
@@ -406,7 +415,7 @@ function SettingsPanel({
                     className={`res-mode-btn${mode === 'simple' ? ' res-mode-btn--active' : ''}`}
                   >
                     <CircleDot size={16} />
-                    Prosty
+                    {t('res.mode.simple')}
                   </button>
                   <button
                     type="button"
@@ -414,13 +423,12 @@ function SettingsPanel({
                     className={`res-mode-btn${mode === 'advanced' ? ' res-mode-btn--active' : ''}`}
                   >
                     <SlidersHorizontal size={16} />
-                    Zaawansowany
+                    {t('res.mode.advanced')}
                   </button>
                 </div>
                 {mode === 'simple' && (
                   <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.625rem', lineHeight: 1.6 }}>
-                    Klienci składają prośbę o rezerwację podając datę, godzinę i liczbę osób.
-                    Ty decydujesz czy ją zaakceptować czy odrzucić.
+                    {t('res.mode.simpleDesc')}
                   </p>
                 )}
               </div>
@@ -428,9 +436,9 @@ function SettingsPanel({
               {mode === 'advanced' && (
                 <>
                   <div className="res-settings-block">
-                    <div className="res-settings-block__title">Czas rezerwacji</div>
+                    <div className="res-settings-block__title">{t('res.settings.block.slot')}</div>
                     <div className="field" style={{ maxWidth: 260 }}>
-                      <label className="me-label">Czas między rezerwacjami</label>
+                      <label className="me-label">{t('res.settings.slotLabel')}</label>
                       <select
                         value={slotDuration}
                         onChange={e => setSlotDuration(Number(e.target.value))}
@@ -438,51 +446,53 @@ function SettingsPanel({
                         style={{ cursor: 'pointer' }}
                       >
                         {SLOT_OPTIONS.map(s => (
-                          <option key={s} value={s}>{s} minut</option>
+                          <option key={s} value={s}>{t('res.minutes', { count: s })}</option>
                         ))}
                       </select>
                     </div>
                   </div>
 
                   <div className="res-settings-block">
-                    <div className="res-settings-block__title">Stoliki</div>
+                    <div className="res-settings-block__title">{t('res.settings.block.tables')}</div>
                     {tables.length === 0 && (
                       <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                        Nie dodano jeszcze żadnych stolików.
+                        {t('res.tables.none')}
                       </p>
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
-                      {tables.map(t => (
-                        <div key={t._uid} className="res-table-row">
+                      {tables.map(tb => (
+                        <div key={tb._uid} className="res-table-row">
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            {tableTypeBadge(t.table_type)}
+                            {tableTypeBadge(t, tb.table_type)}
                             <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-dark)', flex: 1 }}>
-                              {TABLE_TYPE_LABELS[t.table_type]}
+                              {tableTypeLabel(t, tb.table_type)}
                             </span>
-                            <button type="button" className="me-remove-btn me-remove-item" onClick={() => removeTable(t._uid)} title="Usuń">
+                            <button type="button" className="me-remove-btn me-remove-item" onClick={() => removeTable(tb._uid)} title={t('res.table.remove')} aria-label={t('res.table.remove')}>
                               <X size={13} />
                             </button>
                           </div>
                           <div style={{ display: 'flex', gap: '0.875rem', flexWrap: 'wrap' }}>
                             <div className="field" style={{ flex: '1 1 80px', minWidth: 80 }}>
-                              <label className="me-label">Miejsca</label>
-                              <input type="number" min={1} max={50} className="me-input" value={t.seats}
-                                onChange={e => updateTable(t._uid, { seats: Number(e.target.value) })} />
+                              <label className="me-label">{t('res.table.seats')}</label>
+                              <input type="number" min={1} max={50} className="me-input" value={tb.seats}
+                                onChange={e => updateTable(tb._uid, { seats: Number(e.target.value) })} />
                             </div>
-                            {t.table_type === 'standard' && (
+                            {tb.table_type === 'standard' && (
                               <div className="field" style={{ flex: '1 1 80px', minWidth: 80 }}>
-                                <label className="me-label">Ilość</label>
-                                <input type="number" min={1} max={100} className="me-input" value={t.quantity}
-                                  onChange={e => updateTable(t._uid, { quantity: Number(e.target.value) })} />
+                                <label className="me-label">{t('res.table.quantity')}</label>
+                                <input type="number" min={1} max={100} className="me-input" value={tb.quantity}
+                                  onChange={e => updateTable(tb._uid, { quantity: Number(e.target.value) })} />
                               </div>
                             )}
-                            {(t.table_type === 'special' || t.table_type === 'communal') && (
+                            {(tb.table_type === 'special' || tb.table_type === 'communal') && (
                               <div className="field" style={{ flex: '3 1 160px' }}>
-                                <label className="me-label">{t.table_type === 'special' ? 'Co jest wyjątkowego?' : 'Opis (opcjonalnie)'}</label>
+                                <label className="me-label">
+                                  {tb.table_type === 'special' ? t('res.table.special.label') : t('res.table.communal.label')}
+                                </label>
                                 <input type="text" className="me-input"
-                                  placeholder={t.table_type === 'special' ? 'np. zamiast krzeseł są huśtawki' : ''}
-                                  value={t.label}
-                                  onChange={e => updateTable(t._uid, { label: e.target.value })} />
+                                  placeholder={tb.table_type === 'special' ? t('res.table.special.placeholder') : ''}
+                                  value={tb.label}
+                                  onChange={e => updateTable(tb._uid, { label: e.target.value })} />
                               </div>
                             )}
                           </div>
@@ -495,21 +505,21 @@ function SettingsPanel({
                           style={{ width: 'auto', padding: '0.5rem 0.875rem', fontSize: '0.8rem' }}
                           onClick={() => addTable(type)}>
                           <Plus size={14} />
-                          {type === 'standard' ? 'Zwykły stolik' : type === 'communal' ? 'Stół komunalny' : 'Stolik specjalny'}
+                          {t(`res.table.${type}`)}
                         </button>
                       ))}
                     </div>
                   </div>
 
                   <div className="res-settings-block">
-                    <div className="res-settings-block__title">Godziny przyjmowania rezerwacji</div>
+                    <div className="res-settings-block__title">{t('res.settings.block.hours')}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                       {hours.map(h => {
                         const isOpen = h.open_time !== null
                         return (
                           <div key={h.day_of_week} style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', flexWrap: 'wrap' }}>
                             <div style={{ width: 110, fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-dark)' }}>
-                              {DAYS[h.day_of_week]}
+                              {dayNames[h.day_of_week]}
                             </div>
                             <ToggleSmall checked={isOpen} onChange={v => toggleDay(h.day_of_week, v)} />
                             {isOpen ? (
@@ -523,7 +533,7 @@ function SettingsPanel({
                                   onChange={e => updateHours(h.day_of_week, 'close_time', e.target.value)} />
                               </div>
                             ) : (
-                              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Zamknięte</span>
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('res.closed')}</span>
                             )}
                           </div>
                         )
@@ -538,10 +548,10 @@ function SettingsPanel({
 
         <div className="me-footer">
           <div className="me-footer-actions">
-            <button type="button" className="btn btn--outline-dark" onClick={onClose}>Anuluj</button>
+            <button type="button" className="btn btn--outline-dark" onClick={onClose}>{t('common.cancel')}</button>
             <button type="button" className="btn btn--primary" style={{ width: 'auto', minWidth: 160 }}
               onClick={onSave} disabled={saving}>
-              {saving ? 'Zapisywanie…' : 'Zapisz ustawienia'}
+              {saving ? t('common.saving') : t('res.save')}
             </button>
           </div>
         </div>
@@ -567,6 +577,7 @@ function AdvancedView({
   onAdded: () => void
   showAddModal: boolean; setShowAddModal: (v: boolean) => void
 }) {
+  const { t, locale } = useI18n()
   const confirmed  = reservations.filter(r => r.status === 'confirmed')
   const cancelled  = reservations.filter(r => r.status === 'cancelled')
 
@@ -581,7 +592,7 @@ function AdvancedView({
 
   const formatDate = (ds: string) => {
     const d = new Date(ds + 'T00:00:00')
-    return d.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    return d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   }
 
   return (
@@ -589,11 +600,11 @@ function AdvancedView({
       <div className="res-tables-summary">
         {groupForDisplay(settings.tables).map((grp, i) => (
           <div key={i} className="res-table-chip">
-            {tableTypeBadge(grp.type)}
+            {tableTypeBadge(t, grp.type)}
             <span style={{ fontWeight: 600, color: 'var(--text-dark)', fontSize: '0.9rem' }}>
-              {grp.count}× {grp.seats} os.
+              {t('res.tableChip', { count: grp.count, seats: grp.seats })}
             </span>
-            {grp.label && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{grp.label}</span>}
+            {grp.label && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} translate="no">{grp.label}</span>}
           </div>
         ))}
       </div>
@@ -614,7 +625,7 @@ function AdvancedView({
         <div className="info-card__header" style={{ justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
             <span className="info-card__icon"><ClipboardList size={20} /></span>
-            <h2 className="info-card__title">Rezerwacje na ten dzień</h2>
+            <h2 className="info-card__title">{t('res.dayReservations')}</h2>
             {!loadingRes && (
               <span style={{
                 background: 'var(--border-soft)', borderRadius: 100, padding: '1px 8px',
@@ -625,7 +636,7 @@ function AdvancedView({
           <button type="button" className="btn btn--primary btn--sm"
             style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }} onClick={() => setShowAddModal(true)}>
             <Plus size={15} />
-            Dodaj rezerwację
+            {t('res.add')}
           </button>
         </div>
 
@@ -636,7 +647,7 @@ function AdvancedView({
             </div>
           ) : confirmed.length === 0 ? (
             <div className="menu-empty-state">
-              <p>Brak rezerwacji na ten dzień.</p>
+              <p>{t('res.dayEmpty')}</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -652,7 +663,7 @@ function AdvancedView({
         <div className="info-card info-card--muted">
           <div className="info-card__header">
             <span className="info-card__icon"><Ban size={20} /></span>
-            <h2 className="info-card__title">Anulowane ({cancelled.length})</h2>
+            <h2 className="info-card__title">{t('res.cancelledTitle', { count: cancelled.length })}</h2>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {cancelled.map(r => (
@@ -681,9 +692,17 @@ function ReservationRow({ r, onDelete, settings, cancelled = false }: {
   r: ReservationOut; onDelete: (id: string) => void
   settings: ReservationSettings; cancelled?: boolean
 }) {
+  const { t } = useI18n()
   const endMin  = toMinutes(r.start_time) + settings.slot_duration_minutes
   const endTime = fromMinutes(endMin)
-  const tableDesc = tableDescription(r)
+
+  const tableDesc = (() => {
+    if (!r.table_type) return ''
+    const base = tableTypeLabel(t, r.table_type)
+    if (r.table_label) return `${base} – ${r.table_label}`
+    if (r.table_seats) return t('res.tableDesc.seats', { type: base, seats: r.table_seats })
+    return base
+  })()
 
   return (
     <div className={`res-row${cancelled ? ' res-row--cancelled' : ''}`}>
@@ -693,28 +712,26 @@ function ReservationRow({ r, onDelete, settings, cancelled = false }: {
       </div>
       <div className="res-row__main">
         <div className="res-row__header">
-          <span className="res-row__name">{r.guest_name}</span>
-          <span className="res-row__guests">
-            {r.guests} {r.guests === 1 ? 'osoba' : r.guests < 5 ? 'osoby' : 'osób'}
-          </span>
-          {tableDesc && <span className="res-row__table">{tableDesc}</span>}
-          {r.created_by_owner && <span className="res-row__tag res-row__tag--owner">telefon</span>}
-          {r.client_id && <span className="res-row__tag res-row__tag--client">portal</span>}
+          <span className="res-row__name" translate="no">{r.guest_name}</span>
+          <span className="res-row__guests">{t('res.guests', { count: r.guests })}</span>
+          {tableDesc && <span className="res-row__table" translate="no">{tableDesc}</span>}
+          {r.created_by_owner && <span className="res-row__tag res-row__tag--owner">{t('res.tag.phone')}</span>}
+          {r.client_id && <span className="res-row__tag res-row__tag--client">{t('res.tag.portal')}</span>}
         </div>
         {(r.guest_phone || r.guest_email) && (
-          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.125rem' }} translate="no">
             {r.guest_phone}{r.guest_phone && r.guest_email && ' · '}{r.guest_email}
           </div>
         )}
         {r.comment && (
-          <div style={{ fontSize: '0.8125rem', color: 'var(--text-body)', marginTop: '0.25rem', fontStyle: 'italic' }}>
-            „{r.comment}"
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-body)', marginTop: '0.25rem', fontStyle: 'italic' }} translate="no">
+            {t('common.quoted', { text: r.comment })}
           </div>
         )}
       </div>
       {!cancelled && (
         <button type="button" className="me-remove-btn me-remove-item"
-          onClick={() => onDelete(r.id)} title="Usuń rezerwację"
+          onClick={() => onDelete(r.id)} title={t('res.row.delete')} aria-label={t('res.row.delete')}
           style={{ flexShrink: 0, alignSelf: 'flex-start', marginTop: '0.25rem' }}>
           <X size={13} />
         </button>
@@ -731,6 +748,7 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
   token: string; settings: ReservationSettings
   date: string; onClose: () => void; onAdded: () => void
 }) {
+  const { t, tApi } = useI18n()
   const [tableId, setTableId]     = useState(settings.tables[0]?.id ?? '')
   const [startTime, setStartTime] = useState('12:00')
   const [guests, setGuests]       = useState(2)
@@ -741,12 +759,12 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
   const [saving, setSaving]       = useState(false)
   const [error, setError]         = useState<string | null>(null)
 
-  const selectedTable = settings.tables.find(t => t.id === tableId)
+  const selectedTable = settings.tables.find(x => x.id === tableId)
 
   const handleSubmit = async () => {
     setError(null)
-    if (!name.trim()) { setError('Podaj imię i nazwisko gościa.'); return }
-    if (!tableId)     { setError('Wybierz stolik.'); return }
+    if (!name.trim()) { setError(t('res.modal.err.name')); return }
+    if (!tableId)     { setError(t('res.modal.err.table')); return }
 
     setSaving(true)
     try {
@@ -763,12 +781,13 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
         }),
       })
       if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd zapisu rezerwacji.')
+        const e = await res.json().catch(() => null)
+        setError(tApi(e?.detail, 'res.modal.err.save'))
+        return
       }
       onAdded()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Błąd zapisu.')
+    } catch {
+      setError(t('common.genericError'))
     } finally { setSaving(false) }
   }
 
@@ -777,20 +796,20 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
       <div className="menu-editor" style={{ maxWidth: 520 }}>
         <div className="me-header">
           <div>
-            <div className="me-eyebrow">Rezerwacja telefoniczna</div>
-            <h2 className="me-title">Nowa rezerwacja</h2>
+            <div className="me-eyebrow">{t('res.modal.eyebrow')}</div>
+            <h2 className="me-title">{t('res.modal.title')}</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose}><X size={16} /></button>
+          <button className="me-close" type="button" onClick={onClose} aria-label={t('common.close')}><X size={16} /></button>
         </div>
 
         <div className="me-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="field">
-            <label className="me-label">Stolik</label>
+            <label className="me-label">{t('res.modal.table')}</label>
             <select value={tableId} onChange={e => { setTableId(e.target.value); setGuests(1) }}
               className="me-input" style={{ cursor: 'pointer' }}>
-              {settings.tables.map(t => (
-                <option key={t.id} value={t.id}>
-                  {tableTypeLabel(t.table_type)} · {t.seats} os.{t.label ? ` (${t.label})` : ''}
+              {settings.tables.map(tb => (
+                <option key={tb.id} value={tb.id}>
+                  {tableTypeLabel(t, tb.table_type)} · {t('res.seatsShort', { seats: tb.seats })}{tb.label ? ` (${tb.label})` : ''}
                 </option>
               ))}
             </select>
@@ -798,44 +817,46 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
 
           <div style={{ display: 'flex', gap: '1rem' }}>
             <div className="field" style={{ flex: 1 }}>
-              <label className="me-label">Data</label>
+              <label className="me-label">{t('res.modal.date')}</label>
               <input type="date" className="me-input" value={date} disabled />
             </div>
             <div className="field" style={{ flex: 1 }}>
-              <label className="me-label">Godzina</label>
+              <label className="me-label">{t('res.modal.time')}</label>
               <input type="time" className="me-input" value={startTime}
                 onChange={e => setStartTime(e.target.value)} />
             </div>
           </div>
 
-          <div className="field" style={{ maxWidth: 160 }}>
-            <label className="me-label">Liczba gości {selectedTable ? `(maks. ${selectedTable.seats})` : ''}</label>
+          <div className="field" style={{ maxWidth: 200 }}>
+            <label className="me-label">
+              {selectedTable ? t('res.modal.guestsMax', { max: selectedTable.seats }) : t('res.modal.guests')}
+            </label>
             <input type="number" className="me-input" min={1} max={selectedTable?.seats ?? 50}
               value={guests} onChange={e => setGuests(Number(e.target.value))} />
           </div>
 
           <div className="field">
-            <label className="me-label">Imię i nazwisko gościa *</label>
+            <label className="me-label">{t('res.modal.name')}</label>
             <input type="text" className="me-input" value={name}
               onChange={e => setName(e.target.value)} placeholder="Jan Kowalski" />
           </div>
           <div style={{ display: 'flex', gap: '1rem' }}>
             <div className="field" style={{ flex: 1 }}>
-              <label className="me-label">Telefon</label>
+              <label className="me-label">{t('res.modal.phone')}</label>
               <input type="tel" className="me-input" value={phone}
                 onChange={e => setPhone(e.target.value)} placeholder="+48 123 456 789" />
             </div>
             <div className="field" style={{ flex: 1 }}>
-              <label className="me-label">E-mail</label>
+              <label className="me-label">{t('res.modal.email')}</label>
               <input type="email" className="me-input" value={email}
                 onChange={e => setEmail(e.target.value)} placeholder="jan@example.com" />
             </div>
           </div>
           <div className="field">
-            <label className="me-label">Komentarz</label>
+            <label className="me-label">{t('res.modal.comment')}</label>
             <input type="text" className="me-input" value={comment}
               onChange={e => setComment(e.target.value)}
-              placeholder="np. urodziny, alergia, życzenie…" />
+              placeholder={t('res.modal.commentPlaceholder')} />
           </div>
 
           {error && <div className="form-error" role="alert">{error}</div>}
@@ -843,11 +864,11 @@ function AddReservationModal({ token, settings, date, onClose, onAdded }: {
 
         <div className="me-footer">
           <div className="me-footer-actions">
-            <button type="button" className="btn btn--outline-dark" onClick={onClose}>Anuluj</button>
+            <button type="button" className="btn btn--outline-dark" onClick={onClose}>{t('common.cancel')}</button>
             <button type="button" className="btn btn--primary"
               style={{ width: 'auto', minWidth: 160 }}
               onClick={handleSubmit} disabled={saving}>
-              {saving ? 'Zapisywanie…' : 'Zapisz rezerwację'}
+              {saving ? t('common.saving') : t('res.modal.save')}
             </button>
           </div>
         </div>
@@ -917,57 +938,45 @@ function fromMinutes(m: number): string {
   return `${hh}:${mm}`
 }
 
-function tableTypeLabel(type: string) {
-  return TABLE_TYPE_LABELS[type as TableTypeEnum] ?? type
-}
-
-function tableDescription(r: ReservationOut): string {
-  if (!r.table_type) return ''
-  const base = tableTypeLabel(r.table_type)
-  if (r.table_label) return `${base} – ${r.table_label}`
-  if (r.table_seats) return `${base} (${r.table_seats} os.)`
-  return base
-}
-
 interface TableGroup {
   type: TableTypeEnum; seats: number; count: number; label: string | null
 }
 
 function groupForDisplay(tables: CafeTableOut[]): TableGroup[] {
   const map = new Map<string, TableGroup>()
-  tables.forEach(t => {
-    const key = `${t.table_type}-${t.seats}-${t.label ?? ''}`
+  tables.forEach(tb => {
+    const key = `${tb.table_type}-${tb.seats}-${tb.label ?? ''}`
     if (map.has(key)) { map.get(key)!.count++ }
-    else map.set(key, { type: t.table_type, seats: t.seats, count: 1, label: t.label })
+    else map.set(key, { type: tb.table_type, seats: tb.seats, count: 1, label: tb.label })
   })
   return Array.from(map.values())
 }
 
 function groupTablesToDisplay(tables: CafeTableOut[]): CafeTableDraft[] {
   const groups: CafeTableDraft[] = []
-  const std = tables.filter(t => t.table_type === 'standard')
-  const others = tables.filter(t => t.table_type !== 'standard')
+  const std = tables.filter(x => x.table_type === 'standard')
+  const others = tables.filter(x => x.table_type !== 'standard')
 
   const stdMap = new Map<string, { seats: number; count: number }>()
-  std.forEach(t => {
-    const key = String(t.seats)
+  std.forEach(x => {
+    const key = String(x.seats)
     if (stdMap.has(key)) stdMap.get(key)!.count++
-    else stdMap.set(key, { seats: t.seats, count: 1 })
+    else stdMap.set(key, { seats: x.seats, count: 1 })
   })
   stdMap.forEach(v =>
     groups.push({ _uid: uid(), table_type: 'standard', seats: v.seats, quantity: v.count, label: '' })
   )
-  others.forEach(t =>
-    groups.push({ _uid: uid(), table_type: t.table_type, seats: t.seats, quantity: 1, label: t.label ?? '' })
+  others.forEach(x =>
+    groups.push({ _uid: uid(), table_type: x.table_type, seats: x.seats, quantity: 1, label: x.label ?? '' })
   )
   return groups
 }
 
 function tablesForApi(tables: CafeTableDraft[]): object[] {
-  return tables.map(t => ({
-    table_type: t.table_type,
-    seats:      t.seats,
-    quantity:   t.table_type === 'standard' ? t.quantity : 1,
-    label:      t.label.trim() || null,
+  return tables.map(x => ({
+    table_type: x.table_type,
+    seats:      x.seats,
+    quantity:   x.table_type === 'standard' ? x.quantity : 1,
+    label:      x.label.trim() || null,
   }))
 }

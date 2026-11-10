@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Leaf, Flame, Ban, X, Plus } from 'lucide-react'
 import { API_URL } from '../config'
+import { useI18n } from '../i18n'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -113,6 +114,7 @@ function Badge({ label, icon, active, onClick, color }: {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function MenuEditor({ token, onClose }: Props) {
+  const { t, tApi } = useI18n()
   const [sections, setSections] = useState<MenuSectionDraft[]>([emptySection()])
   const [loading, setLoading] = useState(false)
   const [fetchingMenu, setFetchingMenu] = useState(true)
@@ -121,13 +123,14 @@ export default function MenuEditor({ token, onClose }: Props) {
   const [hasExisting, setHasExisting] = useState(false)
 
   // Load existing menu on mount
-  useState(() => {
+  useEffect(() => {
+    let cancelled = false
     ;(async () => {
       try {
         const res = await fetch(`${API_URL}/menu`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-        if (res.ok) {
+        if (res.ok && !cancelled) {
           const data = await res.json()
           if (data.sections && data.sections.length > 0) {
             setSections(serverToLocal(data.sections))
@@ -137,10 +140,11 @@ export default function MenuEditor({ token, onClose }: Props) {
       } catch {
         // network error – start fresh
       } finally {
-        setFetchingMenu(false)
+        if (!cancelled) setFetchingMenu(false)
       }
     })()
-  })
+    return () => { cancelled = true }
+  }, [token])
 
   // ── Section mutations ────────────────────────────────────────────────
 
@@ -193,17 +197,17 @@ export default function MenuEditor({ token, onClose }: Props) {
     // Basic validation
     for (const sec of sections) {
       if (!sec.name.trim()) {
-        setSaveError('Każda sekcja musi mieć nazwę.')
+        setSaveError(t('menuEditor.err.sectionName'))
         return
       }
       for (const it of sec.items) {
         if (!it.name.trim()) {
-          setSaveError(`W sekcji „${sec.name}" brakuje nazwy przy jednej z pozycji.`)
+          setSaveError(t('menuEditor.err.itemName', { section: sec.name }))
           return
         }
         const price = parseFloat(it.price)
         if (isNaN(price) || price < 0) {
-          setSaveError(`W sekcji „${sec.name}" cena pozycji „${it.name}" jest nieprawidłowa.`)
+          setSaveError(t('menuEditor.err.price', { section: sec.name, item: it.name }))
           return
         }
       }
@@ -235,13 +239,14 @@ export default function MenuEditor({ token, onClose }: Props) {
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || 'Błąd zapisu menu.')
+        const err = await res.json().catch(() => null)
+        setSaveError(tApi(err?.detail, 'menuEditor.err.save'))
+        return
       }
       setHasExisting(true)
       setSaveSuccess(true)
-    } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err.message : 'Wystąpił błąd. Spróbuj ponownie.')
+    } catch {
+      setSaveError(t('common.genericError'))
     } finally {
       setLoading(false)
     }
@@ -255,7 +260,7 @@ export default function MenuEditor({ token, onClose }: Props) {
         <div className="menu-editor">
           <div className="loading-state">
             <div className="loading-spinner" />
-            <p>Wczytywanie menu…</p>
+            <p>{t('menuEditor.loading')}</p>
           </div>
         </div>
       </div>
@@ -268,10 +273,10 @@ export default function MenuEditor({ token, onClose }: Props) {
         {/* Header */}
         <div className="me-header">
           <div>
-            <div className="me-eyebrow">Kreator menu</div>
-            <h2 className="me-title">{hasExisting ? 'Edytuj menu' : 'Utwórz menu'}</h2>
+            <div className="me-eyebrow">{t('menuEditor.eyebrow')}</div>
+            <h2 className="me-title">{hasExisting ? t('menuEditor.titleEdit') : t('menuEditor.titleCreate')}</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij"><X size={16} /></button>
+          <button className="me-close" type="button" onClick={onClose} aria-label={t('menuEditor.close')}><X size={16} /></button>
         </div>
 
         {/* Body */}
@@ -287,8 +292,8 @@ export default function MenuEditor({ token, onClose }: Props) {
                     type="text"
                     value={sec.name}
                     onChange={e => updateSectionName(sec.id, e.target.value)}
-                    placeholder="np. KAWY, HERBATY, DESERY…"
-                    aria-label="Nazwa sekcji"
+                    placeholder={t('menuEditor.sectionPlaceholder')}
+                    aria-label={t('menuEditor.sectionAria')}
                   />
                 </div>
                 {sections.length > 1 && (
@@ -296,9 +301,9 @@ export default function MenuEditor({ token, onClose }: Props) {
                     type="button"
                     className="me-remove-btn me-remove-section"
                     onClick={() => removeSection(sec.id)}
-                    title="Usuń sekcję"
+                    title={t('menuEditor.removeSection')}
                   >
-                    Usuń sekcję
+                    {t('menuEditor.removeSection')}
                   </button>
                 )}
               </div>
@@ -309,17 +314,17 @@ export default function MenuEditor({ token, onClose }: Props) {
                   <div key={item.id} className="me-item">
                     <div className="me-item-row me-item-row--main">
                       <div className="me-item-name-wrap">
-                        <label className="me-label">Nazwa</label>
+                        <label className="me-label">{t('menuEditor.itemName')}</label>
                         <input
                           className="me-input"
                           type="text"
                           value={item.name}
                           onChange={e => updateItem(sec.id, item.id, { name: e.target.value })}
-                          placeholder="np. Cappuccino, Espresso…"
+                          placeholder={t('menuEditor.itemNamePlaceholder')}
                         />
                       </div>
                       <div className="me-item-price-wrap">
-                        <label className="me-label">Cena (zł)</label>
+                        <label className="me-label">{t('menuEditor.price')}</label>
                         <input
                           className="me-input me-input--price"
                           type="number"
@@ -334,7 +339,7 @@ export default function MenuEditor({ token, onClose }: Props) {
                         type="button"
                         className="me-remove-btn me-remove-item"
                         onClick={() => removeItem(sec.id, item.id)}
-                        title="Usuń pozycję"
+                        title={t('menuEditor.removeItem')}
                         disabled={sec.items.length === 1}
                       >
                         <X size={13} />
@@ -343,34 +348,34 @@ export default function MenuEditor({ token, onClose }: Props) {
 
                     <div className="me-item-row">
                       <div style={{ flex: 1 }}>
-                        <label className="me-label">Opis (opcjonalnie)</label>
+                        <label className="me-label">{t('menuEditor.description')}</label>
                         <input
                           className="me-input"
                           type="text"
                           value={item.description}
                           onChange={e => updateItem(sec.id, item.id, { description: e.target.value })}
-                          placeholder="Krótki opis smaku, składników…"
+                          placeholder={t('menuEditor.descriptionPlaceholder')}
                         />
                       </div>
                     </div>
 
                     <div className="me-item-badges">
                       <Badge
-                        label="VEGE"
+                        label={t('menu.badge.vege')}
                         icon={<Leaf size={12} />}
                         active={item.is_vege}
                         onClick={() => updateItem(sec.id, item.id, { is_vege: !item.is_vege })}
                         color="#2E7D32"
                       />
                       <Badge
-                        label="HOT"
+                        label={t('menu.badge.hot')}
                         icon={<Flame size={12} />}
                         active={item.is_hot}
                         onClick={() => updateItem(sec.id, item.id, { is_hot: !item.is_hot })}
                         color="#B23B3B"
                       />
                       <Badge
-                        label="NIEDOSTĘPNE"
+                        label={t('menu.badge.unavailable')}
                         icon={<Ban size={12} />}
                         active={item.is_unavailable}
                         onClick={() => updateItem(sec.id, item.id, { is_unavailable: !item.is_unavailable })}
@@ -386,7 +391,7 @@ export default function MenuEditor({ token, onClose }: Props) {
                   onClick={() => addItem(sec.id)}
                 >
                   <Plus size={14} />
-                  Dodaj pozycję
+                  {t('menuEditor.addItem')}
                 </button>
               </div>
             </div>
@@ -394,17 +399,17 @@ export default function MenuEditor({ token, onClose }: Props) {
 
           <button type="button" className="me-add-section-btn" onClick={addSection}>
             <Plus size={16} />
-            Dodaj sekcję
+            {t('menuEditor.addSection')}
           </button>
         </div>
 
         {/* Footer */}
         <div className="me-footer">
           {saveError && <div className="form-error" role="alert">{saveError}</div>}
-          {saveSuccess && <div className="form-success" role="status">Menu zostało zapisane.</div>}
+          {saveSuccess && <div className="form-success" role="status">{t('menuEditor.saved')}</div>}
           <div className="me-footer-actions">
             <button type="button" className="btn btn--outline-dark" onClick={onClose}>
-              Anuluj
+              {t('common.cancel')}
             </button>
             <button
               type="button"
@@ -413,7 +418,7 @@ export default function MenuEditor({ token, onClose }: Props) {
               onClick={handleSave}
               disabled={loading}
             >
-              {loading ? 'Zapisywanie…' : 'Zapisz menu'}
+              {loading ? t('menuEditor.saving') : t('menuEditor.save')}
             </button>
           </div>
         </div>

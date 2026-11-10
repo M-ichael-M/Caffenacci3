@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Gift, Receipt, Coins, Bookmark, X } from 'lucide-react'
 import { API_URL } from '../config'
+import { useI18n } from '../i18n'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,8 @@ interface Props {
 
 const API = API_URL
 
+class ApiError extends Error {}
+
 function uid() {
   return Math.random().toString(36).slice(2)
 }
@@ -85,6 +88,7 @@ function Toggle({ checked, onChange, disabled = false }: {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export default function LoyaltyTab({ token }: Props) {
+  const { t, tApi } = useI18n()
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
   const [saveMsg, setSaveMsg]   = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -104,6 +108,15 @@ export default function LoyaltyTab({ token }: Props) {
   const [txAmount, setTxAmount]       = useState('')
   const [actionLoading, setActionLoading] = useState(false)
   const [actionMsg, setActionMsg]     = useState<string | null>(null)
+
+  // Błąd z API → przetłumaczony komunikat; inny wyjątek → komunikat ogólny.
+  const failIfNotOk = async (res: Response, fallbackKey: string) => {
+    if (res.ok) return
+    const e = await res.json().catch(() => null)
+    throw new ApiError(tApi(e?.detail, fallbackKey))
+  }
+  const messageOf = (err: unknown, fallbackKey?: string) =>
+    err instanceof ApiError ? err.message : t(fallbackKey ?? 'common.genericError')
 
   // ── Fetch ───────────────────────────────────────────────────────────────
 
@@ -142,9 +155,9 @@ export default function LoyaltyTab({ token }: Props) {
 
     if (mode === 'points') {
       for (const r of rewards) {
-        if (!r.name.trim()) { setSaveMsg({ type: 'err', text: 'Każda nagroda musi mieć nazwę.' }); return }
+        if (!r.name.trim()) { setSaveMsg({ type: 'err', text: t('loyalty.err.rewardName') }); return }
         const cost = parseInt(r.cost_points, 10)
-        if (isNaN(cost) || cost < 1) { setSaveMsg({ type: 'err', text: `Nieprawidłowy koszt nagrody „${r.name}".` }); return }
+        if (isNaN(cost) || cost < 1) { setSaveMsg({ type: 'err', text: t('loyalty.err.rewardCost', { name: r.name }) }); return }
       }
     }
 
@@ -167,14 +180,11 @@ export default function LoyaltyTab({ token }: Props) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
       })
-      if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd zapisu.')
-      }
+      await failIfNotOk(res, 'loyalty.err.save')
       await fetchSettings()
-      setSaveMsg({ type: 'ok', text: 'Ustawienia programu lojalnościowego zostały zapisane.' })
+      setSaveMsg({ type: 'ok', text: t('loyalty.saved') })
     } catch (err: unknown) {
-      setSaveMsg({ type: 'err', text: err instanceof Error ? err.message : 'Błąd zapisu.' })
+      setSaveMsg({ type: 'err', text: messageOf(err, 'loyalty.err.save') })
     } finally { setSaving(false) }
   }
 
@@ -185,20 +195,17 @@ export default function LoyaltyTab({ token }: Props) {
     setLookup(null)
     setActionMsg(null)
     const code = searchCode.trim().toUpperCase()
-    if (code.length !== 8) { setSearchError('Kod lojalnościowy ma dokładnie 8 znaków.'); return }
+    if (code.length !== 8) { setSearchError(t('loyalty.err.codeLength')); return }
 
     setSearching(true)
     try {
       const res = await fetch(`${API}/loyalty/lookup/${code}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Nie znaleziono użytkownika.')
-      }
+      await failIfNotOk(res, 'loyalty.err.lookup')
       setLookup(await res.json())
     } catch (err: unknown) {
-      setSearchError(err instanceof Error ? err.message : 'Błąd wyszukiwania.')
+      setSearchError(messageOf(err, 'loyalty.err.lookup'))
     } finally { setSearching(false) }
   }
 
@@ -212,93 +219,47 @@ export default function LoyaltyTab({ token }: Props) {
     } catch { /* ignore */ }
   }
 
-  const handleEarn = async () => {
+  /** Wspólny wzorzec dla operacji przy kasie: POST → odśwież saldo → komunikat. */
+  const runAction = async (path: string, body: object, okKey: string, after?: () => void) => {
+    if (!lookup) return
+    setActionLoading(true)
+    setActionMsg(null)
+    try {
+      const res = await fetch(`${API}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      })
+      await failIfNotOk(res, 'loyalty.err.operation')
+      after?.()
+      await refreshLookup()
+      setActionMsg(t(okKey))
+    } catch (err: unknown) {
+      setActionMsg(messageOf(err, 'loyalty.err.operation'))
+    } finally { setActionLoading(false) }
+  }
+
+  const handleEarn = () => {
     if (!lookup) return
     const amount = parseFloat(txAmount.replace(',', '.'))
-    if (isNaN(amount) || amount <= 0) { setActionMsg('Podaj prawidłową kwotę transakcji.'); return }
-
-    setActionLoading(true)
-    setActionMsg(null)
-    try {
-      const res = await fetch(`${API}/loyalty/earn`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ loyalty_code: lookup.loyalty_code, amount }),
-      })
-      if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd operacji.')
-      }
-      setTxAmount('')
-      await refreshLookup()
-      setActionMsg('Punkty zostały doliczone.')
-    } catch (err: unknown) {
-      setActionMsg(err instanceof Error ? err.message : 'Błąd operacji.')
-    } finally { setActionLoading(false) }
+    if (isNaN(amount) || amount <= 0) { setActionMsg(t('loyalty.err.amount')); return }
+    runAction('/loyalty/earn', { loyalty_code: lookup.loyalty_code, amount }, 'loyalty.msg.earned', () => setTxAmount(''))
   }
 
-  const handleRedeem = async (rewardId: string) => {
+  const handleRedeem = (rewardId: string) => {
     if (!lookup) return
-    setActionLoading(true)
-    setActionMsg(null)
-    try {
-      const res = await fetch(`${API}/loyalty/redeem`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ loyalty_code: lookup.loyalty_code, reward_id: rewardId }),
-      })
-      if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd operacji.')
-      }
-      await refreshLookup()
-      setActionMsg('Nagroda została wymieniona.')
-    } catch (err: unknown) {
-      setActionMsg(err instanceof Error ? err.message : 'Błąd operacji.')
-    } finally { setActionLoading(false) }
+    runAction('/loyalty/redeem', { loyalty_code: lookup.loyalty_code, reward_id: rewardId }, 'loyalty.msg.redeemed')
   }
 
-  const handleAddStamp = async () => {
+  const handleAddStamp = () => {
     if (!lookup) return
-    setActionLoading(true)
-    setActionMsg(null)
-    try {
-      const res = await fetch(`${API}/loyalty/stamp/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ loyalty_code: lookup.loyalty_code }),
-      })
-      if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd operacji.')
-      }
-      await refreshLookup()
-      setActionMsg('Dodano pieczątkę.')
-    } catch (err: unknown) {
-      setActionMsg(err instanceof Error ? err.message : 'Błąd operacji.')
-    } finally { setActionLoading(false) }
+    runAction('/loyalty/stamp/add', { loyalty_code: lookup.loyalty_code }, 'loyalty.msg.stamped')
   }
 
-  const handleResetStamps = async () => {
+  const handleResetStamps = () => {
     if (!lookup) return
-    if (!confirm('Czy na pewno zerować kartę pieczątek? Upewnij się, że klient odebrał już nagrodę.')) return
-    setActionLoading(true)
-    setActionMsg(null)
-    try {
-      const res = await fetch(`${API}/loyalty/stamp/reset`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ loyalty_code: lookup.loyalty_code }),
-      })
-      if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd operacji.')
-      }
-      await refreshLookup()
-      setActionMsg('Karta pieczątek została wyzerowana.')
-    } catch (err: unknown) {
-      setActionMsg(err instanceof Error ? err.message : 'Błąd operacji.')
-    } finally { setActionLoading(false) }
+    if (!confirm(t('loyalty.till.resetConfirm'))) return
+    runAction('/loyalty/stamp/reset', { loyalty_code: lookup.loyalty_code }, 'loyalty.msg.reset')
   }
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -307,7 +268,7 @@ export default function LoyaltyTab({ token }: Props) {
     return (
       <div className="loading-state">
         <div className="loading-spinner" />
-        <p>Wczytywanie programu lojalnościowego…</p>
+        <p>{t('loyalty.loading')}</p>
       </div>
     )
   }
@@ -317,10 +278,10 @@ export default function LoyaltyTab({ token }: Props) {
 
       <div>
         <div className="page-header__eyebrow" style={{ marginBottom: '0.25rem' }}>
-          Zarządzanie
+          {t('common.management')}
         </div>
         <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
-          System lojalnościowy
+          {t('loyalty.title')}
         </h2>
       </div>
 
@@ -331,10 +292,10 @@ export default function LoyaltyTab({ token }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-dark)' }}>
-              Program lojalnościowy jest aktywny
+              {t('loyalty.active.title')}
             </div>
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
-              Wyłączenie blokuje operacje w kasie i ukrywa program w profilu klienta.
+              {t('loyalty.active.hint')}
             </div>
           </div>
           <Toggle checked={enabled} onChange={setEnabled} />
@@ -345,15 +306,15 @@ export default function LoyaltyTab({ token }: Props) {
         <>
           {/* ── Rodzaj programu ─────────────────────────────────────────── */}
           <div className="res-settings-block" style={{ margin: 0 }}>
-            <div className="res-settings-block__title">Rodzaj programu</div>
+            <div className="res-settings-block__title">{t('loyalty.kind')}</div>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button type="button" className={`res-mode-btn${mode === 'points' ? ' res-mode-btn--active' : ''}`} onClick={() => setMode('points')}>
                 <Coins size={18} />
-                Punkty za zakupy
+                {t('loyalty.kind.points')}
               </button>
               <button type="button" className={`res-mode-btn${mode === 'stamps' ? ' res-mode-btn--active' : ''}`} onClick={() => setMode('stamps')}>
                 <Bookmark size={18} />
-                Pieczątki cyfrowe
+                {t('loyalty.kind.stamps')}
               </button>
             </div>
           </div>
@@ -362,36 +323,35 @@ export default function LoyaltyTab({ token }: Props) {
           {mode === 'points' && (
             <div className="info-card">
               <div className="info-card__header">
-                <span className="info-card__icon">
-                  <Gift size={20} />
-                </span>
-                <h2 className="info-card__title">Nagrody za punkty</h2>
+                <span className="info-card__icon"><Gift size={20} /></span>
+                <h2 className="info-card__title">{t('loyalty.rewards.title')}</h2>
               </div>
               <div className="info-card__body">
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
-                  Klient zdobywa 3 punkty za każde wydane 10 groszy (np. 1,25 zł = 36 pkt., poniżej 10 gr = 0 pkt.).
+                  {t('loyalty.rewards.rule')}
                 </p>
                 {rewards.length === 0 && (
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nie dodano jeszcze żadnych nagród.</p>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('loyalty.rewards.none')}</p>
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {rewards.map(r => (
                     <div key={r._uid} className="res-table-row">
                       <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                         <div className="field" style={{ flex: '2 1 200px' }}>
-                          <label className="me-label">Nazwa nagrody</label>
+                          <label className="me-label">{t('loyalty.rewards.name')}</label>
                           <input className="me-input" value={r.name}
                             onChange={e => updateReward(r._uid, { name: e.target.value })}
-                            placeholder="np. Kawa czarna" />
+                            placeholder={t('loyalty.rewards.namePlaceholder')} />
                         </div>
                         <div className="field" style={{ flex: '1 1 120px' }}>
-                          <label className="me-label">Koszt (pkt.)</label>
+                          <label className="me-label">{t('loyalty.rewards.cost')}</label>
                           <input className="me-input" type="number" min={1} value={r.cost_points}
                             onChange={e => updateReward(r._uid, { cost_points: e.target.value })}
                             placeholder="100" />
                         </div>
                         <button type="button" className="me-remove-btn me-remove-item"
-                          onClick={() => removeReward(r._uid)} title="Usuń nagrodę">
+                          onClick={() => removeReward(r._uid)}
+                          title={t('loyalty.rewards.remove')} aria-label={t('loyalty.rewards.remove')}>
                           <X size={16} />
                         </button>
                       </div>
@@ -399,7 +359,7 @@ export default function LoyaltyTab({ token }: Props) {
                   ))}
                 </div>
                 <button type="button" className="me-add-item-btn" style={{ marginTop: '0.875rem' }} onClick={addReward}>
-                  + Dodaj nagrodę
+                  {t('loyalty.rewards.add')}
                 </button>
               </div>
             </div>
@@ -409,28 +369,26 @@ export default function LoyaltyTab({ token }: Props) {
           {mode === 'stamps' && (
             <div className="info-card">
               <div className="info-card__header">
-                <span className="info-card__icon">
-                  <Bookmark size={20} />
-                </span>
-                <h2 className="info-card__title">Ustawienia pieczątek</h2>
+                <span className="info-card__icon"><Bookmark size={20} /></span>
+                <h2 className="info-card__title">{t('loyalty.stamps.title')}</h2>
               </div>
               <div className="info-card__body">
                 <div className="field" style={{ maxWidth: 220 }}>
-                  <label className="field__label">Maksymalna liczba pieczątek</label>
+                  <label className="field__label">{t('loyalty.stamps.max')}</label>
                   <input className="field__input" type="number" min={2} max={100} value={stampsMax}
                     onChange={e => setStampsMax(Number(e.target.value))} />
                 </div>
                 <div className="field">
-                  <label className="field__label">Za co przyznawana jest pieczątka</label>
+                  <label className="field__label">{t('loyalty.stamps.earn')}</label>
                   <input className="field__input" value={stampsEarnDesc}
                     onChange={e => setStampsEarnDesc(e.target.value)}
-                    placeholder="np. za każdą kawę kupioną w kawiarni" />
+                    placeholder={t('loyalty.stamps.earnPlaceholder')} />
                 </div>
                 <div className="field">
-                  <label className="field__label">Co klient otrzymuje po zebraniu maksimum</label>
+                  <label className="field__label">{t('loyalty.stamps.reward')}</label>
                   <input className="field__input" value={stampsRewardDesc}
                     onChange={e => setStampsRewardDesc(e.target.value)}
-                    placeholder="np. darmowa kawa dowolnego rodzaju" />
+                    placeholder={t('loyalty.stamps.rewardPlaceholder')} />
                 </div>
               </div>
             </div>
@@ -439,35 +397,33 @@ export default function LoyaltyTab({ token }: Props) {
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button type="button" className="btn btn--primary" style={{ width: 'auto', minWidth: 200 }}
               onClick={handleSave} disabled={saving}>
-              {saving ? 'Zapisywanie…' : 'Zapisz ustawienia'}
+              {saving ? t('common.saving') : t('loyalty.save')}
             </button>
           </div>
 
           {/* ── Kasa ─────────────────────────────────────────────────────── */}
           <div className="info-card">
             <div className="info-card__header">
-              <span className="info-card__icon">
-                <Receipt size={20} />
-              </span>
-              <h2 className="info-card__title">Kasa — obsługa klienta</h2>
+              <span className="info-card__icon"><Receipt size={20} /></span>
+              <h2 className="info-card__title">{t('loyalty.till.title')}</h2>
             </div>
             <div className="info-card__body">
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                 <div className="field" style={{ flex: '1 1 220px' }}>
-                  <label className="field__label">Kod lojalnościowy klienta</label>
+                  <label className="field__label">{t('loyalty.till.code')}</label>
                   <input
                     className="field__input"
                     value={searchCode}
                     onChange={e => setSearchCode(e.target.value.toUpperCase())}
                     onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
-                    placeholder="np. 7K3P9XQ2"
+                    placeholder={t('loyalty.till.codePlaceholder')}
                     maxLength={8}
                     style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'monospace' }}
                   />
                 </div>
                 <button type="button" className="btn btn--primary" style={{ width: 'auto', marginTop: 0, padding: '0.75rem 1.5rem' }}
                   onClick={handleSearch} disabled={searching}>
-                  {searching ? 'Szukanie…' : 'Szukaj'}
+                  {searching ? t('loyalty.till.searching') : t('loyalty.till.search')}
                 </button>
               </div>
 
@@ -476,7 +432,7 @@ export default function LoyaltyTab({ token }: Props) {
               {lookup && (
                 <div className="res-table-row" style={{ marginTop: '1.25rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
-                    <div>
+                    <div translate="no">
                       <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-dark)' }}>{lookup.full_name}</div>
                       <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>@{lookup.client_nick} · {lookup.loyalty_code}</div>
                     </div>
@@ -484,7 +440,9 @@ export default function LoyaltyTab({ token }: Props) {
                       background: 'rgba(169,114,47,0.1)', color: 'var(--gold)', borderRadius: 100,
                       padding: '0.375rem 1rem', fontSize: '1.125rem', fontWeight: 700, whiteSpace: 'nowrap',
                     }}>
-                      {lookup.mode === 'points' ? `${lookup.points} pkt.` : `${lookup.stamps} / ${lookup.stamps_max} pieczątek`}
+                      {lookup.mode === 'points'
+                        ? t('loyalty.points', { count: lookup.points })
+                        : t('loyalty.stampsProgress', { count: lookup.stamps, max: lookup.stamps_max })}
                     </div>
                   </div>
 
@@ -494,28 +452,32 @@ export default function LoyaltyTab({ token }: Props) {
                     <>
                       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
                         <div className="field" style={{ flex: '1 1 160px' }}>
-                          <label className="me-label">Kwota transakcji (zł)</label>
+                          <label className="me-label">{t('loyalty.till.amount')}</label>
                           <input className="me-input" type="number" min={0.01} step={0.01} value={txAmount}
-                            onChange={e => setTxAmount(e.target.value)} placeholder="np. 12.50" />
+                            onChange={e => setTxAmount(e.target.value)} placeholder={t('loyalty.till.amountPlaceholder')} />
                         </div>
                         <button type="button" className="btn btn--primary" style={{ width: 'auto', marginTop: 0 }}
                           onClick={handleEarn} disabled={actionLoading}>
-                          + Dolicz punkty
+                          {t('loyalty.till.earn')}
                         </button>
                       </div>
 
-                      <div className="me-label" style={{ marginBottom: '0.625rem' }}>Wymiana na nagrodę</div>
+                      <div className="me-label" style={{ marginBottom: '0.625rem' }}>{t('loyalty.till.redeemTitle')}</div>
                       {lookup.rewards.length === 0 ? (
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nie skonfigurowano żadnych nagród.</p>
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('loyalty.till.noRewards')}</p>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           {lookup.rewards.map(r => (
                             <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-                              <span style={{ fontSize: '0.875rem', color: 'var(--text-dark)' }}>{r.name} — {r.cost_points} pkt.</span>
+                              <span style={{ fontSize: '0.875rem', color: 'var(--text-dark)' }}>
+                                {/* Nazwa nagrody wpisana przez właściciela */}
+                                <span translate="no">{r.name}</span>{' '}
+                                {t('loyalty.till.rewardLine', { name: '', cost: r.cost_points }).replace(/^\s*—\s*/, '— ')}
+                              </span>
                               <button type="button" className="btn btn--outline-dark btn--sm" style={{ width: 'auto' }}
                                 onClick={() => handleRedeem(r.id)}
                                 disabled={actionLoading || lookup.points < r.cost_points}>
-                                Wymień
+                                {t('loyalty.till.redeem')}
                               </button>
                             </div>
                           ))}
@@ -527,12 +489,12 @@ export default function LoyaltyTab({ token }: Props) {
                       {lookup.stamps < lookup.stamps_max ? (
                         <button type="button" className="btn btn--primary" style={{ width: 'auto', marginTop: 0 }}
                           onClick={handleAddStamp} disabled={actionLoading}>
-                          + Podbij pieczątkę
+                          {t('loyalty.till.addStamp')}
                         </button>
                       ) : (
                         <button type="button" className="btn btn--primary" style={{ width: 'auto', marginTop: 0 }}
                           onClick={handleResetStamps} disabled={actionLoading}>
-                          ✓ Zeruj (nagroda odebrana)
+                          {t('loyalty.till.resetStamps')}
                         </button>
                       )}
                     </div>

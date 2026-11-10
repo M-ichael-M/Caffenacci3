@@ -12,25 +12,11 @@ import NewsTab from './NewsTab'
 import AnalyticsTab from './AnalyticsTab'
 import logoCircle from '../assets/logo/logo_circle.png'
 import {
-  ClipboardList,
-  CalendarDays,
-  Gift,
-  Star,
-  Settings,
-  Globe,
-  Coffee,
-  User,
-  MapPin,
-  Zap,
-  Pencil,
-  Mail,
-  Phone,
-  Flag,
-  Leaf,
-  Flame,
-  Ban,
+  ClipboardList, CalendarDays, Gift, Star, Settings, Globe, Coffee, User,
+  MapPin, Zap, Pencil, Mail, Phone, Flag, Leaf, Flame, Ban,
 } from 'lucide-react'
 import { API_URL } from '../config'
+import { useI18n } from '../i18n'
 
 interface AuthState {
   token: string
@@ -93,6 +79,7 @@ function Stars({ rating }: { rating: number }) {
 }
 
 export default function Dashboard({ auth, profile, loadingProfile, onLogout }: Props) {
+  const { t, locale } = useI18n()
   const p = profile as MeProfile | null
   const cafeName  = p?.cafe_name  ?? auth.cafe_name
   const ownerName = p?.owner_name ?? auth.owner_name
@@ -105,6 +92,10 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
 
   const [reviewSummary, setReviewSummary]   = useState<ReviewSummary | null>(null)
   const [loadingReviews, setLoadingReviews] = useState(true)
+
+  // Ceny w menu są w PLN (waluta kawiarni); format zależy od języka panelu.
+  const money = (n: number) =>
+    new Intl.NumberFormat(locale, { style: 'currency', currency: 'PLN' }).format(n)
 
   useEffect(() => {
     fetchMenu()
@@ -147,10 +138,10 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
 
   function greeting(): string {
     const h = new Date().getHours()
-    if (h < 5)  return 'Dobrej nocy'
-    if (h < 12) return 'Dzień dobry'
-    if (h < 18) return 'Miłego popołudnia'
-    return 'Dobry wieczór'
+    if (h < 5)  return t('dashboard.greeting.night')
+    if (h < 12) return t('dashboard.greeting.morning')
+    if (h < 18) return t('dashboard.greeting.afternoon')
+    return t('dashboard.greeting.evening')
   }
 
   return (
@@ -176,9 +167,13 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
               <div className="dashboard-content">
                 <div className="welcome-banner">
                   <div className="welcome-banner__text">
-                    <div className="welcome-banner__eyebrow">Panel kawiarni</div>
-                    <h1 className="welcome-banner__title">{greeting()}, {ownerName.split(' ')[0]}</h1>
-                    <p className="welcome-banner__sub">{cafeName} — oto, co dzieje się dzisiaj.</p>
+                    <div className="welcome-banner__eyebrow">{t('dashboard.eyebrow')}</div>
+                    <h1 className="welcome-banner__title">
+                      {greeting()}, <span translate="no">{ownerName.split(' ')[0]}</span>
+                    </h1>
+                    <p className="welcome-banner__sub">
+                      {t('dashboard.welcomeSub', { cafe: cafeName })}
+                    </p>
                   </div>
                   <img src={logoCircle} alt={cafeName} className="welcome-banner__logo" />
                 </div>
@@ -186,26 +181,24 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                 {loadingProfile ? (
                   <div className="loading-state">
                     <div className="loading-spinner" />
-                    <p>Pobieranie danych kawiarni…</p>
+                    <p>{t('dashboard.loadingProfile')}</p>
                   </div>
                 ) : (
                   <div className="dashboard-grid">
                     {/* Kawiarnia */}
                     <div className="info-card">
                       <div className="info-card__header">
-                        <span className="info-card__icon">
-                          <Coffee size={20} />
-                        </span>
-                        <h2 className="info-card__title">Kawiarnia</h2>
+                        <span className="info-card__icon"><Coffee size={20} /></span>
+                        <h2 className="info-card__title">{t('dashboard.card.cafe')}</h2>
                       </div>
                       <div className="info-card__body">
                         <div className="info-row">
-                          <span className="info-row__label">Nazwa</span>
-                          <span className="info-row__value">{cafeName}</span>
+                          <span className="info-row__label">{t('dashboard.label.name')}</span>
+                          <span className="info-row__value" translate="no">{cafeName}</span>
                         </div>
                         <div className="info-row">
-                          <span className="info-row__label">Identyfikator</span>
-                          <span className="info-row__value info-row__value--mono">{cafeId}</span>
+                          <span className="info-row__label">{t('dashboard.label.identifier')}</span>
+                          <span className="info-row__value info-row__value--mono" translate="no">{cafeId}</span>
                         </div>
                       </div>
                     </div>
@@ -214,29 +207,29 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                     <div className="info-card">
                       <div className="info-card__header">
                         <span className="info-card__icon"><User size={20} /></span>
-                        <h2 className="info-card__title">Właściciel</h2>
+                        <h2 className="info-card__title">{t('dashboard.card.owner')}</h2>
                       </div>
                       <div className="info-card__body">
                         <div className="info-row">
-                          <span className="info-row__label">Imię i nazwisko</span>
-                          <span className="info-row__value">{ownerName}</span>
+                          <span className="info-row__label">{t('dashboard.label.fullName')}</span>
+                          <span className="info-row__value" translate="no">{ownerName}</span>
                         </div>
                         {p?.email && (
                           <div className="info-row">
                             <span className="info-row__label">
                               <Mail size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
-                              E-mail
+                              {t('dashboard.label.email')}
                             </span>
-                            <span className="info-row__value">{p.email}</span>
+                            <span className="info-row__value" translate="no">{p.email}</span>
                           </div>
                         )}
                         {p?.phone && (
                           <div className="info-row">
                             <span className="info-row__label">
                               <Phone size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
-                              Telefon
+                              {t('dashboard.label.phone')}
                             </span>
-                            <span className="info-row__value">{p.phone}</span>
+                            <span className="info-row__value" translate="no">{p.phone}</span>
                           </div>
                         )}
                       </div>
@@ -247,23 +240,23 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                       <div className="info-card">
                         <div className="info-card__header">
                           <span className="info-card__icon"><MapPin size={20} /></span>
-                          <h2 className="info-card__title">Adres</h2>
+                          <h2 className="info-card__title">{t('dashboard.card.address')}</h2>
                         </div>
                         <div className="info-card__body">
                           <div className="info-row">
-                            <span className="info-row__label">Ulica</span>
-                            <span className="info-row__value">{p.street} {p.building_number}</span>
+                            <span className="info-row__label">{t('dashboard.label.street')}</span>
+                            <span className="info-row__value" translate="no">{p.street} {p.building_number}</span>
                           </div>
                           <div className="info-row">
-                            <span className="info-row__label">Miejscowość</span>
-                            <span className="info-row__value">{p.postal_code} {p.city}</span>
+                            <span className="info-row__label">{t('dashboard.label.locality')}</span>
+                            <span className="info-row__value" translate="no">{p.postal_code} {p.city}</span>
                           </div>
                           <div className="info-row">
                             <span className="info-row__label">
                               <Flag size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
-                              Kraj
+                              {t('dashboard.label.country')}
                             </span>
-                            <span className="info-row__value">{p.country}</span>
+                            <span className="info-row__value" translate="no">{p.country}</span>
                           </div>
                         </div>
                       </div>
@@ -273,7 +266,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                     <div className="info-card">
                       <div className="info-card__header">
                         <span className="info-card__icon"><Star size={20} /></span>
-                        <h2 className="info-card__title">Opinie</h2>
+                        <h2 className="info-card__title">{t('dashboard.card.reviews')}</h2>
                       </div>
                       <div className="info-card__body">
                         {loadingReviews ? (
@@ -283,28 +276,24 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                         ) : reviewSummary && reviewSummary.count > 0 ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
                             <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 600, color: 'var(--text-dark)' }}>
-                              {reviewSummary.average_rating.toFixed(1)}
+                              {reviewSummary.average_rating.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                             </div>
                             <div>
                               <Stars rating={reviewSummary.average_rating} />
                               <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                                {reviewSummary.count === 1
-                                  ? '1 opinia'
-                                  : reviewSummary.count < 5
-                                    ? `${reviewSummary.count} opinie`
-                                    : `${reviewSummary.count} opinii`}
+                                {t('dashboard.reviews.count', { count: reviewSummary.count })}
                               </div>
                             </div>
                           </div>
                         ) : (
-                          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Brak opinii jeszcze.</p>
+                          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('dashboard.reviews.none')}</p>
                         )}
                         <button
                           className="btn btn--outline-dark"
                           style={{ width: '100%', padding: '0.625rem', marginTop: '0.5rem' }}
                           onClick={() => setActiveTab('reviews')}
                         >
-                          Zobacz wszystkie opinie
+                          {t('dashboard.reviews.seeAll')}
                         </button>
                       </div>
                     </div>
@@ -312,10 +301,8 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                     {/* Szybkie akcje */}
                     <div className="info-card">
                       <div className="info-card__header">
-                        <span className="info-card__icon">
-                          <Zap size={20} />
-                        </span>
-                        <h2 className="info-card__title">Szybkie akcje</h2>
+                        <span className="info-card__icon"><Zap size={20} /></span>
+                        <h2 className="info-card__title">{t('dashboard.card.quickActions')}</h2>
                       </div>
                       <div className="info-card__body" style={{ gap: '0.625rem' }}>
                         <button
@@ -324,7 +311,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                           onClick={() => setActiveTab('menu')}
                         >
                           <ClipboardList size={18} />
-                          {hasMenu ? 'Edytuj menu' : 'Utwórz menu'}
+                          {hasMenu ? t('dashboard.quick.editMenu') : t('dashboard.quick.createMenu')}
                         </button>
                         <button
                           className="btn btn--outline-dark"
@@ -332,7 +319,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                           onClick={() => setActiveTab('reservations')}
                         >
                           <CalendarDays size={18} />
-                          Zarządzaj rezerwacjami
+                          {t('dashboard.quick.reservations')}
                         </button>
                         <button
                           className="btn btn--outline-dark"
@@ -340,7 +327,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                           onClick={() => setActiveTab('loyalty')}
                         >
                           <Gift size={18} />
-                          Program lojalnościowy
+                          {t('dashboard.quick.loyalty')}
                         </button>
                         <button
                           className="btn btn--outline-dark"
@@ -348,7 +335,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                           onClick={() => setActiveTab('profile')}
                         >
                           <Settings size={18} />
-                          Uzupełnij profil kawiarni
+                          {t('dashboard.quick.profile')}
                         </button>
                         <button
                           className="btn btn--outline-dark"
@@ -356,7 +343,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                           onClick={() => setActiveTab('website')}
                         >
                           <Globe size={18} />
-                          Skonfiguruj stronę WWW
+                          {t('dashboard.quick.website')}
                         </button>
                       </div>
                     </div>
@@ -377,8 +364,8 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
               <div className="dashboard-content">
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
-                    <div className="page-header__eyebrow">Zarządzanie</div>
-                    <h1 className="page-header__title">Menu kawiarni</h1>
+                    <div className="page-header__eyebrow">{t('common.management')}</div>
+                    <h1 className="page-header__title">{t('dashboard.menu.title')}</h1>
                   </div>
                   <button
                     className="btn btn--primary"
@@ -386,15 +373,9 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                     onClick={() => setShowMenuEditor(true)}
                   >
                     {hasMenu ? (
-                      <>
-                        <Pencil size={18} />
-                        Edytuj menu
-                      </>
+                      <><Pencil size={18} />{t('dashboard.quick.editMenu')}</>
                     ) : (
-                      <>
-                        <Coffee size={18} />
-                        Utwórz menu
-                      </>
+                      <><Coffee size={18} />{t('dashboard.quick.createMenu')}</>
                     )}
                   </button>
                 </div>
@@ -402,17 +383,15 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                 <div className="menu-preview-card">
                   <div className="menu-preview-card__header">
                     <div className="menu-preview-card__title-wrap">
-                      <span className="info-card__icon">
-                        <ClipboardList size={20} />
-                      </span>
-                      <h2 className="info-card__title">Podgląd menu</h2>
+                      <span className="info-card__icon"><ClipboardList size={20} /></span>
+                      <h2 className="info-card__title">{t('dashboard.menu.preview')}</h2>
                     </div>
                     <button
                       className="btn btn--primary btn--sm"
                       style={{ width: 'auto' }}
                       onClick={() => setShowMenuEditor(true)}
                     >
-                      {hasMenu ? 'Edytuj' : 'Utwórz menu'}
+                      {hasMenu ? t('dashboard.menu.edit') : t('dashboard.quick.createMenu')}
                     </button>
                   </div>
 
@@ -423,15 +402,17 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                       </div>
                     ) : !hasMenu ? (
                       <div className="menu-empty-state">
-                        <p>Menu nie zostało jeszcze utworzone.</p>
+                        <p>{t('dashboard.menu.empty')}</p>
                         <p style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>
-                          Kliknij „Utwórz menu” aby dodać sekcje i pozycje.
+                          {t('dashboard.menu.emptyHint')}
                         </p>
                       </div>
                     ) : (
+                      // Treść menu wpisał właściciel — nie jest tłumaczona przez panel
+                      // (tłumaczenia menu dla gości robi osobny system na stronie kawiarni).
                       menuSections.map(sec => (
                         <div key={sec.id} className="menu-section-preview">
-                          <div className="menu-section-preview__name">{sec.name}</div>
+                          <div className="menu-section-preview__name" translate="no">{sec.name}</div>
                           {sec.items.map(item => (
                             <div
                               key={item.id}
@@ -439,29 +420,29 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
                             >
                               <div className="menu-item-preview__info">
                                 <div className="menu-item-preview__name">
-                                  {item.name}
+                                  <span translate="no">{item.name}</span>
                                   {item.is_vege && (
                                     <span className="menu-badge menu-badge--vege">
-                                      <Leaf size={11} /> VEGE
+                                      <Leaf size={11} /> {t('menu.badge.vege')}
                                     </span>
                                   )}
                                   {item.is_hot && (
                                     <span className="menu-badge menu-badge--hot">
-                                      <Flame size={11} /> HOT
+                                      <Flame size={11} /> {t('menu.badge.hot')}
                                     </span>
                                   )}
                                   {item.is_unavailable && (
                                     <span className="menu-badge menu-badge--unavail">
-                                      <Ban size={11} /> NIEDOSTĘPNE
+                                      <Ban size={11} /> {t('menu.badge.unavailable')}
                                     </span>
                                   )}
                                 </div>
                                 {item.description && (
-                                  <div className="menu-item-preview__desc">{item.description}</div>
+                                  <div className="menu-item-preview__desc" translate="no">{item.description}</div>
                                 )}
                               </div>
                               <div className="menu-item-preview__price">
-                                {item.price.toFixed(2)} zł
+                                {money(item.price)}
                               </div>
                             </div>
                           ))}

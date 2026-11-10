@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { pl } from './pl'
-import { en, enApiErrors } from './en'
+import { en, enApiErrors, enApiPatterns } from './en'
 
 export type Lang = 'pl' | 'en'
 export const LANGS: Lang[] = ['pl', 'en']
@@ -60,7 +60,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const tApi = useCallback((detail: unknown, fallbackKey = 'common.genericError') => {
     if (typeof detail !== 'string' || !detail) return t(fallbackKey)
-    return lang === 'en' ? (enApiErrors[detail] ?? detail) : detail
+    if (lang === 'pl') return detail
+    const exact = enApiErrors[detail]
+    if (exact) return exact
+    for (const [re, fn] of enApiPatterns) {
+      const m = detail.match(re)
+      if (m) return fn(m)
+    }
+    return detail
   }, [lang, t])
 
   const value = useMemo<I18nValue>(

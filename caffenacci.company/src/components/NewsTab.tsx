@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Newspaper, X } from 'lucide-react'
 import { API_URL } from '../config'
 import { thumbUrl } from '../utils/imageUrl'
+import { useI18n } from '../i18n'
 
 interface NewsPostOut {
   id: string
@@ -23,11 +24,6 @@ interface Props {
 
 const API = API_URL
 const MAX_NEWS_POSTS = 3
-
-function formatDate(s: string) {
-  const d = new Date(s)
-  return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
-}
 
 function Toggle({ checked, onChange, disabled = false }: {
   checked: boolean; onChange: (v: boolean) => void; disabled?: boolean
@@ -63,6 +59,8 @@ function NewsCard({ post, onDelete, deleting }: {
   onDelete: () => void
   deleting: boolean
 }) {
+  const { t, locale } = useI18n()
+  const date = new Date(post.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
   return (
     <div className="nw-card">
       {post.image_url ? (
@@ -79,16 +77,18 @@ function NewsCard({ post, onDelete, deleting }: {
         </div>
       )}
       <div className="nw-card__body">
-        <div className="nw-card__date">{formatDate(post.created_at)}</div>
-        <div className="nw-card__title">{post.title}</div>
-        <div className="nw-card__excerpt">{post.content}</div>
+        <div className="nw-card__date">{date}</div>
+        {/* Tytuł i treść wpisał właściciel — nie tłumaczymy ich automatycznie */}
+        <div className="nw-card__title" translate="no">{post.title}</div>
+        <div className="nw-card__excerpt" translate="no">{post.content}</div>
       </div>
       <button
         type="button"
         className="me-remove-btn me-remove-item"
         onClick={onDelete}
         disabled={deleting}
-        title="Usuń aktualność"
+        title={t('news.delete.title')}
+        aria-label={t('news.delete.title')}
         style={{ position: 'absolute', top: '0.625rem', right: '0.625rem', background: 'rgba(255,255,255,0.92)' }}
       >
         <X size={16} />
@@ -102,6 +102,7 @@ function NewsCard({ post, onDelete, deleting }: {
 function AddNewsPanel({ token, onClose, onAdded }: {
   token: string; onClose: () => void; onAdded: () => void
 }) {
+  const { t, tApi } = useI18n()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -109,6 +110,11 @@ function AddNewsPanel({ token, onClose, onAdded }: {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Zwalniamy blob URL podglądu, gdy się zmienia lub panel się zamyka.
+  useEffect(() => {
+    return () => { if (preview) URL.revokeObjectURL(preview) }
+  }, [preview])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -125,8 +131,8 @@ function AddNewsPanel({ token, onClose, onAdded }: {
 
   const handleSubmit = async () => {
     setError(null)
-    if (!title.trim()) { setError('Podaj tytuł aktualności.'); return }
-    if (!content.trim()) { setError('Dodaj treść aktualności.'); return }
+    if (!title.trim()) { setError(t('news.err.title')); return }
+    if (!content.trim()) { setError(t('news.err.content')); return }
 
     setSaving(true)
     try {
@@ -141,12 +147,13 @@ function AddNewsPanel({ token, onClose, onAdded }: {
         body: fd,
       })
       if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.detail || 'Błąd zapisu aktualności.')
+        const e = await res.json().catch(() => null)
+        setError(tApi(e?.detail, 'news.err.save'))
+        return
       }
       onAdded()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Wystąpił błąd. Spróbuj ponownie.')
+    } catch {
+      setError(t('common.genericError'))
     } finally {
       setSaving(false)
     }
@@ -157,34 +164,34 @@ function AddNewsPanel({ token, onClose, onAdded }: {
       <div className="menu-editor">
         <div className="me-header">
           <div>
-            <div className="me-eyebrow">Aktualności</div>
-            <h2 className="me-title">Nowa aktualność</h2>
+            <div className="me-eyebrow">{t('news.panel.eyebrow')}</div>
+            <h2 className="me-title">{t('news.panel.title')}</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij">
+          <button className="me-close" type="button" onClick={onClose} aria-label={t('common.close')}>
             <X size={18} />
           </button>
         </div>
 
         <div className="me-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="field">
-            <label className="me-label">Tytuł</label>
+            <label className="me-label">{t('news.field.title')}</label>
             <input
               className="me-input"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="np. Nowe godziny otwarcia od poniedziałku"
+              placeholder={t('news.field.titlePlaceholder')}
               maxLength={200}
             />
           </div>
 
           <div className="field">
-            <label className="me-label">Treść</label>
+            <label className="me-label">{t('news.field.content')}</label>
             <textarea
               className="field__input"
               style={{ resize: 'vertical', minHeight: 140, lineHeight: 1.55 }}
               value={content}
               onChange={e => setContent(e.target.value)}
-              placeholder="Opisz szczegóły aktualności…"
+              placeholder={t('news.field.contentPlaceholder')}
               maxLength={5000}
             />
             <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', textAlign: 'right', display: 'block' }}>
@@ -193,14 +200,15 @@ function AddNewsPanel({ token, onClose, onAdded }: {
           </div>
 
           <div className="field">
-            <label className="me-label">Grafika (opcjonalnie)</label>
+            <label className="me-label">{t('news.field.image')}</label>
             {preview ? (
               <div style={{ position: 'relative', maxWidth: 320 }}>
-                <img src={preview} alt="Podgląd" style={{ width: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />
+                <img src={preview} alt={t('news.image.previewAlt')} style={{ width: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />
                 <button
                   type="button"
                   className="me-remove-btn me-remove-item"
                   onClick={clearFile}
+                  aria-label={t('common.close')}
                   style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(255,255,255,0.92)' }}
                 >
                   <X size={16} />
@@ -212,7 +220,7 @@ function AddNewsPanel({ token, onClose, onAdded }: {
                 className="me-add-item-btn"
                 onClick={() => fileInputRef.current?.click()}
               >
-                + Dodaj grafikę
+                {t('news.image.add')}
               </button>
             )}
             <input
@@ -223,7 +231,7 @@ function AddNewsPanel({ token, onClose, onAdded }: {
               onChange={handleFileSelect}
             />
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.375rem', display: 'block' }}>
-              Max 10 MB (PNG, JPEG, WEBP).
+              {t('news.image.hint')}
             </span>
           </div>
 
@@ -232,7 +240,7 @@ function AddNewsPanel({ token, onClose, onAdded }: {
 
         <div className="me-footer">
           <div className="me-footer-actions">
-            <button type="button" className="btn btn--outline-dark" onClick={onClose}>Anuluj</button>
+            <button type="button" className="btn btn--outline-dark" onClick={onClose}>{t('common.cancel')}</button>
             <button
               type="button"
               className="btn btn--primary"
@@ -240,7 +248,7 @@ function AddNewsPanel({ token, onClose, onAdded }: {
               onClick={handleSubmit}
               disabled={saving}
             >
-              {saving ? 'Zapisywanie…' : 'Opublikuj aktualność'}
+              {saving ? t('menuEditor.saving') : t('news.publish')}
             </button>
           </div>
         </div>
@@ -254,6 +262,7 @@ function AddNewsPanel({ token, onClose, onAdded }: {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export default function NewsTab({ token }: Props) {
+  const { t } = useI18n()
   const [settings, setSettings] = useState<NewsSettingsOut | null>(null)
   const [posts, setPosts] = useState<NewsPostOut[]>([])
   const [loading, setLoading] = useState(true)
@@ -293,7 +302,7 @@ export default function NewsTab({ token }: Props) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Czy na pewno chcesz usunąć tę aktualność?')) return
+    if (!confirm(t('news.delete.confirm'))) return
     setDeletingId(id)
     try {
       const res = await fetch(`${API}/news/${id}`, {
@@ -311,7 +320,7 @@ export default function NewsTab({ token }: Props) {
     return (
       <div className="loading-state">
         <div className="loading-spinner" />
-        <p>Wczytywanie aktualności…</p>
+        <p>{t('news.loading')}</p>
       </div>
     )
   }
@@ -333,10 +342,10 @@ export default function NewsTab({ token }: Props) {
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div className="page-header__eyebrow" style={{ marginBottom: '0.25rem' }}>
-              Zarządzanie
+              {t('common.management')}
             </div>
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
-              Aktualności
+              {t('news.title')}
             </h2>
           </div>
         </div>
@@ -345,10 +354,10 @@ export default function NewsTab({ token }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <div style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-dark)' }}>
-                Pokazuj sekcję aktualności na stronie
+                {t('news.toggle.title')}
               </div>
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
-                Możesz mieć maksymalnie {MAX_NEWS_POSTS} aktualności widoczne jednocześnie.
+                {t('news.toggle.hint', { max: MAX_NEWS_POSTS })}
               </div>
             </div>
             <Toggle
@@ -364,23 +373,21 @@ export default function NewsTab({ token }: Props) {
             <div className="res-empty-icon">
               <Newspaper size={44} strokeWidth={1.4} />
             </div>
-            <div className="res-empty-title">Brak aktualności</div>
-            <div className="res-empty-sub">
-              Dodaj pierwszą aktualność, aby poinformować gości o nowościach, wydarzeniach lub zmianach.
-            </div>
+            <div className="res-empty-title">{t('news.empty.title')}</div>
+            <div className="res-empty-sub">{t('news.empty.sub')}</div>
             <button
               className="btn btn--primary"
               style={{ width: 'auto', marginTop: '1rem' }}
               onClick={() => setAddOpen(true)}
             >
-              + Dodaj aktualność
+              {t('news.add')}
             </button>
           </div>
         ) : (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                {posts.length} / {MAX_NEWS_POSTS} aktualności
+                {t('news.counter', { count: posts.length, max: MAX_NEWS_POSTS })}
               </span>
               <button
                 type="button"
@@ -388,9 +395,9 @@ export default function NewsTab({ token }: Props) {
                 style={{ width: 'auto', padding: '0.625rem 1.25rem', fontSize: '0.875rem' }}
                 onClick={() => setAddOpen(true)}
                 disabled={!canAddMore}
-                title={!canAddMore ? 'Usuń jedną aktualność, aby dodać nową.' : undefined}
+                title={!canAddMore ? t('news.add.disabledTitle') : undefined}
               >
-                + Dodaj aktualność
+                {t('news.add')}
               </button>
             </div>
             <div className="nw-grid">

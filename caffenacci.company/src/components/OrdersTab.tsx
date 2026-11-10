@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ShoppingCart, ClipboardList, Check, X, RefreshCw } from 'lucide-react'
 import { API_URL } from '../config'
+import { useI18n } from '../i18n'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -40,19 +41,20 @@ interface Props {
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-function formatDate(ds: string) {
+function formatDate(ds: string, locale: string) {
   const d = new Date(ds + 'T00:00:00')
-  return d.toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'short' })
+  return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-function formatCreatedAt(s: string | null) {
+function formatCreatedAt(s: string | null, locale: string) {
   if (!s) return ''
   const d = new Date(s)
-  return d.toLocaleString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-function money(n: number) {
-  return `${n.toFixed(2)} zł`
+// Ceny w menu są w PLN (waluta kawiarni); format zależy od języka panelu.
+function money(n: number, locale: string) {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'PLN' }).format(n)
 }
 
 // ── Toggle (spójny z resztą aplikacji) ───────────────────────────────────
@@ -87,13 +89,15 @@ function Toggle({ checked, onChange, disabled = false }: {
 // ── Order item list (produkty w zamówieniu) ──────────────────────────────
 
 function OrderItemsList({ items }: { items: OrderItemOut[] }) {
+  const { locale } = useI18n()
   return (
     <div className="ord-items">
       {items.map(it => (
         <div key={it.id} className="ord-item-row">
           <span className="ord-item-row__qty">{it.quantity}×</span>
-          <span className="ord-item-row__name">{it.name}</span>
-          <span className="ord-item-row__price">{money(it.price * it.quantity)}</span>
+          {/* Nazwa pozycji pochodzi z menu właściciela — nie tłumaczymy jej */}
+          <span className="ord-item-row__name" translate="no">{it.name}</span>
+          <span className="ord-item-row__price">{money(it.price * it.quantity, locale)}</span>
         </div>
       ))}
     </div>
@@ -107,6 +111,7 @@ function PendingOrderCard({ o, onDecide, saving }: {
   onDecide: (o: OrderOut, status: 'completed' | 'cancelled') => void
   saving: boolean
 }) {
+  const { t, locale } = useI18n()
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border-soft)',
@@ -129,7 +134,7 @@ function PendingOrderCard({ o, onDecide, saving }: {
             fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.08em',
             color: 'rgba(240,228,204,0.6)', textTransform: 'uppercase', marginTop: '0.25rem',
           }}>
-            {new Date(o.date + 'T00:00:00').toLocaleDateString('pl-PL', { month: 'short' })}
+            {new Date(o.date + 'T00:00:00').toLocaleDateString(locale, { month: 'short' })}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--parchment)', marginTop: '0.375rem', fontWeight: 600 }}>
             {o.start_time}
@@ -139,21 +144,21 @@ function PendingOrderCard({ o, onDecide, saving }: {
         {/* Główne info */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+            <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-dark)' }} translate="no">
               {o.client_nick}
             </span>
             <span style={{
               background: 'rgba(169,114,47,0.1)', color: 'var(--gold)',
               borderRadius: 100, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700,
             }}>
-              {money(o.total_value)}
+              {money(o.total_value, locale)}
             </span>
           </div>
 
           <OrderItemsList items={o.items} />
 
           <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-            Złożono: {formatCreatedAt(o.created_at)}
+            {t('orders.placedAt', { time: formatCreatedAt(o.created_at, locale) })}
           </div>
         </div>
       </div>
@@ -175,7 +180,7 @@ function PendingOrderCard({ o, onDecide, saving }: {
             fontFamily: 'inherit', fontWeight: 500, cursor: saving ? 'not-allowed' : 'pointer',
           }}
         >
-          Anuluj
+          {t('orders.action.cancel')}
         </button>
         <button
           type="button"
@@ -185,7 +190,7 @@ function PendingOrderCard({ o, onDecide, saving }: {
           style={{ width: 'auto', padding: '0.5rem 1.125rem', fontSize: '0.8125rem', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
         >
           <Check size={16} />
-          Zrealizowano
+          {t('orders.action.complete')}
         </button>
       </div>
     </div>
@@ -195,7 +200,15 @@ function PendingOrderCard({ o, onDecide, saving }: {
 // ── History order card ────────────────────────────────────────────────
 
 function HistoryOrderCard({ o }: { o: OrderOut }) {
+  const { t, locale } = useI18n()
   const isCompleted = o.status === 'completed'
+
+  const cancelledLabel = !isCompleted && o.cancelled_by
+    ? (o.cancelled_by === 'system' ? t('orders.cancelledBy.system')
+      : o.cancelled_by === 'owner' ? t('orders.cancelledBy.owner')
+      : t('orders.cancelledBy.client'))
+    : null
+
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border-soft)',
@@ -214,23 +227,21 @@ function HistoryOrderCard({ o }: { o: OrderOut }) {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.375rem' }}>
-          <span style={{ fontWeight: 600, color: 'var(--text-dark)', fontSize: '0.9375rem' }}>
+          <span style={{ fontWeight: 600, color: 'var(--text-dark)', fontSize: '0.9375rem' }} translate="no">
             {o.client_nick}
           </span>
           <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            {formatDate(o.date)} o {o.start_time}
+            {t('orders.dateAt', { date: formatDate(o.date, locale), time: o.start_time })}
           </span>
           <span style={{
             background: 'var(--border-soft)', color: 'var(--text-muted)',
             borderRadius: 100, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 600,
           }}>
-            {money(o.total_value)}
+            {money(o.total_value, locale)}
           </span>
-          {!isCompleted && o.cancelled_by && (
+          {cancelledLabel && (
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              {o.cancelled_by === 'system'
-                ? 'anulowane automatycznie (minął termin)'
-                : `anulowane przez ${o.cancelled_by === 'owner' ? 'kawiarnię' : 'klienta'}`}
+              {cancelledLabel}
             </span>
           )}
         </div>
@@ -247,13 +258,14 @@ function CompleteOrderModal({ order, onClose, onSubmit }: {
   onClose: () => void
   onSubmit: (code: string) => Promise<string | null>
 }) {
+  const { t } = useI18n()
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async () => {
     setError(null)
-    if (code.length !== 8) { setError('Kod lojalnościowy ma dokładnie 8 znaków.'); return }
+    if (code.length !== 8) { setError(t('orders.modal.errLength')); return }
     setBusy(true)
     const err = await onSubmit(code)
     setBusy(false)
@@ -265,25 +277,24 @@ function CompleteOrderModal({ order, onClose, onSubmit }: {
       <div className="menu-editor" style={{ maxWidth: 440, height: 'auto' }}>
         <div className="me-header">
           <div>
-            <div className="me-eyebrow">Realizacja zamówienia</div>
-            <h2 className="me-title">{order.client_nick}</h2>
+            <div className="me-eyebrow">{t('orders.modal.eyebrow')}</div>
+            <h2 className="me-title" translate="no">{order.client_nick}</h2>
           </div>
-          <button className="me-close" type="button" onClick={onClose} aria-label="Zamknij"><X size={16} /></button>
+          <button className="me-close" type="button" onClick={onClose} aria-label={t('common.close')}><X size={16} /></button>
         </div>
         <div className="me-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-            Poproś klienta o jego kod lojalnościowy (pokazuje go w swoim koncie). Zamówienie zostanie
-            zrealizowane dopiero po jego wpisaniu.
+            {t('orders.modal.intro')}
           </p>
           <div className="field">
-            <label className="me-label">Kod klienta</label>
+            <label className="me-label">{t('orders.modal.codeLabel')}</label>
             <input
               className="me-input"
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
               onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
               maxLength={8}
-              placeholder="np. 7K3P9XQ2"
+              placeholder={t('orders.modal.codePlaceholder')}
               autoFocus
               style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'monospace' }}
             />
@@ -292,10 +303,10 @@ function CompleteOrderModal({ order, onClose, onSubmit }: {
         </div>
         <div className="me-footer">
           <div className="me-footer-actions">
-            <button type="button" className="btn btn--outline-dark" onClick={onClose} disabled={busy}>Anuluj</button>
+            <button type="button" className="btn btn--outline-dark" onClick={onClose} disabled={busy}>{t('common.cancel')}</button>
             <button type="button" className="btn btn--primary" style={{ width: 'auto', minWidth: 160 }}
               onClick={handleSubmit} disabled={busy || code.length !== 8}>
-              {busy ? 'Sprawdzanie…' : 'Zrealizuj zamówienie'}
+              {busy ? t('orders.modal.checking') : t('orders.modal.submit')}
             </button>
           </div>
         </div>
@@ -309,6 +320,7 @@ function CompleteOrderModal({ order, onClose, onSubmit }: {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export default function OrdersTab({ token }: Props) {
+  const { t, tApi } = useI18n()
   const [settings, setSettings]       = useState<OrderSettingsOut | null>(null)
   const [settingsSaving, setSettingsSaving] = useState(false)
 
@@ -391,14 +403,14 @@ export default function OrdersTab({ token }: Props) {
         body: JSON.stringify({ status: 'completed', loyalty_code: code }),
       })
       const data = await res.json()
-      if (!res.ok) return typeof data.detail === 'string' ? data.detail : 'Błąd zapisu.'
+      if (!res.ok) return tApi(data.detail, 'orders.err.generic')
       const updated: OrderOut = data
       setPending(prev => prev.filter(x => x.id !== updated.id))
       setHistory(prev => [updated, ...prev])
       setCompleting(null)
       return null
     } catch {
-      return 'Wystąpił błąd. Spróbuj ponownie.'
+      return t('common.genericError')
     } finally { setSaving(null) }
   }
 
@@ -429,15 +441,15 @@ export default function OrdersTab({ token }: Props) {
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div className="page-header__eyebrow" style={{ marginBottom: '0.375rem' }}>
-            Zarządzanie
+            {t('common.management')}
           </div>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.625rem', fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.01em' }}>
-            Zamówienia
+            {t('orders.title')}
           </h2>
         </div>
         <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={fetchOrders}>
           <RefreshCw size={15} />
-          Odśwież
+          {t('common.refresh')}
         </button>
       </div>
 
@@ -446,10 +458,10 @@ export default function OrdersTab({ token }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-dark)' }}>
-              Przyjmuję zamówienia online
+              {t('orders.accept.title')}
             </div>
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
-              Klienci mogą składać zamówienia maksymalnie 3 dni do przodu.
+              {t('orders.accept.hint')}
             </div>
           </div>
           <Toggle
@@ -464,18 +476,18 @@ export default function OrdersTab({ token }: Props) {
       {loading ? (
         <div className="loading-state">
           <div className="loading-spinner" />
-          <p>Wczytywanie zamówień…</p>
+          <p>{t('orders.loading')}</p>
         </div>
       ) : (
         <>
           {/* ── Tabs ─────────────────────────────────────────────────── */}
           <div style={{ borderBottom: '1px solid var(--border)' }}>
             <button type="button" style={tabStyle(activeTab === 'pending')} onClick={() => setActiveTab('pending')}>
-              Oczekujące
+              {t('orders.tab.pending')}
               {pending.length > 0 && <span style={badgeStyle('var(--gold)')}>{pending.length}</span>}
             </button>
             <button type="button" style={tabStyle(activeTab === 'history')} onClick={() => setActiveTab('history')}>
-              Historia
+              {t('orders.tab.history')}
               {history.length > 0 && <span style={badgeStyle('var(--text-muted)')}>{history.length}</span>}
             </button>
           </div>
@@ -488,15 +500,13 @@ export default function OrdersTab({ token }: Props) {
                   <div className="res-empty-icon">
                     <ShoppingCart size={44} strokeWidth={1.4} />
                   </div>
-                  <div className="res-empty-title">Brak nowych zamówień</div>
-                  <div className="res-empty-sub">
-                    Gdy klient złoży zamówienie, pojawi się ono tutaj chronologicznie.
-                  </div>
+                  <div className="res-empty-title">{t('orders.empty.pending.title')}</div>
+                  <div className="res-empty-sub">{t('orders.empty.pending.sub')}</div>
                 </div>
               ) : (
                 <>
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                    {pending.length === 1 ? '1 zamówienie oczekuje' : `${pending.length} zamówień oczekuje`}
+                    {t('orders.pending.count', { count: pending.length })}
                   </div>
                   {pending
                     .slice()
@@ -518,15 +528,16 @@ export default function OrdersTab({ token }: Props) {
                   <div className="res-empty-icon">
                     <ClipboardList size={44} strokeWidth={1.4} />
                   </div>
-                  <div className="res-empty-title">Brak historii zamówień</div>
-                  <div className="res-empty-sub">Tu pojawią się zrealizowane i anulowane zamówienia.</div>
+                  <div className="res-empty-title">{t('orders.empty.history.title')}</div>
+                  <div className="res-empty-sub">{t('orders.empty.history.sub')}</div>
                 </div>
               ) : (
                 <>
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                    {history.filter(o => o.status === 'completed').length} zrealizowanych
-                    {' · '}
-                    {history.filter(o => o.status === 'cancelled').length} anulowanych
+                    {t('orders.history.summary', {
+                      completed: history.filter(o => o.status === 'completed').length,
+                      cancelled: history.filter(o => o.status === 'cancelled').length,
+                    })}
                   </div>
                   {history
                     .slice()
