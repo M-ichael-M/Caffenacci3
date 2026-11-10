@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { API_URL } from '../config'
+import { useI18n } from '../i18n'
 
 interface FormData {
   owner_name: string
@@ -23,6 +24,8 @@ interface Props {
   onSwitchToLogin: () => void
 }
 
+// Kraj zostaje "Polska" niezależnie od języka UI — to wartość zapisywana w bazie
+// i używana w filtrze krajów wyszukiwarki, więc nie może zależeć od języka panelu.
 const INITIAL: FormData = {
   owner_name: '',
   cafe_name: '',
@@ -43,6 +46,7 @@ function isValidEmail(email: string) {
 }
 
 export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
+  const { t, tApi } = useI18n()
   const [form, setForm] = useState<FormData>(INITIAL)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,18 +57,20 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
     setFieldErrors(prev => ({ ...prev, [key]: undefined }))
   }
 
+  // Błędy trzymamy jako klucze tłumaczeń, a tłumaczymy dopiero przy renderze —
+  // dzięki temu zmiana języka od razu zmienia też widoczne błędy.
   const validate = (): boolean => {
     const e: FieldErrors = {}
-    if (!form.owner_name.trim())         e.owner_name       = 'Podaj imię i nazwisko'
-    if (!form.cafe_name.trim())          e.cafe_name        = 'Podaj nazwę kawiarni'
-    if (!isValidEmail(form.email))       e.email            = 'Podaj prawidłowy adres e-mail'
-    if (!form.phone.trim())              e.phone            = 'Podaj numer telefonu'
-    if (form.password.length < 8)        e.password         = 'Hasło musi mieć co najmniej 8 znaków'
-    if (!form.street.trim())             e.street           = 'Podaj ulicę'
-    if (!form.building_number.trim())    e.building_number  = 'Podaj numer'
-    if (!form.postal_code.trim())        e.postal_code      = 'Podaj kod pocztowy'
-    if (!form.city.trim())               e.city             = 'Podaj miasto'
-    if (!form.terms)                     e.terms            = 'Akceptacja regulaminu jest wymagana'
+    if (!form.owner_name.trim())         e.owner_name       = 'register.err.ownerName'
+    if (!form.cafe_name.trim())          e.cafe_name        = 'register.err.cafeName'
+    if (!isValidEmail(form.email))       e.email            = 'register.err.email'
+    if (!form.phone.trim())              e.phone            = 'register.err.phone'
+    if (form.password.length < 8)        e.password         = 'register.err.password'
+    if (!form.street.trim())             e.street           = 'register.err.street'
+    if (!form.building_number.trim())    e.building_number  = 'register.err.number'
+    if (!form.postal_code.trim())        e.postal_code      = 'register.err.postalCode'
+    if (!form.city.trim())               e.city             = 'register.err.city'
+    if (!form.terms)                     e.terms            = 'register.err.terms'
     setFieldErrors(e)
     return Object.keys(e).length === 0
   }
@@ -96,62 +102,64 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
       })
       const data = await res.json()
       if (!res.ok) {
-        throw new Error(data.detail || 'Błąd rejestracji. Sprawdź dane i spróbuj ponownie.')
+        setError(tApi(data.detail, 'register.err.generic'))
+        return
       }
       onSuccess()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Wystąpił błąd. Spróbuj ponownie.')
+    } catch {
+      setError(t('common.genericError'))
     } finally {
       setLoading(false)
     }
   }
 
   const fe = fieldErrors
+  const err = (k: keyof FormData) => fe[k] && <span className="field__error">{t(fe[k]!)}</span>
 
   return (
     <div className="form-wrapper">
       <div className="form-header">
-        <h2 className="form-title">Zarejestruj kawiarnię</h2>
-        <p className="form-subtitle">Dołącz do Caffenacci i zacznij zarządzać swoim lokalem</p>
+        <h2 className="form-title">{t('register.title')}</h2>
+        <p className="form-subtitle">{t('register.subtitle')}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="form" noValidate>
 
         {/* ── Właściciel ── */}
         <div className="form-section">
-          <span className="form-section__label">Właściciel</span>
+          <span className="form-section__label">{t('register.section.owner')}</span>
 
           <div className="field">
-            <label className="field__label" htmlFor="reg-owner_name">Imię i nazwisko</label>
+            <label className="field__label" htmlFor="reg-owner_name">{t('register.ownerName')}</label>
             <input
               id="reg-owner_name"
               type="text"
               className={`field__input${fe.owner_name ? ' field__input--error' : ''}`}
               value={form.owner_name}
               onChange={e => set('owner_name', e.target.value)}
-              placeholder="Jan Kowalski"
+              placeholder={t('register.ownerNamePlaceholder')}
               autoComplete="name"
             />
-            {fe.owner_name && <span className="field__error">{fe.owner_name}</span>}
+            {err('owner_name')}
           </div>
 
           <div className="field-row">
             <div className="field field--grow">
-              <label className="field__label" htmlFor="reg-email">E-mail</label>
+              <label className="field__label" htmlFor="reg-email">{t('register.email')}</label>
               <input
                 id="reg-email"
                 type="email"
                 className={`field__input${fe.email ? ' field__input--error' : ''}`}
                 value={form.email}
                 onChange={e => set('email', e.target.value)}
-                placeholder="jan@kawiarnia.pl"
+                placeholder={t('register.emailPlaceholder')}
                 autoComplete="email"
               />
-              {fe.email && <span className="field__error">{fe.email}</span>}
+              {err('email')}
             </div>
 
             <div className="field">
-              <label className="field__label" htmlFor="reg-phone">Telefon</label>
+              <label className="field__label" htmlFor="reg-phone">{t('register.phone')}</label>
               <input
                 id="reg-phone"
                 type="tel"
@@ -161,50 +169,50 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
                 placeholder="+48 123 456 789"
                 autoComplete="tel"
               />
-              {fe.phone && <span className="field__error">{fe.phone}</span>}
+              {err('phone')}
             </div>
           </div>
 
           <div className="field">
-            <label className="field__label" htmlFor="reg-password">Hasło</label>
+            <label className="field__label" htmlFor="reg-password">{t('register.password')}</label>
             <input
               id="reg-password"
               type="password"
               className={`field__input${fe.password ? ' field__input--error' : ''}`}
               value={form.password}
               onChange={e => set('password', e.target.value)}
-              placeholder="Min. 8 znaków, wielkie litery, cyfry, znaki specjalne"
+              placeholder={t('register.passwordPlaceholder')}
               autoComplete="new-password"
             />
-            {fe.password && <span className="field__error">{fe.password}</span>}
+            {err('password')}
           </div>
         </div>
 
         {/* ── Kawiarnia ── */}
         <div className="form-section">
-          <span className="form-section__label">Kawiarnia</span>
+          <span className="form-section__label">{t('register.section.cafe')}</span>
 
           <div className="field">
-            <label className="field__label" htmlFor="reg-cafe_name">Nazwa kawiarni</label>
+            <label className="field__label" htmlFor="reg-cafe_name">{t('register.cafeName')}</label>
             <input
               id="reg-cafe_name"
               type="text"
               className={`field__input${fe.cafe_name ? ' field__input--error' : ''}`}
               value={form.cafe_name}
               onChange={e => set('cafe_name', e.target.value)}
-              placeholder="Kawiarnia Pod Lipą"
+              placeholder={t('register.cafeNamePlaceholder')}
             />
-            {fe.cafe_name && <span className="field__error">{fe.cafe_name}</span>}
+            {err('cafe_name')}
           </div>
         </div>
 
         {/* ── Adres ── */}
         <div className="form-section">
-          <span className="form-section__label">Adres kawiarni</span>
+          <span className="form-section__label">{t('register.section.address')}</span>
 
           <div className="field-row">
             <div className="field field--grow">
-              <label className="field__label" htmlFor="reg-street">Ulica</label>
+              <label className="field__label" htmlFor="reg-street">{t('register.street')}</label>
               <input
                 id="reg-street"
                 type="text"
@@ -214,11 +222,11 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
                 placeholder="Marszałkowska"
                 autoComplete="street-address"
               />
-              {fe.street && <span className="field__error">{fe.street}</span>}
+              {err('street')}
             </div>
 
             <div className="field field--small">
-              <label className="field__label" htmlFor="reg-building_number">Nr</label>
+              <label className="field__label" htmlFor="reg-building_number">{t('register.number')}</label>
               <input
                 id="reg-building_number"
                 type="text"
@@ -227,13 +235,13 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
                 onChange={e => set('building_number', e.target.value)}
                 placeholder="12A"
               />
-              {fe.building_number && <span className="field__error">{fe.building_number}</span>}
+              {err('building_number')}
             </div>
           </div>
 
           <div className="field-row">
             <div className="field field--small">
-              <label className="field__label" htmlFor="reg-postal_code">Kod pocztowy</label>
+              <label className="field__label" htmlFor="reg-postal_code">{t('register.postalCode')}</label>
               <input
                 id="reg-postal_code"
                 type="text"
@@ -243,11 +251,11 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
                 placeholder="00-001"
                 autoComplete="postal-code"
               />
-              {fe.postal_code && <span className="field__error">{fe.postal_code}</span>}
+              {err('postal_code')}
             </div>
 
             <div className="field field--grow">
-              <label className="field__label" htmlFor="reg-city">Miasto</label>
+              <label className="field__label" htmlFor="reg-city">{t('register.city')}</label>
               <input
                 id="reg-city"
                 type="text"
@@ -257,12 +265,12 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
                 placeholder="Warszawa"
                 autoComplete="address-level2"
               />
-              {fe.city && <span className="field__error">{fe.city}</span>}
+              {err('city')}
             </div>
           </div>
 
           <div className="field">
-            <label className="field__label" htmlFor="reg-country">Kraj</label>
+            <label className="field__label" htmlFor="reg-country">{t('register.country')}</label>
             <input
               id="reg-country"
               type="text"
@@ -277,7 +285,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
 
         {/* ── Zgody ── */}
         <div className="form-section">
-          <span className="form-section__label">Zgody</span>
+          <span className="form-section__label">{t('register.section.consents')}</span>
 
           <div>
             <div className="checkbox-field">
@@ -289,18 +297,14 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
                 onChange={e => set('terms', e.target.checked)}
               />
               <label htmlFor="reg-terms" className="checkbox-field__label">
-                Akceptuję{' '}
-                <a
-                  href="/regulamin"
-                  className="link"
-                  onClick={e => e.preventDefault()}
-                >
-                  Regulamin serwisu Caffenacci
+                {t('register.terms.prefix')}{' '}
+                <a href="/regulamin" className="link" onClick={e => e.preventDefault()}>
+                  {t('register.terms.link')}
                 </a>
                 {' '}<span className="required-mark">*</span>
               </label>
             </div>
-            {fe.terms && <p className="checkbox-error">{fe.terms}</p>}
+            {fe.terms && <p className="checkbox-error">{t(fe.terms)}</p>}
           </div>
 
           <div className="checkbox-field">
@@ -312,13 +316,9 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
               onChange={e => set('marketing', e.target.checked)}
             />
             <label htmlFor="reg-marketing" className="checkbox-field__label">
-              Wyrażam zgodę na{' '}
-              <a
-                href="/zgoda-marketingowa"
-                className="link"
-                onClick={e => e.preventDefault()}
-              >
-                otrzymywanie informacji marketingowych
+              {t('register.marketing.prefix')}{' '}
+              <a href="/zgoda-marketingowa" className="link" onClick={e => e.preventDefault()}>
+                {t('register.marketing.link')}
               </a>
             </label>
           </div>
@@ -329,19 +329,19 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
         )}
 
         <button type="submit" className="btn btn--primary" disabled={loading}>
-          {loading ? 'Rejestracja…' : 'Zarejestruj kawiarnię'}
+          {loading ? t('register.submitting') : t('register.submit')}
         </button>
 
         <p className="form-note">
-          Pola oznaczone <span className="required-mark">*</span> są obowiązkowe.
+          {t('register.note.before')} <span className="required-mark">*</span> {t('register.note.after')}
         </p>
       </form>
 
       <div className="form-switch">
         <p>
-          Masz już konto?{' '}
+          {t('register.haveAccount')}{' '}
           <button type="button" className="link-btn" onClick={onSwitchToLogin}>
-            Zaloguj się
+            {t('register.loginLink')}
           </button>
         </p>
       </div>

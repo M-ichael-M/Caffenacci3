@@ -5,6 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="src/assets/logo/logo_circle.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Caffenacci business</title>
+    <!-- Ustawia <html lang> zanim wystartuje React, żeby Chrome poprawnie wykrył język strony -->
+    <script>
+      (function () {
+        var lang = 'en';
+        try {
+          var stored = localStorage.getItem('caffenacci_ui_lang');
+          if (stored === 'pl' || stored === 'en') {
+            lang = stored;
+          } else {
+            var pref = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+            if (pref.toLowerCase().indexOf('pl') === 0) lang = 'pl';
+          }
+        } catch (e) {}
+        document.documentElement.lang = lang;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

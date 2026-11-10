@@ -2294,3 +2294,34 @@ css
 .an-note { font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; }
 .an-link { font-size: 0.8rem; color: var(--gold); background: rgba(169, 114, 47, 0.08); border-radius: 4px; padding: 3px 8px; word-break: break-all; }
 .an-chart__dot { fill: var(--gold); }
+/* ── Language switcher ───────────────────────────── */
+.lang-switch {
+  display: inline-flex;
+  border-radius: 100px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+}
+.lang-switch__btn {
+  appearance: none;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.3rem 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.lang-switch__btn:hover { color: var(--text-dark); }
+.lang-switch__btn--active { background: var(--espresso); color: var(--parchment); }
+.lang-switch__btn:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+
+.lang-switch--dark { background: transparent; border-color: rgba(240, 228, 204, 0.2); }
+.lang-switch--dark .lang-switch__btn { color: rgba(240, 228, 204, 0.55); }
+.lang-switch--dark .lang-switch__btn:hover { color: var(--parchment); }
+.lang-switch--dark .lang-switch__btn--active { background: var(--gold-soft); color: var(--espresso); }
+
+.sidebar__lang { padding: 0 1.375rem 0.875rem; }

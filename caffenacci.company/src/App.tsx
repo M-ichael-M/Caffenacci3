@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
 import Dashboard from './components/Dashboard'
+import LanguageSwitcher from './components/LanguageSwitcher'
 import logoTransparent from './assets/logo/logo_transparent.png'
 import './index.css'
 import { ArrowRight } from 'lucide-react'
 import { API_URL, CUSTOMER_URL } from './config'
+import { useI18n } from './i18n'
 
 type View = 'login' | 'register' | 'dashboard'
 
@@ -46,6 +48,7 @@ function loadAuth(): AuthState | null {
 }
 
 export default function App() {
+  const { t } = useI18n()
   const [view, setView] = useState<View>('login')
   const [auth, setAuth] = useState<AuthState | null>(null)
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null)
@@ -132,12 +135,10 @@ export default function App() {
         <div className="auth-brand__content">
           <img src={logoTransparent} alt="Caffenacci" className="auth-brand__logo" />
           <div className="auth-brand__rule" />
-          <h1 className="auth-brand__wordmark">Caffenacci</h1>
-          <p className="auth-brand__tagline">Panel właściciela kawiarni</p>
+          <h1 className="auth-brand__wordmark" translate="no">Caffenacci</h1>
+          <p className="auth-brand__tagline">{t('app.tagline')}</p>
           <div className="auth-brand__sep" />
-          <p className="auth-brand__description">
-            Rejestruj swoją kawiarnię, zarządzaj ofertą i buduj relacje z gośćmi — wszystko w jednym miejscu.
-          </p>
+          <p className="auth-brand__description">{t('app.description')}</p>
         </div>
 
         <div className="auth-brand__footer">
@@ -147,6 +148,10 @@ export default function App() {
 
       <main className="auth-form-panel">
         <div className="auth-form-container">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <LanguageSwitcher />
+          </div>
+
           {view === 'login' ? (
             <LoginForm
               onSuccess={handleLoginSuccess}
@@ -160,9 +165,9 @@ export default function App() {
             />
           )}
           <p className="cross-app-link" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem' }}>
-            Jesteś gościem kawiarni?{' '}
+            {t('app.crossLink.question')}{' '}
             <a href={CUSTOMER_URL} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-              Przejdź do strony dla klientów <ArrowRight size={14} />
+              {t('app.crossLink.cta')} <ArrowRight size={14} />
             </a>
           </p>
         </div>

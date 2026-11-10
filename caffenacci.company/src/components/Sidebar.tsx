@@ -1,21 +1,11 @@
 import { useState } from 'react'
 import {
-  Home,
-  BarChart3,
-  ClipboardList,
-  ShoppingCart,
-  CalendarDays,
-  Gift,
-  Star,
-  Newspaper,
-  Settings,
-  Globe,
-  CreditCard,
-  Menu as MenuIcon,
-  X,
-  LogOut,
+  Home, BarChart3, ClipboardList, ShoppingCart, CalendarDays, Gift, Star,
+  Newspaper, Settings, Globe, CreditCard, Menu as MenuIcon, X, LogOut,
 } from 'lucide-react'
 import logoTransparent from '../assets/logo/logo_transparent.png'
+import LanguageSwitcher from './LanguageSwitcher'
+import { useI18n } from '../i18n'
 
 export type TabId =
   | 'overview' | 'analytics' | 'menu' | 'orders' | 'reservations'
@@ -23,18 +13,18 @@ export type TabId =
 
 type TabIcon = React.ComponentType<{ size?: number; strokeWidth?: number }>
 
-const TABS: { id: TabId; label: string; icon: TabIcon }[] = [
-  { id: 'overview',     label: 'Przegląd',      icon: Home },
-  { id: 'analytics',    label: 'Statystyki',    icon: BarChart3 },
-  { id: 'menu',         label: 'Menu',          icon: ClipboardList },
-  { id: 'orders',       label: 'Zamówienia',    icon: ShoppingCart },
-  { id: 'reservations', label: 'Rezerwacje',    icon: CalendarDays },
-  { id: 'loyalty',      label: 'Lojalność',     icon: Gift },
-  { id: 'reviews',      label: 'Opinie',        icon: Star },
-  { id: 'news',         label: 'Aktualności',   icon: Newspaper },
-  { id: 'profile',      label: 'Profil',        icon: Settings },
-  { id: 'website',      label: 'Strona WWW',    icon: Globe },
-  { id: 'billing',      label: 'Płatności',     icon: CreditCard },
+const TABS: { id: TabId; icon: TabIcon }[] = [
+  { id: 'overview',     icon: Home },
+  { id: 'analytics',    icon: BarChart3 },
+  { id: 'menu',         icon: ClipboardList },
+  { id: 'orders',       icon: ShoppingCart },
+  { id: 'reservations', icon: CalendarDays },
+  { id: 'loyalty',      icon: Gift },
+  { id: 'reviews',      icon: Star },
+  { id: 'news',         icon: Newspaper },
+  { id: 'profile',      icon: Settings },
+  { id: 'website',      icon: Globe },
+  { id: 'billing',      icon: CreditCard },
 ]
 
 function initials(name: string): string {
@@ -55,6 +45,7 @@ interface Props {
 }
 
 function NavList({ activeTab, onSelectTab }: { activeTab: TabId; onSelectTab: (t: TabId) => void }) {
+  const { t } = useI18n()
   return (
     <nav className="sidebar__nav">
       {TABS.map(tab => (
@@ -67,7 +58,7 @@ function NavList({ activeTab, onSelectTab }: { activeTab: TabId; onSelectTab: (t
           <span className="sidebar__link-icon">
             <tab.icon size={18} strokeWidth={1.8} />
           </span>
-          <span>{tab.label}</span>
+          <span>{t(`sidebar.tab.${tab.id}`)}</span>
         </button>
       ))}
     </nav>
@@ -75,10 +66,11 @@ function NavList({ activeTab, onSelectTab }: { activeTab: TabId; onSelectTab: (t
 }
 
 export default function Sidebar({ activeTab, onSelectTab, cafeName, ownerName, onLogout }: Props) {
+  const { t } = useI18n()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const handleSelect = (t: TabId) => {
-    onSelectTab(t)
+  const handleSelect = (tab: TabId) => {
+    onSelectTab(tab)
     setMobileOpen(false)
   }
 
@@ -87,13 +79,13 @@ export default function Sidebar({ activeTab, onSelectTab, cafeName, ownerName, o
       <header className="mobile-topbar">
         <div className="mobile-topbar__brand">
           <img src={logoTransparent} alt="Caffenacci" className="mobile-topbar__logo" />
-          <span className="mobile-topbar__wordmark">Caffenacci</span>
+          <span className="mobile-topbar__wordmark" translate="no">Caffenacci</span>
         </div>
         <button
           type="button"
           className="mobile-topbar__menu-btn"
           onClick={() => setMobileOpen(true)}
-          aria-label="Otwórz menu"
+          aria-label={t('sidebar.openMenu')}
         >
           <MenuIcon size={20} />
         </button>
@@ -107,14 +99,14 @@ export default function Sidebar({ activeTab, onSelectTab, cafeName, ownerName, o
         <div className="sidebar__brand">
           <img src={logoTransparent} alt="Caffenacci" className="sidebar__logo" />
           <div style={{ minWidth: 0 }}>
-            <div className="sidebar__wordmark">Caffenacci</div>
-            <div className="sidebar__cafename">{cafeName}</div>
+            <div className="sidebar__wordmark" translate="no">Caffenacci</div>
+            <div className="sidebar__cafename" translate="no">{cafeName}</div>
           </div>
           {mobileOpen && (
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              aria-label="Zamknij menu"
+              aria-label={t('sidebar.closeMenu')}
               style={{
                 marginLeft: 'auto', background: 'none', border: 'none',
                 color: 'rgba(240,228,204,0.6)', cursor: 'pointer', flexShrink: 0,
@@ -127,17 +119,21 @@ export default function Sidebar({ activeTab, onSelectTab, cafeName, ownerName, o
 
         <NavList activeTab={activeTab} onSelectTab={handleSelect} />
 
+        <div className="sidebar__lang">
+          <LanguageSwitcher variant="dark" />
+        </div>
+
         <div className="sidebar__footer">
           <div className="sidebar__user">
             <div className="sidebar__avatar">{initials(ownerName)}</div>
-            <span className="sidebar__username">{ownerName}</span>
+            <span className="sidebar__username" translate="no">{ownerName}</span>
           </div>
           <button
             type="button"
             className="sidebar__logout"
             onClick={onLogout}
-            title="Wyloguj"
-            aria-label="Wyloguj"
+            title={t('sidebar.logout')}
+            aria-label={t('sidebar.logout')}
           >
             <LogOut size={16} strokeWidth={2} />
           </button>

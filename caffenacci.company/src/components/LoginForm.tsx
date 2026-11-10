@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { API_URL } from '../config'
+import { useI18n } from '../i18n'
 
 interface LoginResponse {
   access_token: string
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function LoginForm({ onSuccess, onSwitchToRegister, registerSuccess }: Props) {
+  const { t, tApi } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -34,11 +36,12 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, registerSucce
       })
       const data = await res.json()
       if (!res.ok) {
-        throw new Error(data.detail || 'Nieprawidłowy e-mail lub hasło.')
+        setError(tApi(data.detail, 'login.error'))
+        return
       }
       onSuccess(data as LoginResponse)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Wystąpił błąd. Spróbuj ponownie.')
+    } catch {
+      setError(t('common.genericError'))
     } finally {
       setLoading(false)
     }
@@ -47,33 +50,33 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, registerSucce
   return (
     <div className="form-wrapper">
       <div className="form-header">
-        <h2 className="form-title">Zaloguj się</h2>
-        <p className="form-subtitle">Witaj z powrotem w panelu Caffenacci</p>
+        <h2 className="form-title">{t('login.title')}</h2>
+        <p className="form-subtitle">{t('login.subtitle')}</p>
       </div>
 
       {registerSuccess && (
         <div className="form-success" role="status">
-          Konto zostało pomyślnie utworzone. Możesz się teraz zalogować.
+          {t('login.registered')}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="form" noValidate>
         <div className="field">
-          <label className="field__label" htmlFor="login-email">Adres e-mail</label>
+          <label className="field__label" htmlFor="login-email">{t('login.email')}</label>
           <input
             id="login-email"
             type="email"
             className="field__input"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="jan@kawiarnia.pl"
+            placeholder={t('login.emailPlaceholder')}
             autoComplete="email"
             required
           />
         </div>
 
         <div className="field">
-          <label className="field__label" htmlFor="login-password">Hasło</label>
+          <label className="field__label" htmlFor="login-password">{t('login.password')}</label>
           <input
             id="login-password"
             type="password"
@@ -95,15 +98,15 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, registerSucce
           className="btn btn--primary"
           disabled={loading || !email || !password}
         >
-          {loading ? 'Logowanie…' : 'Zaloguj się'}
+          {loading ? t('login.submitting') : t('login.submit')}
         </button>
       </form>
 
       <div className="form-switch">
         <p>
-          Nie masz jeszcze konta?{' '}
+          {t('login.noAccount')}{' '}
           <button type="button" className="link-btn" onClick={onSwitchToRegister}>
-            Zarejestruj kawiarnię
+            {t('login.registerLink')}
           </button>
         </p>
       </div>
