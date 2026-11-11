@@ -1,7 +1,7 @@
 import uuid
 
-from sqlalchemy import Column, String, Float, Boolean, Integer, ForeignKey, Text
-from app.core.types import ID
+from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Text
+from app.core.types import ID, Money
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -30,7 +30,7 @@ class MenuItem(Base):
     section_id = Column(ID, ForeignKey("menu_sections.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
-    price = Column(Float, nullable=False)
+    price = Column(Money, nullable=False)
     position = Column(Integer, nullable=False, default=0)
 
     # Znaczniki

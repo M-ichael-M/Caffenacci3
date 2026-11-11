@@ -5,6 +5,8 @@ import {
 } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
+import { formatMoney } from '../utils/currency'
+import { useCafeSettings } from './CafeSettingsContext'
 
 // ── Typy (odpowiadają core/analytics.py: build_summary) ────────────────────
 
@@ -21,7 +23,7 @@ interface Summary {
   devices: Record<string, number>
   events: Record<string, { total: number; dims: Record<string, number> }>
   impact: {
-    orders: { placed: number; completed: number; revenue: number; unique_clients: number }
+    orders: { placed: number; completed: number; revenue_by_currency: Record<string, number>; unique_clients: number }
     reservations: { total: number; confirmed: number }
     reviews: { count: number; average: number | null }
     loyalty: { scanned_total: number; scanned_period: number; new_in_period: number; returning_in_period: number; transactions: number }
@@ -41,10 +43,9 @@ function useFmt() {
   const { locale } = useI18n()
   return useMemo(() => {
     const nf = new Intl.NumberFormat(locale)
-    const cf = new Intl.NumberFormat(locale, { style: 'currency', currency: 'PLN' })
     return {
       nf,
-      money: (n: number) => cf.format(n),
+      money: (n: number, cur: string) => formatMoney(n, locale, cur),
       shortDay: (d: string) => {
         // składamy datę z komponentów lokalnych — bez konwersji przez UTC
         const [y, m, day] = d.split('-').map(Number)
@@ -173,12 +174,20 @@ function Card({ icon, title, children }: { icon: React.ReactNode; title: string;
 export default function AnalyticsTab({ token }: Props) {
   const { t } = useI18n()
   const { nf, money } = useFmt()
+  const { currency } = useCafeSettings()
   const [days, setDays] = useState<number>(30)
   const [data, setData] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [metric, setMetric] = useState<Metric>('visits')
   const [copied, setCopied] = useState(false)
+
+  /** Waluty pozostają oddzielne; waluta kawiarni jest wyświetlana jako pierwsza. */
+  const moneyBy = (m: Record<string, number>) => {
+    const entries = Object.entries(m).sort(([a], [b]) =>
+      Number(b === currency) - Number(a === currency) || a.localeCompare(b))
+    return entries.length ? entries.map(([c, v]) => money(v, c)).join(' + ') : money(0, currency)
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -303,7 +312,7 @@ export default function AnalyticsTab({ token }: Props) {
           <span>{t('analytics.kpi.transactions', { count: imp.loyalty.transactions })}</span>
         </Kpi>
         <Kpi icon={<ShoppingCart size={16} />} label={t('analytics.kpi.orders')} value={nf.format(imp.orders.placed)}>
-          <span>{t('analytics.kpi.orders.foot', { completed: nf.format(imp.orders.completed), revenue: money(imp.orders.revenue) })}</span>
+          <span>{t('analytics.kpi.orders.foot', { completed: nf.format(imp.orders.completed), revenue: moneyBy(imp.orders.revenue_by_currency) })}</span>
         </Kpi>
         <Kpi icon={<CalendarDays size={16} />} label={t('analytics.kpi.reservations')} value={nf.format(imp.reservations.total)}>
           <span>{t('analytics.kpi.reservations.foot', { count: nf.format(imp.reservations.confirmed) })}</span>

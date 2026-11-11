@@ -10,7 +10,7 @@ DEFAULT_TIME_ZONE = "Europe/Warsaw"
 CURRENCIES = (
     "PLN", "EUR", "USD", "GBP", "CHF", "CZK", "SEK", "NOK", "DKK", "HUF", "RON", "BGN",
     "ISK", "UAH", "TRY", "CAD", "AUD", "NZD", "JPY", "CNY", "HKD", "KRW", "INR", "SGD",
-    "THB", "MYR", "IDR", "VND", "PHP", "AED", "SAR", "ILS", "EGP", "ZAR", "MXN", "BRL",
+    "THB", "KHR", "MYR", "IDR", "VND", "PHP", "AED", "SAR", "ILS", "EGP", "ZAR", "MXN", "BRL",
     "ARS", "CLP", "COP",
 )
 

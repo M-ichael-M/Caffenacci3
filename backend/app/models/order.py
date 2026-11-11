@@ -2,10 +2,10 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Column, String, Integer, Boolean, DateTime, Float,
+    Column, String, Integer, Boolean, DateTime,
     ForeignKey, Enum as SAEnum, Index,
 )
-from app.core.types import ID
+from app.core.types import ID, Money
 from sqlalchemy.orm import relationship
 import enum
 
@@ -53,7 +53,10 @@ class Order(Base):
     # Wartość zamówienia — suma pozycji wg cennika w momencie złożenia.
     # W przyszłości rzeczywista zapłacona kwota może się różnić (punkty,
     # karta lojalnościowa) — na razie total_value = kwota "z cennika".
-    total_value = Column(Float, nullable=False, default=0.0)
+    total_value = Column(Money, nullable=False, default=0.0)
+    # Snapshot waluty kawiarni z chwili złożenia zamówienia — po zmianie waluty
+    # w ustawieniach historia zostaje w starej walucie.
+    currency = Column(String(3), nullable=False, default="PLN", server_default="PLN")
 
     status       = Column(SAEnum(OrderStatus, name="OrderStatus"), nullable=False, default=OrderStatus.pending)
     cancelled_by = Column(String(10), nullable=True)  # "owner" | "client"
@@ -78,7 +81,7 @@ class OrderItem(Base):
     # może się zmienić/zniknąć, a zamówienie ma zachować snapshot.
     menu_item_id = Column(ID, nullable=True)
     name         = Column(String(200), nullable=False)   # snapshot nazwy
-    price        = Column(Float, nullable=False)         # snapshot ceny jednostkowej
+    price        = Column(Money, nullable=False)         # snapshot ceny jednostkowej
     quantity     = Column(Integer, nullable=False, default=1)
 
     order = relationship("Order", back_populates="items")

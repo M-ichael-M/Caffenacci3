@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import LocationPicker from './LocationPicker'
+import RegionCard from './RegionCard'
 import { Coffee, AlertTriangle, X, Star } from 'lucide-react'
 import { BADGE_CATALOG, MAX_FEATURED_BADGES } from '../badges'
 import InfoTooltip from './InfoTooltip'
@@ -947,6 +948,9 @@ export default function ProfileTab({ token }: Props) {
         </SectionCard>
 
       </div>
+
+      {/* ── Region i waluta (pełna szerokość) ── */}
+      <RegionCard token={token} />
 
       {/* ── Godziny otwarcia (pełna szerokość) ──────────────────────────── */}
       <div className="info-card" style={{ gridColumn: '1 / -1' }}>

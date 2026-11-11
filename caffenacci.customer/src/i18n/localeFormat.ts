@@ -18,9 +18,8 @@ export function applyDirection(l: { locale: string; dir: 'ltr' | 'rtl' }) {
   el.dir = l.dir
 }
 
-export function formatCurrency(v: number, fmt: LocaleFormat) {
-  try { return new Intl.NumberFormat(fmt.locale, { style: 'currency', currency: fmt.currency }).format(v) }
-  catch { return `${v.toFixed(2)} ${fmt.currency}` }
+export function formatCurrency(v: number, fmt: LocaleFormat, currency: string = fmt.currency) {
+  return formatMoney(v, fmt.locale, currency)
 }
 export function formatNumber(v: number, fmt: LocaleFormat, o?: Intl.NumberFormatOptions) {
   try { return new Intl.NumberFormat(fmt.locale, o).format(v) } catch { return String(v) }
@@ -50,3 +49,5 @@ export function makeCollator(collatorLocale: string) {
 export function sortLocalized<T>(arr: readonly T[], c: Intl.Collator, key: (x: T) => string = x => String(x)) {
   return arr.slice().sort((a, b) => c.compare(key(a), key(b)))
 }
+import { formatMoney } from '../utils/currency'
+

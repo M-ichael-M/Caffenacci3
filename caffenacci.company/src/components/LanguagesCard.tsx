@@ -82,7 +82,7 @@ function triggerDownload(p: { filename: string; content: string }) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-function timeZones(): string[] {
+export function timeZones(): string[] {
   try {
     const intl = Intl as unknown as { supportedValuesOf?: (k: string) => string[] }
     const list = intl.supportedValuesOf?.('timeZone')
@@ -91,7 +91,7 @@ function timeZones(): string[] {
   return ['Europe/Warsaw', 'UTC']
 }
 
-function SearchableSelect({ label, value, onChange, options, placeholder, emptyLabel }: {
+export function SearchableSelect({ label, value, onChange, options, placeholder, emptyLabel }: {
   label: string
   value: string
   onChange: (value: string) => void
@@ -138,15 +138,12 @@ const STATE_BADGE: Record<TrState, string> = {
 export default function LanguagesCard({ token }: Props) {
   const { t, tApi } = useI18n()
   const [languages, setLanguages]   = useState<LanguageInfo[]>([])
-  const [currencies, setCurrencies] = useState<string[]>([])
   const [overview, setOverview]     = useState<Overview | null>(null)
   const [loading, setLoading]       = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
 
   const [primary, setPrimary]     = useState('pl')
   const [secondary, setSecondary] = useState('')
-  const [currency, setCurrency]   = useState('PLN')
-  const [timeZone, setTimeZone]   = useState('Europe/Warsaw')
 
   const [saving, setSaving]   = useState(false)
   const [msg, setMsg]         = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -160,7 +157,6 @@ export default function LanguagesCard({ token }: Props) {
   const [uploadMsg, setUploadMsg]   = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const zones = useMemo(timeZones, [])
 
   /** Błąd API (string lub lista błędów walidacji) → komunikat w języku panelu. */
   const errMsg = (e: unknown, fallbackKey: string): string => {
@@ -179,8 +175,6 @@ export default function LanguagesCard({ token }: Props) {
     setOverview(o)
     setPrimary(o.settings.primary_language)
     setSecondary(o.settings.secondary_language ?? '')
-    setCurrency(o.settings.currency)
-    setTimeZone(o.settings.time_zone)
   }, [])
 
   const refresh = useCallback(async () => {
@@ -193,11 +187,10 @@ export default function LanguagesCard({ token }: Props) {
     (async () => {
       try {
         const [opts, ov] = await Promise.all([
-          api<{ languages: LanguageInfo[]; currencies: string[] }>(token, '/i18n/options'),
+          api<{ languages: LanguageInfo[] }>(token, '/i18n/options'),
           api<Overview>(token, '/i18n/settings'),
         ])
         setLanguages(opts.languages)
-        setCurrencies(opts.currencies)
         applyOverview(ov)
       } catch {
         setLoadFailed(true)
@@ -232,9 +225,7 @@ export default function LanguagesCard({ token }: Props) {
   const saved = overview?.settings
   const dirty = !!saved && (
     saved.primary_language !== primary ||
-    (saved.secondary_language ?? '') !== secondary ||
-    saved.currency !== currency ||
-    saved.time_zone !== timeZone
+    (saved.secondary_language ?? '') !== secondary
   )
 
   // ── Akcje ───────────────────────────────────────────────────────────────
@@ -245,12 +236,7 @@ export default function LanguagesCard({ token }: Props) {
       const ov = await api<Overview>(token, '/i18n/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          primary_language: primary,
-          secondary_language: secondary || null,
-          currency,
-          time_zone: timeZone,
-        }),
+        body: JSON.stringify({ primary_language: primary, secondary_language: secondary || null }),
       })
       applyOverview(ov)
       setReadyPkg(null)
@@ -300,7 +286,7 @@ export default function LanguagesCard({ token }: Props) {
   const previewFor = (code: string): { f: LocaleFormat; dir: string } | null => {
     const l = languages.find(x => x.code === code)
     if (!l) return null
-    return { f: { locale: l.locale, dir: l.dir, collator_locale: l.collator_locale, currency, time_zone: timeZone }, dir: l.dir }
+    return { f: { locale: l.locale, dir: l.dir, collator_locale: l.collator_locale, currency: saved?.currency ?? 'PLN', time_zone: saved?.time_zone ?? 'Europe/Warsaw' }, dir: l.dir }
   }
   const today = new Date().toISOString().slice(0, 10)
 
@@ -352,15 +338,7 @@ export default function LanguagesCard({ token }: Props) {
           </div>
         </details>
 
-        <details className="language-settings-group">
-          <summary className="language-settings-group__heading"><strong>{t('languages.group.regional')}</strong><span>{t('languages.group.regional.hint')}</span></summary>
-          <div className="language-picker-grid">
-            <SearchableSelect label={t('languages.currency')} value={currency} onChange={setCurrency}
-              placeholder={t('languages.searchCurrency')} options={currencies.map(c => ({ value: c, label: c }))} />
-            <SearchableSelect label={t('languages.timeZone')} value={timeZone} onChange={setTimeZone}
-              placeholder={t('languages.searchTimeZone')} options={[...new Set([timeZone, ...zones])].map(z => ({ value: z, label: z, searchText: z.replaceAll('_', ' ') }))} />
-          </div>
-        </details>
+
 
         {/* Podgląd formatów dla wybranych języków */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>

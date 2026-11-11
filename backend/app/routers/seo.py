@@ -15,6 +15,7 @@ from jinja2 import Environment
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.currency import currency_exponent
 from app.core.database import get_db
 from app.core.page_cache import page_cache
 from app.core.slugs import resolve_slug
@@ -86,7 +87,8 @@ _HEAD_TPL = _env.from_string("""\
 <meta property="og:url" content="{{ canonical }}">
 {% endif %}<meta property="og:type" content="website">
 <meta property="og:site_name" content="Caffenacci">
-<meta property="og:locale" content="pl_PL">
+{% if og_locale %}<meta property="og:locale" content="{{ og_locale }}">
+{% endif %}
 <meta property="og:title" content="{{ title }}">
 <meta property="og:description" content="{{ description }}">
 {% if image %}<meta property="og:image" content="{{ image }}">
@@ -127,9 +129,24 @@ def _abs_api(path: str | None) -> str | None:
     return f"{settings.API_PUBLIC_URL.rstrip('/')}{path}" if path else None
 
 
-def _fmt_price(p: float) -> str:
-    return f"{p:.2f}".replace(".", ",") + " zł"
+# Języki z przecinkiem dziesiętnym (SEO-owy HTML nie ma Intl, więc formatujemy ręcznie).
+_COMMA_DECIMAL = {"pl", "de", "fr", "es", "it", "pt", "ru", "uk", "cs", "sk", "nl", "tr", "sv",
+                  "da", "no", "fi", "hu", "ro", "bg", "hr", "sl", "lt", "lv", "et", "el", "id", "vi"}
+_CURRENCY_LABEL = {"PLN": "zł"}
+_OG_LOCALES = {
+    "pl": "pl_PL", "en": "en_GB", "de": "de_DE", "fr": "fr_FR", "es": "es_ES", "it": "it_IT",
+    "pt": "pt_PT", "nl": "nl_NL", "ru": "ru_RU", "uk": "uk_UA", "cs": "cs_CZ", "sk": "sk_SK",
+    "sv": "sv_SE", "da": "da_DK", "no": "nb_NO", "fi": "fi_FI", "hu": "hu_HU", "ro": "ro_RO",
+    "bg": "bg_BG", "hr": "hr_HR", "el": "el_GR", "tr": "tr_TR", "ja": "ja_JP", "ko": "ko_KR",
+    "zh": "zh_CN", "ar": "ar_AR", "he": "he_IL", "vi": "vi_VN", "id": "id_ID", "th": "th_TH",
+}
 
+
+def _fmt_price(p: float, currency: str, lang: str) -> str:
+    s = f"{p:.{currency_exponent(currency)}f}"
+    if lang in _COMMA_DECIMAL:
+        s = s.replace(".", ",")
+    return f"{s} {_CURRENCY_LABEL.get(currency, currency)}"
 
 def _title(site: PublicSiteOut) -> str:
     return f"{site.cafe_name} – kawiarnia {site.city}, {site.street} {site.building_number} | Caffenacci"
@@ -169,6 +186,8 @@ def _json_ld(site: PublicSiteOut, url: str) -> dict:
         data["telephone"] = site.contact_phone
     if site.contact_email:
         data["email"] = site.contact_email
+    if site.i18n:
+        data["currenciesAccepted"] = site.i18n.currency
     if site.latitude is not None and site.longitude is not None:
         data["geo"] = {"@type": "GeoCoordinates", "latitude": site.latitude, "longitude": site.longitude}
 
@@ -197,6 +216,8 @@ def _json_ld(site: PublicSiteOut, url: str) -> dict:
 
 
 def _body_context(site: PublicSiteOut) -> dict:
+    cur = site.i18n.currency if site.i18n else "PLN"
+    lang = site.i18n.primary.code if site.i18n else "pl"
     hours = []
     for h in sorted(site.weekly_hours, key=lambda x: x.day_of_week):
         if not 0 <= h.day_of_week <= 6:
@@ -208,7 +229,7 @@ def _body_context(site: PublicSiteOut) -> dict:
         {
             "name": s.name,
             "dishes": [
-                {"name": i.name, "description": i.description, "price": _fmt_price(i.price)}
+                {"name": i.name, "description": i.description, "price": _fmt_price(i.price, cur, lang)}
                 for i in s.items
             ],
         }
@@ -261,6 +282,7 @@ def _render(index_html: str, site: PublicSiteOut) -> str:
         image=logo,
         logo_srcset=logo_srcset,
         jsonld=_safe_json(_json_ld(site, url)),
+        og_locale=_OG_LOCALES.get(site.i18n.primary.code) if site.i18n else "pl_PL",
     )
     body = _BODY_TPL.render(c=_body_context(site))
     data_script = "<script>window.__SITE_DATA__=" + _safe_json(site.model_dump(mode="json")) + ";</script>"
@@ -291,7 +313,7 @@ def _not_found_response() -> Response:
         title="Nie znaleziono kawiarni | Caffenacci",
         description="Ta strona nie jest dostępna.",
         robots="noindex",
-        canonical=None, image=None, logo_srcset=None, jsonld=None,
+        canonical=None, image=None, logo_srcset=None, jsonld=None, og_locale=None,
     )
     return Response(
         content=_inject(index_html, head, ""),

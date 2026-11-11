@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.cafe_time import cafe_tz_name
+from app.core.currency import cafe_currency
 from app.core.security import create_access_token, decode_access_token
 from app.core.emailer import send_employee_invite_email
 from app.models.cafe import Cafe
@@ -190,4 +191,5 @@ def employee_verify(
         orders_enabled=bool(order_settings and order_settings.enabled),
         reservations_enabled=bool(res_settings and res_settings.enabled),
         time_zone=cafe_tz_name(cafe.id, db),
+        currency=cafe_currency(cafe.id, db),
     )

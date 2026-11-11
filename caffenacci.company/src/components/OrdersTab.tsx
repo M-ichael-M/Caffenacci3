@@ -3,6 +3,7 @@ import { ShoppingCart, ClipboardList, Check, X, RefreshCw } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
 import { useCafeSettings } from './CafeSettingsContext'
+import { formatMoney } from '../utils/currency'
 import { parseUtc } from '../utils/cafeTime'
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ interface OrderOut {
   start_time: string
   items: OrderItemOut[]
   total_value: number
+  currency: string
   status: OrderStatusType
   cancelled_by: string | null
   created_at: string | null
@@ -51,11 +53,6 @@ function formatDate(ds: string, locale: string) {
 function formatCreatedAt(s: string | null, locale: string, tz: string) {
   if (!s) return ''
   return parseUtc(s).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: tz })
-}
-
-// Ceny w menu są w PLN (waluta kawiarni); format zależy od języka panelu.
-function money(n: number, locale: string) {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'PLN' }).format(n)
 }
 
 // ── Toggle (spójny z resztą aplikacji) ───────────────────────────────────
@@ -89,7 +86,7 @@ function Toggle({ checked, onChange, disabled = false }: {
 
 // ── Order item list (produkty w zamówieniu) ──────────────────────────────
 
-function OrderItemsList({ items }: { items: OrderItemOut[] }) {
+function OrderItemsList({ items, currency }: { items: OrderItemOut[]; currency: string }) {
   const { locale } = useI18n()
   return (
     <div className="ord-items">
@@ -98,7 +95,7 @@ function OrderItemsList({ items }: { items: OrderItemOut[] }) {
           <span className="ord-item-row__qty">{it.quantity}×</span>
           {/* Nazwa pozycji pochodzi z menu właściciela — nie tłumaczymy jej */}
           <span className="ord-item-row__name" translate="no">{it.name}</span>
-          <span className="ord-item-row__price">{money(it.price * it.quantity, locale)}</span>
+          <span className="ord-item-row__price">{formatMoney(it.price * it.quantity, locale, currency)}</span>
         </div>
       ))}
     </div>
@@ -153,11 +150,11 @@ function PendingOrderCard({ o, onDecide, saving }: {
               background: 'rgba(169,114,47,0.1)', color: 'var(--gold)',
               borderRadius: 100, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700,
             }}>
-              {money(o.total_value, locale)}
+              {formatMoney(o.total_value, locale, o.currency)}
             </span>
           </div>
 
-          <OrderItemsList items={o.items} />
+          <OrderItemsList items={o.items} currency={o.currency} />
 
           <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
             {t('orders.placedAt', { time: formatCreatedAt(o.created_at, locale, timeZone) })}
@@ -239,7 +236,7 @@ function HistoryOrderCard({ o }: { o: OrderOut }) {
             background: 'var(--border-soft)', color: 'var(--text-muted)',
             borderRadius: 100, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 600,
           }}>
-            {money(o.total_value, locale)}
+            {formatMoney(o.total_value, locale, o.currency)}
           </span>
           {cancelledLabel && (
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
@@ -247,7 +244,7 @@ function HistoryOrderCard({ o }: { o: OrderOut }) {
             </span>
           )}
         </div>
-        <OrderItemsList items={o.items} />
+        <OrderItemsList items={o.items} currency={o.currency} />
       </div>
     </div>
   )

@@ -26,6 +26,7 @@ interface ClientOrder {
   time_zone?: string
   items: OrderItemOut[]
   total_value: number
+  currency: string
   status: OrderStatusType
   cancelled_by: string | null
   created_at: string | null
@@ -47,14 +48,14 @@ function statusMeta(status: OrderStatusType, t: TFunction): { label: string; cls
   return { label: t('ord.cancelled'), cls: 'status-badge--cancelled' }
 }
 
-function OrderItemsList({ items, fmt }: { items: OrderItemOut[]; fmt: LocaleFormat }) {
+function OrderItemsList({ items, fmt, currency }: { items: OrderItemOut[]; fmt: LocaleFormat; currency: string }) {
   return (
     <div className="ord-items">
       {items.map(it => (
         <div key={it.id} className="ord-item-row">
           <span className="ord-item-row__qty">{it.quantity}×</span>
           <span className="ord-item-row__name">{it.name}</span>
-          <span className="ord-item-row__price">{formatCurrency(it.price * it.quantity, fmt)}</span>
+          <span className="ord-item-row__price">{formatCurrency(it.price * it.quantity, fmt, currency)}</span>
         </div>
       ))}
     </div>
@@ -81,11 +82,11 @@ function OrderCard({ o, onCancel, cancelling }: { o: ClientOrder; onCancel: () =
               background: 'rgba(169,114,47,0.1)', color: 'var(--gold)',
               borderRadius: 100, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700,
             }}>
-              {formatCurrency(o.total_value, fmt)}
+              {formatCurrency(o.total_value, fmt, o.currency)}
             </span>
           </div>
 
-          <OrderItemsList items={o.items} fmt={fmt} />
+          <OrderItemsList items={o.items} fmt={fmt} currency={o.currency} />
 
           {o.status === 'cancelled' && o.cancelled_by && (
             <div className="entity-card__sub" style={{ marginTop: '0.375rem', fontStyle: 'italic' }}>

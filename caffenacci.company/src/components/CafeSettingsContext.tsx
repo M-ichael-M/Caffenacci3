@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { API_URL } from '../config'
+import { useI18n } from '../i18n'
+import { formatMoney } from '../utils/currency'
 
 interface Value { timeZone: string; currency: string; loaded: boolean }
 const Ctx = createContext<Value>({ timeZone: 'Europe/Warsaw', currency: 'PLN', loaded: false })
@@ -25,4 +27,11 @@ export function CafeSettingsProvider({ token, children }: { token: string; child
   }, [load])
 
   return <Ctx.Provider value={v}>{children}</Ctx.Provider>
+}
+
+/** money(n) → w walucie kawiarni; money(n, 'JPY') → w podanej walucie. */
+export function useMoney() {
+  const { currency } = useCafeSettings()
+  const { locale } = useI18n()
+  return useCallback((n: number, cur?: string) => formatMoney(n, locale, cur ?? currency), [locale, currency])
 }

@@ -13,6 +13,7 @@ from app.core.employee_access import get_current_cafe_id
 from app.core.page_cache import invalidate_cafe
 from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings
+from app.core.currency import cafe_currency, currency_exponent
 from app.models.cafe import Cafe
 from app.models.cafe_profile import CafeProfile
 from app.models.client import Client
@@ -186,6 +187,7 @@ def earn_points(
     cafe_id: str = Depends(get_current_cafe_id),
     db:      Session = Depends(get_db),
 ):
+    currency = cafe_currency(cafe_id, db)
     settings = _get_or_create_settings(cafe_id, db)
     if not settings.enabled or settings.mode != "points":
         raise HTTPException(400, detail="Ta kawiarnia nie korzysta z punktowego programu lojalnościowego.")
@@ -200,8 +202,8 @@ def earn_points(
     cl.updated_at  = datetime.utcnow()
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="earn_points",
-        description=f"Transakcja {payload.amount:.2f} zł ({earned} pkt.)",
-        points_delta=earned,
+        description=f"Transakcja {payload.amount:.{currency_exponent(currency)}f} {currency} ({earned} pkt.)",
+        points_delta=earned, currency=currency,
     ))
     db.commit()
     db.refresh(cl)
@@ -219,6 +221,7 @@ def redeem_reward(
     cafe_id: str = Depends(get_current_cafe_id),
     db:      Session = Depends(get_db),
 ):
+    currency = cafe_currency(cafe_id, db)
     settings = _get_or_create_settings(cafe_id, db)
     if not settings.enabled or settings.mode != "points":
         raise HTTPException(400, detail="Ta kawiarnia nie korzysta z punktowego programu lojalnościowego.")
@@ -241,7 +244,7 @@ def redeem_reward(
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="redeem_points",
         description=f"Wymiana: {reward.name}",
-        points_delta=-reward.cost_points,
+        points_delta=-reward.cost_points, currency=currency,
     ))
     db.commit()
     db.refresh(cl)
@@ -263,6 +266,7 @@ def add_stamp(
     cafe_id: str = Depends(get_current_cafe_id),
     db:      Session = Depends(get_db),
 ):
+    currency = cafe_currency(cafe_id, db)
     settings = _get_or_create_settings(cafe_id, db)
     if not settings.enabled or settings.mode != "stamps":
         raise HTTPException(400, detail="Ta kawiarnia nie korzysta z systemu pieczątek.")
@@ -277,7 +281,7 @@ def add_stamp(
     cl.updated_at = datetime.utcnow()
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="add_stamp",
-        description="Nowa pieczątka", stamps_delta=1,
+        description="Nowa pieczątka", stamps_delta=1, currency=currency,
     ))
     db.commit()
     db.refresh(cl)
@@ -295,6 +299,7 @@ def reset_stamps(
     cafe_id: str = Depends(get_current_cafe_id),
     db:      Session = Depends(get_db),
 ):
+    currency = cafe_currency(cafe_id, db)
     settings = _get_or_create_settings(cafe_id, db)
     if not settings.enabled or settings.mode != "stamps":
         raise HTTPException(400, detail="Ta kawiarnia nie korzysta z systemu pieczątek.")
@@ -309,7 +314,7 @@ def reset_stamps(
     cl.updated_at = datetime.utcnow()
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="reset_stamps",
-        description="Odebrano nagrodę — karta wyzerowana",
+        description="Odebrano nagrodę — karta wyzerowana", currency=currency,
     ))
     db.commit()
     db.refresh(cl)

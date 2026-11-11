@@ -93,6 +93,7 @@ class OrderOut(BaseModel):
     start_time:   str
     items:        List[OrderItemOut]
     total_value:  float
+    currency:     str = "PLN"
     status:       OrderStatusEnum
     cancelled_by: Optional[str]
     created_at:   Optional[datetime]

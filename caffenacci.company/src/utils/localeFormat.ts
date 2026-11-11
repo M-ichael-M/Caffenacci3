@@ -18,7 +18,7 @@ export function formatNumber(value: number, f: LocaleFormat, options?: Intl.Numb
 
 /** Ceny w menu są zapisane jako liczby — waluta pochodzi z ustawień kawiarni. */
 export function formatCurrency(value: number, f: LocaleFormat): string {
-  return new Intl.NumberFormat(f.locale, { style: 'currency', currency: f.currency }).format(value)
+  return formatMoney(value, f.locale, f.currency)
 }
 
 /** Data bez godziny ("YYYY-MM-DD", jak w rezerwacjach/zamówieniach) — bez przesunięć stref. */
@@ -53,3 +53,5 @@ export function translateText(texts: Record<string, string> | null, source: stri
   if (!texts) return source
   return texts[normalizeText(source)] ?? source
 }
+import { formatMoney } from './currency'
+

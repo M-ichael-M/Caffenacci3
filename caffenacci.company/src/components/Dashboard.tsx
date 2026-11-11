@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
-import { CafeSettingsProvider } from './CafeSettingsContext'
+import { useMoney } from './CafeSettingsContext'
 
 interface AuthState {
   token: string
@@ -81,6 +81,7 @@ function Stars({ rating }: { rating: number }) {
 
 export default function Dashboard({ auth, profile, loadingProfile, onLogout }: Props) {
   const { t, locale } = useI18n()
+  const money = useMoney()
   const p = profile as MeProfile | null
   const cafeName  = p?.cafe_name  ?? auth.cafe_name
   const ownerName = p?.owner_name ?? auth.owner_name
@@ -93,10 +94,6 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
 
   const [reviewSummary, setReviewSummary]   = useState<ReviewSummary | null>(null)
   const [loadingReviews, setLoadingReviews] = useState(true)
-
-  // Ceny w menu są w PLN (waluta kawiarni); format zależy od języka panelu.
-  const money = (n: number) =>
-    new Intl.NumberFormat(locale, { style: 'currency', currency: 'PLN' }).format(n)
 
   useEffect(() => {
     fetchMenu()
@@ -146,7 +143,6 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
   }
 
   return (
-    <CafeSettingsProvider token={auth.token}>
     <>
       {showMenuEditor && (
         <MenuEditor token={auth.token} onClose={handleMenuEditorClose} />
@@ -515,6 +511,5 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
         </div>
       </div>
     </>
-    </CafeSettingsProvider>
   )
 }

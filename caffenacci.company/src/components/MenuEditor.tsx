@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { Leaf, Flame, Ban, X, Plus } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
+import { useCafeSettings } from './CafeSettingsContext'
+import { currencyExponent } from '../utils/currency'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -115,6 +117,8 @@ function Badge({ label, icon, active, onClick, color }: {
 
 export default function MenuEditor({ token, onClose }: Props) {
   const { t, tApi } = useI18n()
+  const { currency } = useCafeSettings()
+  const exp = currencyExponent(currency)
   const [sections, setSections] = useState<MenuSectionDraft[]>([emptySection()])
   const [loading, setLoading] = useState(false)
   const [fetchingMenu, setFetchingMenu] = useState(true)
@@ -324,15 +328,15 @@ export default function MenuEditor({ token, onClose }: Props) {
                         />
                       </div>
                       <div className="me-item-price-wrap">
-                        <label className="me-label">{t('menuEditor.price')}</label>
+                        <label className="me-label">{t('menuEditor.price', { currency })}</label>
                         <input
                           className="me-input me-input--price"
                           type="number"
                           min="0"
-                          step="0.5"
+                          step={exp === 0 ? '1' : '0.01'}
                           value={item.price}
                           onChange={e => updateItem(sec.id, item.id, { price: e.target.value })}
-                          placeholder="0.00"
+                          placeholder={exp === 0 ? '0' : '0.00'}
                         />
                       </div>
                       <button

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date as date_cls, datetime, timedelta
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -12,6 +13,7 @@ from app.core.opening_hours import to_minutes, from_minutes, effective_hours_fn,
 from app.core.page_cache import invalidate_cafe
 from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings
+from app.core.currency import cafe_currency, round_decimal
 from app.core.security import decode_access_token
 from app.core.employee_access import get_current_cafe_id
 from app.models.cafe import Cafe
@@ -137,6 +139,22 @@ def _resolve_item(cafe_id: str, item_in, db: Session) -> tuple[str, float]:
     return item_in.name, item_in.price
 
 
+def _fill_items(order: Order, items_in, cafe_id: str, currency: str, db: Session) -> None:
+    """Pozycje + suma, zaokrąglone wg wykładnika waluty kawiarni (JPY/KRW/VND = 0 miejsc)."""
+    total = Decimal(0)
+    for item_in in items_in:
+        name, price = _resolve_item(cafe_id, item_in, db)
+        price_d = round_decimal(price, currency)
+        total += price_d * item_in.quantity
+        order.items.append(OrderItem(
+            menu_item_id=item_in.menu_item_id,
+            name=name,
+            price=float(price_d),
+            quantity=item_in.quantity,
+        ))
+    order.total_value = float(round_decimal(total, currency))
+
+
 CLIENT_CANCEL_DEADLINE_MINUTES = 30
 
 
@@ -208,26 +226,17 @@ def create_public_order(
     _validate_order_date(payload.date, tz)
     _validate_order_time(cafe_id, payload.date, payload.start_time, db, tz)
 
+    currency = cafe_currency(cafe_id, db)
     order = Order(
         cafe_id     = cafe_id,
         client_nick = payload.client_nick,
         client_id   = payload.client_id,
         date        = payload.date,
         start_time  = payload.start_time,
+        currency    = currency,
         status      = OrderStatus.pending,
     )
-
-    total = 0.0
-    for item_in in payload.items:
-        name, price = _resolve_item(cafe_id, item_in, db)
-        total += price * item_in.quantity
-        order.items.append(OrderItem(
-            menu_item_id = item_in.menu_item_id,
-            name         = name,
-            price        = price,
-            quantity     = item_in.quantity,
-        ))
-    order.total_value = round(total, 2)
+    _fill_items(order, payload.items, cafe_id, currency, db)
 
     db.add(order)
     db.commit()
@@ -265,26 +274,17 @@ def create_order_as_client(
     _validate_order_date(payload.date, tz)
     _validate_order_time(cafe_id, payload.date, payload.start_time, db, tz)
 
+    currency = cafe_currency(cafe_id, db)
     order = Order(
         cafe_id     = cafe_id,
         client_nick = current_client.nick,
         client_id   = current_client.id,
         date        = payload.date,
         start_time  = payload.start_time,
+        currency    = currency,
         status      = OrderStatus.pending,
     )
-
-    total = 0.0
-    for item_in in payload.items:
-        name, price = _resolve_item(cafe_id, item_in, db)
-        total += price * item_in.quantity
-        order.items.append(OrderItem(
-            menu_item_id = item_in.menu_item_id,
-            name         = name,
-            price        = price,
-            quantity     = item_in.quantity,
-        ))
-    order.total_value = round(total, 2)
+    _fill_items(order, payload.items, cafe_id, currency, db)
 
     db.add(order)
     db.commit()

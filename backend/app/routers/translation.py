@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.cache_purge import cafe_page_urls, purge_urls
 from app.core.config import settings as app_settings
 from app.core.database import get_db
-from app.core.languages import CURRENCIES, LANGUAGES
+from app.core.languages import CURRENCIES, DEFAULT_PRIMARY_LANGUAGE, LANGUAGES
 from app.core.page_cache import invalidate_cafe
 from app.core.security import decode_access_token
 from app.core.slugs import resolve_slug
@@ -23,7 +23,7 @@ from app.models.translation import CafeLanguageSettings, TranslationPackage
 from app.routers.employee_auth import get_current_cafe_owner
 from app.schemas.translation import (
     LanguageSettingsIn, LanguageSettingsOut, OptionsOut, PackageFileOut,
-    PublicTranslationOut, TranslationOverviewOut,
+    PublicTranslationOut, TranslationOverviewOut, RegionSettingsIn, RegionSettingsOut,
 )
 
 router = APIRouter(tags=["translations"])
@@ -68,12 +68,39 @@ def save_settings(
         db.add(s)
     s.primary_language = payload.primary_language
     s.secondary_language = payload.secondary_language
+    if payload.currency is not None:
+        s.currency = payload.currency
+    if payload.time_zone is not None:
+        s.time_zone = payload.time_zone
+    db.commit()
+    invalidate_cafe(cafe.id)
+    purge_urls(cafe_page_urls(cafe.slug, app_settings.PUBLIC_SITE_URL))
+    return _overview(cafe.id, db)
+
+
+@router.get("/i18n/region", response_model=RegionSettingsOut, summary="Strefa czasowa i waluta kawiarni")
+def get_region(cafe: Cafe = Depends(get_current_cafe_owner), db: Session = Depends(get_db)):
+    s = get_settings(cafe.id, db)
+    return RegionSettingsOut(currency=s.currency, time_zone=s.time_zone)
+
+
+@router.put("/i18n/region", response_model=RegionSettingsOut,
+            summary="Zapisz strefę czasową i walutę (ceny nie są przeliczane, historia zostaje w starej walucie)")
+def save_region(
+    payload: RegionSettingsIn,
+    cafe: Cafe = Depends(get_current_cafe_owner),
+    db: Session = Depends(get_db),
+):
+    s = db.query(CafeLanguageSettings).filter(CafeLanguageSettings.cafe_id == cafe.id).first()
+    if not s:
+        s = CafeLanguageSettings(cafe_id=cafe.id, primary_language=DEFAULT_PRIMARY_LANGUAGE)
+        db.add(s)
     s.currency = payload.currency
     s.time_zone = payload.time_zone
     db.commit()
     invalidate_cafe(cafe.id)
     purge_urls(cafe_page_urls(cafe.slug, app_settings.PUBLIC_SITE_URL))
-    return _overview(cafe.id, db)
+    return RegionSettingsOut(currency=s.currency, time_zone=s.time_zone)
 
 
 @router.post("/i18n/packages", response_model=PackageFileOut,

@@ -18,6 +18,7 @@ from sqlalchemy import delete, distinct, func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.currency import round_money
 from app.core.languages import DEFAULT_TIME_ZONE
 from app.models.analytics import AnalyticsDaily, AnalyticsVisitorDay
 from app.models.cafe import Cafe
@@ -218,9 +219,13 @@ def _impact(db: Session, cafe_id: str, s: datetime, e: datetime) -> dict:
     o = db.query(Order).filter(Order.cafe_id == cafe_id, Order.created_at >= s, Order.created_at < e)
     orders_placed = o.count()
     completed = o.filter(Order.status == OrderStatus.completed)
-    revenue = db.query(func.coalesce(func.sum(Order.total_value), 0.0)).filter(
-        Order.cafe_id == cafe_id, Order.created_at >= s, Order.created_at < e,
-        Order.status == OrderStatus.completed).scalar() or 0.0
+    rev_rows = (
+        db.query(Order.currency, func.coalesce(func.sum(Order.total_value), 0))
+        .filter(Order.cafe_id == cafe_id, Order.created_at >= s, Order.created_at < e,
+                Order.status == OrderStatus.completed)
+        .group_by(Order.currency).all()
+    )
+    revenue_by_currency = {c: round_money(v, c) for c, v in rev_rows}
     order_clients = db.query(func.count(distinct(Order.client_id))).filter(
         Order.cafe_id == cafe_id, Order.created_at >= s, Order.created_at < e,
         Order.client_id.isnot(None)).scalar() or 0
@@ -247,7 +252,7 @@ def _impact(db: Session, cafe_id: str, s: datetime, e: datetime) -> dict:
 
     return {
         "orders": {"placed": orders_placed, "completed": completed.count(),
-                   "revenue": round(float(revenue), 2), "unique_clients": order_clients},
+                   "revenue_by_currency": revenue_by_currency, "unique_clients": order_clients},
         "reservations": {"total": res_total, "confirmed": res_confirmed},
         "reviews": {"count": rv_count or 0, "average": round(float(rv_avg), 2) if rv_avg is not None else None},
         "loyalty": {"scanned_total": scanned_total, "scanned_period": scanned_period,

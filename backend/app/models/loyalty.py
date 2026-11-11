@@ -96,5 +96,6 @@ class LoyaltyTransaction(Base):
     description  = Column(String(255), nullable=True)
     points_delta = Column(Integer, nullable=False, default=0)
     stamps_delta = Column(Integer, nullable=False, default=0)
+    currency = Column(String(3), nullable=False, default="PLN", server_default="PLN")
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

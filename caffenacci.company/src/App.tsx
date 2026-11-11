@@ -8,6 +8,7 @@ import './index.css'
 import { ArrowRight } from 'lucide-react'
 import { API_URL, CUSTOMER_URL } from './config'
 import { useI18n } from './i18n'
+import { CafeSettingsProvider } from './components/CafeSettingsContext'
 
 type View = 'login' | 'register' | 'dashboard'
 
@@ -117,12 +118,9 @@ export default function App() {
   // ── Dashboard ──────────────────────────────────
   if (view === 'dashboard' && auth) {
     return (
-      <Dashboard
-        auth={auth}
-        profile={profile}
-        loadingProfile={loadingProfile}
-        onLogout={handleLogout}
-      />
+      <CafeSettingsProvider token={auth.token}>
+        <Dashboard auth={auth} profile={profile} loadingProfile={loadingProfile} onLogout={handleLogout} />
+      </CafeSettingsProvider>
     )
   }
 

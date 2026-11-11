@@ -11,6 +11,7 @@ from app.schemas.menu import MenuSaveIn, MenuOut, MenuSectionOut, MenuItemOut
 from app.core.page_cache import invalidate_cafe
 from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings
+from app.core.currency import cafe_currency, round_money
 
 router = APIRouter(prefix="/menu", tags=["menu"])
 bearer_scheme = HTTPBearer()
@@ -95,6 +96,7 @@ def save_menu(
     current_cafe: Cafe = Depends(get_current_cafe),
     db: Session = Depends(get_db),
 ):
+    currency = cafe_currency(current_cafe.id, db)
     # Usuń stare sekcje (kaskadowo usunie też pozycje)
     db.query(MenuSection).filter(MenuSection.cafe_id == current_cafe.id).delete()
 
@@ -113,7 +115,7 @@ def save_menu(
                 section_id=section.id,
                 name=item_data.name,
                 description=item_data.description,
-                price=item_data.price,
+                price=round_money(item_data.price, currency),
                 position=item_data.position,
                 is_vege=item_data.is_vege,
                 is_hot=item_data.is_hot,

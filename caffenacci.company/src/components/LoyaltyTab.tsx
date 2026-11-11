@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { Gift, Receipt, Coins, Bookmark, X } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
+import { useCafeSettings } from './CafeSettingsContext'
+import { currencyExponent } from '../utils/currency'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -89,6 +91,8 @@ function Toggle({ checked, onChange, disabled = false }: {
 
 export default function LoyaltyTab({ token }: Props) {
   const { t, tApi } = useI18n()
+  const { currency } = useCafeSettings()
+  const step = currencyExponent(currency) === 0 ? 1 : 0.01
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
   const [saveMsg, setSaveMsg]   = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -452,8 +456,8 @@ export default function LoyaltyTab({ token }: Props) {
                     <>
                       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
                         <div className="field" style={{ flex: '1 1 160px' }}>
-                          <label className="me-label">{t('loyalty.till.amount')}</label>
-                          <input className="me-input" type="number" min={0.01} step={0.01} value={txAmount}
+                          <label className="me-label">{t('loyalty.till.amount', { currency })}</label>
+                          <input className="me-input" type="number" min={step} step={step} value={txAmount}
                             onChange={e => setTxAmount(e.target.value)} placeholder={t('loyalty.till.amountPlaceholder')} />
                         </div>
                         <button type="button" className="btn btn--primary" style={{ width: 'auto', marginTop: 0 }}
