@@ -106,6 +106,7 @@ class OrderListOut(BaseModel):
 
 class ClientOrderOut(OrderOut):
     cafe_name: str
+    time_zone: Optional[str] = None
 
 
 class ClientOrderListOut(BaseModel):

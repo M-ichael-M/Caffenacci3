@@ -4,6 +4,7 @@ import { API_URL } from '../../config'
 import { useI18n } from '../../i18n/I18nProvider'
 import { formatCurrency, formatDate, type LocaleFormat } from '../../i18n/localeFormat'
 import type { TFunction } from '../../i18n/system'
+import { wallToEpoch } from '../../utils/cafeTime'
 
 type OrderStatusType = 'pending' | 'completed' | 'cancelled'
 
@@ -22,6 +23,7 @@ interface ClientOrder {
   client_nick: string
   date: string
   start_time: string
+  time_zone?: string
   items: OrderItemOut[]
   total_value: number
   status: OrderStatusType
@@ -35,7 +37,7 @@ const CANCEL_DEADLINE_MS = 30 * 60 * 1000
 
 function canCancel(o: ClientOrder): boolean {
   if (o.status !== 'pending') return false
-  const start = new Date(`${o.date}T${o.start_time}:00`).getTime()
+  const start = wallToEpoch(o.date, o.start_time, o.time_zone ?? 'Europe/Warsaw')
   return Date.now() <= start - CANCEL_DEADLINE_MS
 }
 

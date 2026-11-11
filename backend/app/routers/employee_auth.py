@@ -9,6 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.cafe_time import cafe_tz_name
 from app.core.security import create_access_token, decode_access_token
 from app.core.emailer import send_employee_invite_email
 from app.models.cafe import Cafe
@@ -188,4 +189,5 @@ def employee_verify(
         loyalty_enabled=bool(loyalty_settings and loyalty_settings.enabled),
         orders_enabled=bool(order_settings and order_settings.enabled),
         reservations_enabled=bool(res_settings and res_settings.enabled),
+        time_zone=cafe_tz_name(cafe.id, db),
     )

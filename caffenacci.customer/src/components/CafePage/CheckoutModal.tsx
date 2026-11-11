@@ -3,6 +3,7 @@ import { CreditCardIcon } from './icons'
 import { API_URL } from '../../config'
 import { useI18n } from '../../i18n/I18nProvider'
 import { formatCurrency } from '../../i18n/localeFormat'
+import { addDays, todayInTz, nowInTz, fromMinutes, hoursOn, sessionsFor, offsetLabel, differsFromBrowser } from '../../utils/cafeTime'
 interface WeeklyHours { day_of_week: number; open_time: string | null; close_time: string | null }
 interface HourException { date: string; is_closed: boolean; open_time: string | null; close_time: string | null }
 
@@ -26,85 +27,52 @@ const ORDER_BUFFER_MINUTES = 15
 const ORDER_LEAD_MINUTES = 15
 const SLOT_STEP_MINUTES = 15
 
-function dayOfWeekFromDate(dateStr: string): number {
-  const d = new Date(dateStr + 'T00:00:00')
-  return (d.getDay() + 6) % 7
-}
-function toMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
-function fromMinutes(m: number): string {
-  return `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
-}
-function getEffectiveHours(dateStr: string, weeklyHours: WeeklyHours[], hourExceptions: HourException[]) {
-  const exception = hourExceptions.find(e => e.date === dateStr)
-  if (exception) {
-    return {
-      open: exception.is_closed ? null : exception.open_time,
-      close: exception.is_closed ? null : exception.close_time,
-      isException: true,
-    }
-  }
-  const plan = weeklyHours.find(h => h.day_of_week === dayOfWeekFromDate(dateStr))
-  return { open: plan?.open_time ?? null, close: plan?.close_time ?? null, isException: false }
-}
-function toLocalDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-function todayStr() { return toLocalDateStr(new Date()) }
-
 export default function CheckoutModal({
   cafeId, authToken, lines, weeklyHours, hourExceptions, previewMode = false, onClose, onSuccess,
 }: Props) {
   const { t, fmt } = useI18n()
-  const [date, setDate] = useState(todayStr())
+  const tz = fmt.timeZone
+  const [date, setDate] = useState(() => todayInTz(tz))
   const [time, setTime] = useState('12:00')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const totalPrice = lines.reduce((s, l) => s + l.qty * l.item.price, 0)
 
-  const effectiveHours = useMemo(
-    () => getEffectiveHours(date, weeklyHours, hourExceptions),
-    [date, weeklyHours, hourExceptions],
+  const hours = useMemo(() => hoursOn(weeklyHours, hourExceptions), [weeklyHours, hourExceptions])
+  const isException = hourExceptions.some(e => e.date === date)
+
+  const windows = useMemo(
+    () => sessionsFor(date, hours)
+      .map(([a, b]) => [a + ORDER_BUFFER_MINUTES, b - ORDER_BUFFER_MINUTES] as [number, number])
+      .filter(([a, b]) => b >= a),
+    [date, hours],
   )
+  const isOpenDay = windows.length > 0
 
-  const orderWindow = useMemo(() => {
-    if (!effectiveHours.open || !effectiveHours.close) return null
-    const openM = toMinutes(effectiveHours.open) + ORDER_BUFFER_MINUTES
-    const closeM = toMinutes(effectiveHours.close) - ORDER_BUFFER_MINUTES
-    if (closeM <= openM) return null
-    return { min: fromMinutes(openM), max: fromMinutes(closeM) }
-  }, [effectiveHours])
-
-  // Komponent montuje się przy każdym otwarciu okna, więc "teraz" jest zawsze świeże.
+  // Komponent montuje się przy każdym otwarciu okna, więc "teraz" jest świeże.
   const slots = useMemo(() => {
-    if (!orderWindow) return []
-    const openM = toMinutes(orderWindow.min)
-    const closeM = toMinutes(orderWindow.max)
-    let start = openM
-    if (date === todayStr()) {
-      const now = new Date()
-      start = Math.max(start, now.getHours() * 60 + now.getMinutes() + ORDER_LEAD_MINUTES)
+    const now = nowInTz(tz)
+    const earliest = date === now.date ? now.minutes + ORDER_LEAD_MINUTES : 0
+    const out = new Set<number>()
+    for (const [a, b] of windows) {
+      const start = Math.ceil(Math.max(a, earliest, 0) / SLOT_STEP_MINUTES) * SLOT_STEP_MINUTES
+      for (let m = start; m <= Math.min(b, 1439); m += SLOT_STEP_MINUTES) out.add(m)
     }
-    start = Math.ceil(start / SLOT_STEP_MINUTES) * SLOT_STEP_MINUTES
-    const result: string[] = []
-    for (let m = start; m <= closeM; m += SLOT_STEP_MINUTES) result.push(fromMinutes(m))
-    return result
-  }, [orderWindow, date])
+    return [...out].sort((x, y) => x - y).map(fromMinutes)
+  }, [windows, date, tz])
 
   useEffect(() => {
     if (!slots.includes(time)) setTime(slots[0] ?? '')
   }, [slots, time])
 
   const isTimeValid = slots.includes(time)
-  const minDate = todayStr()
-  const maxDate = (() => { const d = new Date(); d.setDate(d.getDate() + 3); return toLocalDateStr(d) })()
+  const minDate = todayInTz(tz)
+  const maxDate = addDays(minDate, 3)
 
   const handleSubmitOrder = async () => {
     if (lines.length === 0 || !authToken || previewMode) return
-    if (!orderWindow) { setError(t('checkout.closed_day')); return }
+    if (!isOpenDay) { setError(t('checkout.closed_day')); return }
     if (!isTimeValid) { setError(t('checkout.pick_time')); return }
     setSubmitting(true)
     setError(null)
@@ -170,7 +138,7 @@ export default function CheckoutModal({
             </div>
           </div>
 
-          {!orderWindow ? (
+          {!isOpenDay ? (
             <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>
               {t('checkout.closed_day')}
             </p>
@@ -180,7 +148,12 @@ export default function CheckoutModal({
             </p>
           ) : (
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              {t(effectiveHours.isException ? 'checkout.window_exception' : 'checkout.window', { from: slots[0], to: slots[slots.length - 1] })}
+              {t(isException ? 'checkout.window_exception' : 'checkout.window', { from: slots[0], to: slots[slots.length - 1] })}
+            </p>
+          )}
+          {differsFromBrowser(tz) && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+              {t('time.cafe_local', { offset: offsetLabel(tz) })}
             </p>
           )}
 
@@ -195,7 +168,7 @@ export default function CheckoutModal({
           <div className="me-footer-actions">
             <button type="button" className="btn btn--outline-dark" onClick={onClose}>{t('common.cancel')}</button>
             <button type="button" className="btn btn--primary" style={{ width: 'auto', minWidth: 160 }}
-              onClick={handleSubmitOrder} disabled={submitting || !orderWindow || !isTimeValid}>
+              onClick={handleSubmitOrder} disabled={submitting || !isOpenDay || !isTimeValid}>
               {submitting ? t('checkout.submitting') : t('checkout.submit')}
             </button>
           </div>

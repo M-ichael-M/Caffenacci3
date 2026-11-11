@@ -3,6 +3,7 @@ import { CalendarIcon } from './icons'
 import { API_URL } from '../../config'
 import { useI18n } from '../../i18n/I18nProvider'
 import { exceptionSentence } from '../../i18n/hours'
+import { todayInTz, nowInTz, fromMinutes, toMinutes, hoursOn, sessionsFor, offsetLabel, differsFromBrowser } from '../../utils/cafeTime'
 
 // ── Typy ─────────────────────────────────────────────────────────────────
 
@@ -65,27 +66,6 @@ interface TableGroup {
   tables: TableInfo[]
 }
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function toMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
-
-function fromMinutes(m: number): string {
-  const hh = String(Math.floor(m / 60) % 24).padStart(2, '0')
-  const mm = String(m % 60).padStart(2, '0')
-  return `${hh}:${mm}`
-}
-
-function dayOfWeekFromDate(dateStr: string): number {
-  // JS getDay(): 0=niedziela ... backend: 0=poniedziałek
-  const d = new Date(dateStr + 'T00:00:00')
-  return (d.getDay() + 6) % 7
-}
-
 // Grupuje surową listę stolików wg (typ, miejsca, etykieta) — kolejność
 // wewnątrz grupy jest stabilna (wg id), żeby przydział "pierwszego wolnego"
 // stolika był deterministyczny i powtarzalny.
@@ -138,12 +118,14 @@ function availableTableIdsInGroup(
 
 export default function AdvancedReservationForm({ cafeId, requireLogin, authToken, previewMode = false }: Props) {
   const { t, tr, fmt } = useI18n()
+  const tz = fmt.timeZone
+  const today = todayInTz(tz)
 
   const [open, setOpen] = useState(false)
   const [info, setInfo] = useState<ReservationInfo | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(false)
 
-  const [date, setDate] = useState(todayStr())
+  const [date, setDate] = useState(() => todayInTz(tz))
   const [groupKey, setGroupKey] = useState('')
   const [guests, setGuests] = useState(2)
   const [startTime, setStartTime] = useState<string | null>(null)
@@ -188,63 +170,46 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
   // Wyjątek godzinowy (ustawiony w profilu kawiarni) dla dokładnie wybranej
   // daty — jeśli istnieje, nadpisuje plan tygodniowy z ustawień rezerwacji,
   // tak samo jak dzieje się to na publicznej wizytówce kawiarni.
-  const dateException = useMemo(() => {
-    if (!info) return null
-    return info.hour_exceptions.find(e => e.date === date) ?? null
-  }, [info, date])
+  const dateException = useMemo(() => info?.hour_exceptions.find(e => e.date === date) ?? null, [info, date])
 
-  const dayHours = useMemo(() => {
-    if (!info) return null
-    if (dateException) {
-      return {
-        day_of_week: dayOfWeekFromDate(date),
-        open_time: dateException.is_closed ? null : dateException.open_time,
-        close_time: dateException.is_closed ? null : dateException.close_time,
-      }
-    }
-    const dow = dayOfWeekFromDate(date)
-    return info.hours.find(h => h.day_of_week === dow) ?? null
-  }, [info, date, dateException])
+  const sessions = useMemo(
+    () => (info ? sessionsFor(date, hoursOn(info.hours, info.hour_exceptions)) : []),
+    [info, date],
+  )
 
   // ── Sloty czasowe z dostępnością — łączona (dowolny wolny stolik z grupy) ─
 
   const slots = useMemo(() => {
-    if (!info || !dayHours || !dayHours.open_time || !dayHours.close_time || !selectedGroup) return []
-
-    const openM  = toMinutes(dayHours.open_time)
-    const closeM = toMinutes(dayHours.close_time)
+    if (!info || sessions.length === 0 || !selectedGroup) return []
     const duration = info.slot_duration_minutes
-
-    // Dla dzisiejszej daty ukrywamy godziny, które już minęły lub trwają —
-    // rezerwacja musi dotyczyć przyszłego momentu.
-    const isToday = date === todayStr()
-    const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes()
+    const now = nowInTz(tz)
+    const isToday = date === now.date
 
     const result: { time: string; available: boolean; reason?: string }[] = []
 
-    for (let m = openM; m < closeM; m += duration) {
-      if (isToday && m <= nowMinutes) continue
+    for (const [a, b] of sessions) {
+      for (let m = a; m < b; m += duration) {
+        if (m < 0 || m >= 1440) continue
+        if (isToday && m <= now.minutes) continue
 
-      const time = fromMinutes(m)
+        const time = fromMinutes(m)
 
-      if (guests > selectedGroup.seats) {
-        result.push({ time, available: false, reason: t('res.slot_too_small', { seats: selectedGroup.seats }) })
-        continue
+        if (guests > selectedGroup.seats) {
+          result.push({ time, available: false, reason: t('res.slot_too_small', { seats: selectedGroup.seats }) })
+          continue
+        }
+
+        const candidates = availableTableIdsInGroup(selectedGroup, info.occupied, duration, time, guests)
+        result.push({
+          time, available: candidates.length > 0,
+          reason: candidates.length ? undefined
+            : selectedGroup.table_type === 'communal' ? t('res.slot_communal_full') : t('res.slot_all_taken'),
+        })
       }
-
-      const candidates = availableTableIdsInGroup(selectedGroup, info.occupied, duration, time, guests)
-      const available = candidates.length > 0
-      const reason = available
-        ? undefined
-        : selectedGroup.table_type === 'communal'
-          ? t('res.slot_communal_full')
-          : t('res.slot_all_taken')
-
-      result.push({ time, available, reason })
     }
 
     return result
-  }, [info, dayHours, selectedGroup, guests, date, t])
+  }, [info, sessions, selectedGroup, guests, date, tz, t])
 
   useEffect(() => { setStartTime(null) }, [groupKey, date, guests])
 
@@ -333,7 +298,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
         <div className="field" style={{ flex: '1 1 150px' }}>
           <label className="me-label">{t('res.date')}</label>
-          <input type="date" className="me-input" value={date} min={todayStr()} onChange={e => setDate(e.target.value)} />
+          <input type="date" className="me-input" value={date} min={today} onChange={e => setDate(e.target.value)} />
         </div>
 
         <div className="field" style={{ flex: '1 1 220px' }}>
@@ -363,10 +328,10 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
         </div>
       </div>
 
-      {info && info.hour_exceptions.filter(e => e.date >= todayStr()).length > 0 && (
+      {info && info.hour_exceptions.filter(e => e.date >= today).length > 0 && (
         <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
           {info.hour_exceptions
-            .filter(e => e.date >= todayStr())
+            .filter(e => e.date >= today)
             .sort((a, b) => a.date.localeCompare(b.date))
             .slice(0, 5)
             .map(e => (
@@ -383,7 +348,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{t('res.checking')}</p>
         ) : !info || groups.length === 0 ? (
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{t('res.no_tables')}</p>
-        ) : !dayHours || !dayHours.open_time || !dayHours.close_time ? (
+        ) : sessions.length === 0 ? (
           <p style={{ fontSize: '0.8125rem', color: 'var(--error)', marginTop: '0.5rem' }}>
             {dateException?.is_closed
               ? t('res.closed_exceptional')
@@ -393,7 +358,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
           <>
             {dateException && !dateException.is_closed && (
               <p style={{ fontSize: '0.75rem', color: 'var(--gold)', fontWeight: 600, marginTop: '0.5rem', marginBottom: 0 }}>
-                {t('res.special_hours', { open: dayHours.open_time, close: dayHours.close_time })}
+                {t('res.special_hours', { open: dateException.open_time, close: dateException.close_time })}
               </p>
             )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -414,6 +379,11 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
                 </button>
               ))}
             </div>
+            {differsFromBrowser(tz) && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                {t('time.cafe_local', { offset: offsetLabel(tz) })}
+              </p>
+            )}
           </>
         )}
       </div>

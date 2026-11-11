@@ -3,6 +3,8 @@ import { Newspaper, X } from 'lucide-react'
 import { API_URL } from '../config'
 import { thumbUrl } from '../utils/imageUrl'
 import { useI18n } from '../i18n'
+import { useCafeSettings } from './CafeSettingsContext'
+import { parseUtc } from '../utils/cafeTime'
 
 interface NewsPostOut {
   id: string
@@ -60,7 +62,8 @@ function NewsCard({ post, onDelete, deleting }: {
   deleting: boolean
 }) {
   const { t, locale } = useI18n()
-  const date = new Date(post.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
+  const { timeZone } = useCafeSettings()
+  const date = parseUtc(post.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone })
   return (
     <div className="nw-card">
       {post.image_url ? (

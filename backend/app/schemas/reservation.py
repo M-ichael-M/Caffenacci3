@@ -184,6 +184,7 @@ class ReservationHourExceptionOut(BaseModel):
 
 class ReservationInfoOut(BaseModel):
     cafe_id:               str
+    time_zone:             str = "Europe/Warsaw"
     enabled:               bool
     mode:                  str
     slot_duration_minutes: int
@@ -198,6 +199,7 @@ class ReservationInfoOut(BaseModel):
 class ClientReservationOut(ReservationOut):
     cafe_name: str
     is_advanced: bool  # True = zaawansowana (miała wybrany stolik, zawsze confirmed)
+    time_zone: Optional[str] = None
 
 
 class ClientReservationListOut(BaseModel):

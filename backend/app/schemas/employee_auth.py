@@ -26,6 +26,7 @@ class EmployeeVerifyOut(BaseModel):
     loyalty_enabled: bool
     orders_enabled: bool
     reservations_enabled: bool
+    time_zone: str = "Europe/Warsaw"
 
 
 class InviteSentOut(BaseModel):

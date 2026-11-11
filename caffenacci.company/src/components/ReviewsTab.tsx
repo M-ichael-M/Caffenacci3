@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { MessageCircle, RefreshCw } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
+import { useCafeSettings } from './CafeSettingsContext'
+import { parseUtc } from '../utils/cafeTime'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -40,7 +42,8 @@ function Stars({ rating, size = '1rem' }: { rating: number; size?: string }) {
 
 function ReviewCard({ r }: { r: ReviewOut }) {
   const { locale } = useI18n()
-  const date = new Date(r.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
+  const { timeZone } = useCafeSettings()
+  const date = parseUtc(r.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone })
   return (
     <div className="rv-card">
       <div className="rv-card__header">

@@ -3,9 +3,7 @@ from __future__ import annotations
 import math
 import re
 from datetime import date, datetime
-from functools import lru_cache
 from typing import Literal
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -13,9 +11,9 @@ from sqlalchemy import func, literal, or_, select, union
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
+from app.core.cafe_time import zone, cafe_now
 from app.core.security import decode_access_token
 from app.core.images import logo_url
-from app.core.languages import DEFAULT_TIME_ZONE
 from app.models.cafe import Cafe
 from app.models.client import Client
 from app.models.cafe_profile import CafeProfile, CafeProfileBadge
@@ -89,18 +87,6 @@ def list_all_cafes(db: Session = Depends(get_db)):
 
 
 # ── Czas / godziny ──────────────────────────────────────────────────────────
-
-@lru_cache(maxsize=64)
-def _zone(name: str) -> ZoneInfo:
-    try:
-        return ZoneInfo(name)
-    except Exception:
-        return ZoneInfo(DEFAULT_TIME_ZONE)
-
-
-def _cafe_now(tz_name: str | None) -> datetime:
-    return datetime.now(_zone(tz_name or DEFAULT_TIME_ZONE))
-
 
 def _hm(t: str) -> int:
     h, m = t.split(":")
@@ -236,7 +222,7 @@ def map_cafes(
                   .filter(CafeLanguageSettings.cafe_id.in_([c.id for c, _ in rows])).all())
     points: list[CafeMapPointOut] = []
     for cafe, profile in rows:
-        now = _cafe_now(tz_map.get(cafe.id))
+        now = cafe_now(zone(tz_map.get(cafe.id)))
         today = _today_hours(profile, now)
         points.append(CafeMapPointOut(
             cafe_id=cafe.id, slug=cafe.slug or cafe.id, cafe_name=cafe.cafe_name,
@@ -416,7 +402,7 @@ def search_cafes(
         if near and (dist is None or dist > radius_km):
             continue
 
-        now = _cafe_now(tz_map.get(cafe.id))
+        now = cafe_now(zone(tz_map.get(cafe.id)))
         today = _today_hours(profile, now)
         is_open = _is_open_now(today, now)
         if open_now and is_open is not True:

@@ -16,6 +16,7 @@ from app.core.images import (
 )
 
 from app.core.database import get_db
+from app.core.cafe_time import cafe_tz, cafe_today
 from app.core.security import decode_access_token
 from app.core.slugs import apply_slug_change
 from app.core.page_cache import invalidate_cafe
@@ -523,7 +524,8 @@ def set_hour_exception(
 
     y, mo, d = date.split("-")
     target_date = date_cls(int(y), int(mo), int(d))
-    today = date_cls.today()
+    tz = cafe_tz(current_cafe.id, db)
+    today = cafe_today(tz)
     if target_date < today:
         raise HTTPException(400, detail="Nie można ustawić wyjątku dla daty w przeszłości.")
     if target_date > today + timedelta(days=MAX_EXCEPTION_DAYS_AHEAD):

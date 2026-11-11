@@ -26,6 +26,7 @@ import { exceptionSentence } from '../../i18n/hours'
 import { weekdayName } from '../../i18n/localeFormat'
 import LanguageSwitcher from './LanguageSwitcher'
 import type { TFunction } from '../../i18n/system'
+import { nowInTz, todayInTz, addDays, dowOf, fromMinutes, hoursOn, sessionsFor, offsetLabel, differsFromBrowser } from '../../utils/cafeTime'
 
 const LoyaltyWidget = lazy(() => import('./LoyaltyWidget'))
 const AuthModal     = lazy(() => import('./AuthModal'))
@@ -125,57 +126,14 @@ interface Props {
   previewToken?: string
 }
 
-// Buduje string YYYY-MM-DD z lokalnej daty, bez przechodzenia przez UTC.
-// new Date().toISOString() zawsze konwertuje do UTC — w Polsce (UTC+1/+2)
-// lokalna północ danego dnia to jeszcze poprzedni dzień w UTC, więc
-// .toISOString().slice(0,10) potrafiło cofnąć datę o jeden dzień i psuć
-// wyliczanie "dzisiaj", zakresu tygodnia i dopasowania wyjątków godzinowych.
-function toLocalDateStr(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function computeTodayStatus(data: PublicSiteData, t: TFunction) {
-  const now = new Date()
-  const todayStr = toLocalDateStr(now)
-  const pyDow = (now.getDay() + 6) % 7
-  const exception = data.hour_exceptions.find(e => e.date === todayStr)
-  const dayPlan = data.weekly_hours.find(h => h.day_of_week === pyDow)
-  const openTime = exception ? (exception.is_closed ? null : exception.open_time) : (dayPlan?.open_time ?? null)
-  const closeTime = exception ? (exception.is_closed ? null : exception.close_time) : (dayPlan?.close_time ?? null)
-
-  if (!openTime || !closeTime) return { open: false, label: t('status.closed_today') }
-
-  const nowMin = now.getHours() * 60 + now.getMinutes()
-  const [oh, om] = openTime.split(':').map(Number)
-  const [ch, cm] = closeTime.split(':').map(Number)
-  const isOpen = nowMin >= oh * 60 + om && nowMin < ch * 60 + cm
-
-  return {
-    open: isOpen,
-    label: isOpen
-      ? t('status.open_until', { time: closeTime })
-      : t('status.closed_hours', { open: openTime, close: closeTime }),
-  }
-}
-
-// ── Pomocnicze funkcje do godzin z wyjątkami ─────────────────────────────
-function getCurrentWeekRange(): { start: string; end: string } {
-  const now = new Date()
-  const dow = (now.getDay() + 6) % 7
-  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow)
-  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6)
-
-  return { start: toLocalDateStr(monday), end: toLocalDateStr(sunday) }
-}
-
-function dateForDayOfWeek(mondayStr: string, dayOfWeek: number): string {
-  const [y, m, d] = mondayStr.split('-').map(Number)
-  const monday = new Date(y, m - 1, d)
-  const target = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOfWeek)
-  return toLocalDateStr(target)
+function computeTodayStatus(data: PublicSiteData, t: TFunction, tz: string) {
+  const { date, minutes } = nowInTz(tz)
+  const hours = hoursOn(data.weekly_hours, data.hour_exceptions)
+  const active = sessionsFor(date, hours).find(([a, b]) => a <= minutes && minutes < b)
+  if (active) return { open: true, label: t('status.open_until', { time: fromMinutes(active[1]) }) }
+  const today = hours(date)
+  if (!today.open || !today.close) return { open: false, label: t('status.closed_today') }
+  return { open: false, label: t('status.closed_hours', { open: today.open, close: today.close }) }
 }
 
 // ── Pływający przycisk powrotu ─────────────────────────────────────
@@ -421,16 +379,18 @@ function CafeContent({
   const paletteVars = (data.palette === 'custom' && data.custom_palette)
     ? (data.custom_palette as CSSProperties)
     : getPaletteVars(data.palette)
-  const status = computeTodayStatus(data, t)
-  const todayIsoStr = toLocalDateStr(new Date())
+  const tz = fmt.timeZone
+  const status = computeTodayStatus(data, t, tz)
+  const todayIsoStr = todayInTz(tz)
 
   // ── Godziny otwarcia z wyjątkami ────────────────────────────────
-  const { start: weekStart, end: weekEnd } = getCurrentWeekRange()
+  const weekStart = addDays(todayIsoStr, -dowOf(todayIsoStr))
+  const weekEnd = addDays(weekStart, 6)
   const weekHourRows = data.weekly_hours
     .slice()
     .sort((a, b) => a.day_of_week - b.day_of_week)
     .map(h => {
-      const date = dateForDayOfWeek(weekStart, h.day_of_week)
+      const date = addDays(weekStart, h.day_of_week)
       const exception = data.hour_exceptions.find(e => e.date === date) ?? null
       const open_time = exception ? (exception.is_closed ? null : exception.open_time) : h.open_time
       const close_time = exception ? (exception.is_closed ? null : exception.close_time) : h.close_time
@@ -530,6 +490,7 @@ function CafeContent({
           <h1 className="cp-hero__name">{data.cafe_name}</h1>
           <p className="cp-hero__address">{data.street} {data.building_number}, {data.postal_code} {data.city}</p>
           <span className={`cp-hero__status cp-hero__status--${status.open ? 'open' : 'closed'}`}>{status.label}</span>
+          {differsFromBrowser(tz) && <span className="cp-hero__tz">{t('time.cafe_local', { offset: offsetLabel(tz) })}</span>}
         </div>
       </header>
 

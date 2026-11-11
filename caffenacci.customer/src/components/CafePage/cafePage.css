@@ -126,6 +126,7 @@
 }
 .cp-hero__status--open   { background: rgba(46,125,50,0.18); color: #8FE39A; }
 .cp-hero__status--closed { background: rgba(184,50,50,0.18); color: #F0A0A0; }
+.cp-hero__tz{display:block;margin-top:.5rem;font-size:.75rem;opacity:.65;position:relative;z-index:2}
 
 /* ── Main layout ───────────────────────────────── */
 

@@ -8,6 +8,7 @@
   "preview.unavailable": "Niedostępne w trybie podglądu.",
   "page.not_found": "Nie znaleziono takiej kawiarni.",
   "page.back_home_title": "Wróć do strony głównej Caffenacci",
+  "time.cafe_local": "czas lokalny kawiarni ({offset})",
   "status.closed_today": "Dziś zamknięte", "status.open_until": "Otwarte do {time}", "status.closed_hours": "Zamknięte · dziś {open}–{close}",
   "section.news": "Aktualności", "section.menu": "Menu", "section.reservation": "Rezerwacja stolika",
   "section.loyalty": "Program lojalności", "section.gallery": "Galeria", "section.amenities": "Udogodnienia",

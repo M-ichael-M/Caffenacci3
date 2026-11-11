@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { ShoppingCart, ClipboardList, Check, X, RefreshCw } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
+import { useCafeSettings } from './CafeSettingsContext'
+import { parseUtc } from '../utils/cafeTime'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -46,10 +48,9 @@ function formatDate(ds: string, locale: string) {
   return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-function formatCreatedAt(s: string | null, locale: string) {
+function formatCreatedAt(s: string | null, locale: string, tz: string) {
   if (!s) return ''
-  const d = new Date(s)
-  return d.toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return parseUtc(s).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: tz })
 }
 
 // Ceny w menu są w PLN (waluta kawiarni); format zależy od języka panelu.
@@ -112,6 +113,7 @@ function PendingOrderCard({ o, onDecide, saving }: {
   saving: boolean
 }) {
   const { t, locale } = useI18n()
+  const { timeZone } = useCafeSettings()
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border-soft)',
@@ -158,7 +160,7 @@ function PendingOrderCard({ o, onDecide, saving }: {
           <OrderItemsList items={o.items} />
 
           <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-            {t('orders.placedAt', { time: formatCreatedAt(o.created_at, locale) })}
+            {t('orders.placedAt', { time: formatCreatedAt(o.created_at, locale, timeZone) })}
           </div>
         </div>
       </div>

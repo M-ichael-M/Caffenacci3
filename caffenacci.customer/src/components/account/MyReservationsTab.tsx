@@ -4,6 +4,7 @@ import { API_URL } from '../../config'
 import { useI18n } from '../../i18n/I18nProvider'
 import { formatDate, type LocaleFormat } from '../../i18n/localeFormat'
 import type { TFunction } from '../../i18n/system'
+import { wallToEpoch } from '../../utils/cafeTime'
 
 type ResStatus = 'pending' | 'confirmed' | 'cancelled'
 
@@ -15,6 +16,7 @@ interface ClientReservation {
   is_advanced: boolean
   date: string
   start_time: string
+  time_zone?: string
   guests: number
   guest_name: string
   guest_phone: string | null
@@ -38,10 +40,7 @@ function dayLabel(ds: string, fmt: LocaleFormat) {
 }
 
 function startTimestamp(r: ClientReservation): number {
-  const [h, m] = r.start_time.split(':').map(Number)
-  const d = new Date(r.date + 'T00:00:00')
-  d.setHours(h, m, 0, 0)
-  return d.getTime()
+  return wallToEpoch(r.date, r.start_time, r.time_zone ?? 'Europe/Warsaw')
 }
 
 // Rezerwacja "przenosi się" do historii godzinę po planowanym terminie.

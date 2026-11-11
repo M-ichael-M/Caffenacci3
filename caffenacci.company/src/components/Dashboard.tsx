@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
+import { CafeSettingsProvider } from './CafeSettingsContext'
 
 interface AuthState {
   token: string
@@ -145,6 +146,7 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
   }
 
   return (
+    <CafeSettingsProvider token={auth.token}>
     <>
       {showMenuEditor && (
         <MenuEditor token={auth.token} onClose={handleMenuEditorClose} />
@@ -513,5 +515,6 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
         </div>
       </div>
     </>
+    </CafeSettingsProvider>
   )
 }

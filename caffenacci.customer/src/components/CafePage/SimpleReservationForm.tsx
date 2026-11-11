@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CalendarIcon } from './icons'
 import { API_URL } from '../../config'
 import { useI18n } from '../../i18n/I18nProvider'
+import { todayInTz } from '../../utils/cafeTime'
 
 interface Props {
   cafeId: string
@@ -10,14 +11,10 @@ interface Props {
   previewMode?: boolean
 }
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
-}
-
 export default function SimpleReservationForm({ cafeId, requireLogin, authToken, previewMode = false }: Props) {
-  const { t } = useI18n()
+  const { t, fmt } = useI18n()
   const [open, setOpen] = useState(false)
-  const [date, setDate] = useState(todayStr())
+  const [date, setDate] = useState(() => todayInTz(fmt.timeZone))
   const [time, setTime] = useState('12:00')
   const [guests, setGuests] = useState(2)
   const [phone, setPhone] = useState('')
@@ -74,7 +71,7 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken,
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <div className="field" style={{ flex: '1 1 140px' }}>
               <label className="me-label">{t('res.date')}</label>
-              <input type="date" className="me-input" value={date} min={todayStr()} onChange={e => setDate(e.target.value)} />
+              <input type="date" className="me-input" value={date} min={todayInTz(fmt.timeZone)} onChange={e => setDate(e.target.value)} />
             </div>
             <div className="field" style={{ flex: '1 1 100px' }}>
               <label className="me-label">{t('res.time')}</label>

@@ -5,6 +5,8 @@ import {
 } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
+import { useCafeSettings } from './CafeSettingsContext'
+import { addDays, todayInTz } from '../utils/cafeTime'
 
 type TFn = ReturnType<typeof useI18n>['t']
 
@@ -115,9 +117,7 @@ function tableTypeBadge(t: TFn, type: string) {
   )
 }
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
-}
+
 
 // ═════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -125,6 +125,7 @@ function todayStr() {
 
 export default function ReservationTab({ token, cafeId }: Props) {
   const { t, tApi, locale } = useI18n()
+  const { timeZone } = useCafeSettings()
   const dayNames = useMemo(() => weekdayNames(locale), [locale])
 
   const [settings, setSettings]       = useState<ReservationSettings | null>(null)
@@ -139,7 +140,8 @@ export default function ReservationTab({ token, cafeId }: Props) {
   const [hours, setHours]             = useState<DayHours[]>(defaultHours())
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const [viewDate, setViewDate]       = useState(todayStr())
+  const [pickedDate, setViewDate] = useState<string | null>(null)
+  const viewDate = pickedDate ?? todayInTz(timeZone)
   const [reservations, setReservations] = useState<ReservationOut[]>([])
   const [loadingRes, setLoadingRes]   = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -581,14 +583,8 @@ function AdvancedView({
   const confirmed  = reservations.filter(r => r.status === 'confirmed')
   const cancelled  = reservations.filter(r => r.status === 'cancelled')
 
-  const prevDay = () => {
-    const d = new Date(viewDate); d.setDate(d.getDate() - 1)
-    setViewDate(d.toISOString().slice(0, 10))
-  }
-  const nextDay = () => {
-    const d = new Date(viewDate); d.setDate(d.getDate() + 1)
-    setViewDate(d.toISOString().slice(0, 10))
-  }
+  const prevDay = () => setViewDate(addDays(viewDate, -1))
+  const nextDay = () => setViewDate(addDays(viewDate, 1))
 
   const formatDate = (ds: string) => {
     const d = new Date(ds + 'T00:00:00')

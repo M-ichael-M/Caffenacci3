@@ -10,6 +10,11 @@ from app.core.database import get_db
 from app.core.page_cache import invalidate_cafe
 from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings
+from app.core.cafe_time import cafe_tz, cafe_tz_name, cafe_tz_names, cafe_now, cafe_datetime
+from app.core.opening_hours import (
+    to_minutes as _to_minutes, from_minutes as _from_minutes, day_of_week as _day_of_week,
+    get_hour_exception, sessions_for,
+)
 from app.core.security import decode_access_token
 from app.core.employee_access import get_current_cafe_id
 from app.models.cafe import Cafe
@@ -116,58 +121,24 @@ def _reservation_to_out(r: Reservation) -> ReservationOut:
     )
 
 
-# ── Time helpers ───────────────────────────────────────────────────────────
-
-def _to_minutes(t: str) -> int:
-    h, m = t.split(":")
-    return int(h) * 60 + int(m)
-
-
-def _from_minutes(m: int) -> str:
-    hh = str((m // 60) % 24).zfill(2)
-    mm = str(m % 60).zfill(2)
-    return f"{hh}:{mm}"
-
-
-def _day_of_week(date_str: str) -> int:
-    y, mo, d = date_str.split("-")
-    return date_cls(int(y), int(mo), int(d)).weekday()
-
-
-def _validate_not_in_past(date_str: str, start_time: str) -> None:
-    """Blokuje rezerwację w przeszłości oraz na dzisiejszą datę, jeśli podana
-    godzina rozpoczęcia już nadeszła lub minęła — rezerwacja musi dotyczyć
-    momentu w przyszłości."""
-    y, mo, d = date_str.split("-")
-    target_date = date_cls(int(y), int(mo), int(d))
-    now = datetime.now()
-
-    if target_date < now.date():
+def _validate_not_in_past(date_str: str, start_time: str, tz) -> None:
+    now = cafe_now(tz)
+    y, mo, d = map(int, date_str.split("-"))
+    if date_cls(y, mo, d) < now.date():
         raise HTTPException(400, detail="Nie można rezerwować w przeszłości.")
-
-    if target_date == now.date():
-        start_minutes = _to_minutes(start_time)
-        now_minutes = now.hour * 60 + now.minute
-        if start_minutes <= now_minutes:
-            raise HTTPException(
-                400,
-                detail="Nie można rezerwować na bieżącą ani wcześniejszą godzinę — wybierz późniejszy termin.",
-            )
+    if cafe_datetime(date_str, start_time, tz) <= now:
+        raise HTTPException(
+            400, detail="Nie można rezerwować na bieżącą ani wcześniejszą godzinę — wybierz późniejszy termin.")
 
 
 CLIENT_CANCEL_DEADLINE_MINUTES = 30
 
 
-def _ensure_client_can_cancel(date_str: str, start_time: str) -> None:
-    """Klient może anulować najpóźniej 30 minut przed terminem rezerwacji."""
-    y, mo, d = date_str.split("-")
-    h, m = start_time.split(":")
-    start_dt = datetime(int(y), int(mo), int(d), int(h), int(m))
-    if datetime.now() > start_dt - timedelta(minutes=CLIENT_CANCEL_DEADLINE_MINUTES):
+def _ensure_client_can_cancel(date_str: str, start_time: str, tz) -> None:
+    start_dt = cafe_datetime(date_str, start_time, tz)
+    if cafe_now(tz) > start_dt - timedelta(minutes=CLIENT_CANCEL_DEADLINE_MINUTES):
         raise HTTPException(
-            400,
-            detail=f"Rezerwację można anulować najpóźniej {CLIENT_CANCEL_DEADLINE_MINUTES} minut przed jej terminem.",
-        )
+            400, detail=f"Rezerwację można anulować najpóźniej {CLIENT_CANCEL_DEADLINE_MINUTES} minut przed jej terminem.")
 
 
 def _validate_slot(
@@ -179,51 +150,45 @@ def _validate_slot(
     db: Session,
     exclude_id: str | None = None,
 ) -> None:
-    """Raises HTTPException if the reservation cannot be placed."""
-    dow = _day_of_week(date)
-    day_hours = next((h for h in settings.hours if h.day_of_week == dow), None)
-    if not day_hours or not day_hours.open_time or not day_hours.close_time:
+    """Godziny: wyjątek z profilu kawiarni ma pierwszeństwo przed planem rezerwacji."""
+    def hours(ds: str):
+        exc = get_hour_exception(settings.cafe_id, ds, db)
+        if exc is not None:
+            return exc
+        dh = next((h for h in settings.hours if h.day_of_week == _day_of_week(ds)), None)
+        return (dh.open_time, dh.close_time) if dh else (None, None)
+
+    sessions = sessions_for(date, hours)
+    if not sessions:
         raise HTTPException(400, detail="W tym dniu kawiarnia jest zamknięta.")
 
     slot_start = _to_minutes(start_time)
-    open_m     = _to_minutes(day_hours.open_time)
-    close_m    = _to_minutes(day_hours.close_time)
-
-    if slot_start < open_m or slot_start >= close_m:
-        raise HTTPException(
-            400,
-            detail=f"Godzina poza zakresem pracy ({day_hours.open_time}–{day_hours.close_time}).",
-        )
+    if not any(a <= slot_start < b for a, b in sessions):
+        text = ", ".join(f"{_from_minutes(max(a, 0))}–{_from_minutes(b)}" for a, b in sessions)
+        raise HTTPException(400, detail=f"Godzina poza zakresem pracy ({text}).")
 
     slot_end = slot_start + settings.slot_duration_minutes
 
-    existing_q = (
-        db.query(Reservation)
-        .filter(
-            Reservation.table_id == table.id,
-            Reservation.date     == date,
-            Reservation.status   == ReservationStatus.confirmed,
-        )
+    d0 = date_cls.fromisoformat(date)
+    offsets = {(d0 - timedelta(days=1)).isoformat(): -1440, date: 0, (d0 + timedelta(days=1)).isoformat(): 1440}
+    q = db.query(Reservation).filter(
+        Reservation.table_id == table.id,
+        Reservation.date.in_(list(offsets)),
+        Reservation.status == ReservationStatus.confirmed,
     )
     if exclude_id:
-        existing_q = existing_q.filter(Reservation.id != exclude_id)
-    existing = existing_q.all()
+        q = q.filter(Reservation.id != exclude_id)
+    overlapping = [
+        r for r in q.all()
+        if slot_start < (s := _to_minutes(r.start_time) + offsets[r.date]) + settings.slot_duration_minutes
+        and slot_end > s
+    ]
 
     if table.table_type == TableType.communal:
-        total_guests = guests
-        for r in existing:
-            r_start = _to_minutes(r.start_time)
-            r_end   = r_start + settings.slot_duration_minutes
-            if slot_start < r_end and slot_end > r_start:
-                total_guests += r.guests
-        if total_guests > table.seats:
+        if guests + sum(r.guests for r in overlapping) > table.seats:
             raise HTTPException(400, detail=f"Za mało wolnych miejsc przy stole ({table.seats} total).")
-    else:
-        for r in existing:
-            r_start = _to_minutes(r.start_time)
-            r_end   = r_start + settings.slot_duration_minutes
-            if slot_start < r_end and slot_end > r_start:
-                raise HTTPException(400, detail="Stolik jest już zajęty w tym terminie.")
+    elif overlapping:
+        raise HTTPException(400, detail="Stolik jest już zajęty w tym terminie.")
 
     if guests > table.seats:
         raise HTTPException(400, detail=f"Stolik ma tylko {table.seats} miejsc.")
@@ -341,6 +306,7 @@ def get_reservation_info(
             cafe_id=cafe_id, enabled=False, mode="simple",
             slot_duration_minutes=60, tables=[], hours=[], occupied=[],
             hour_exceptions=hour_exceptions,
+            time_zone=cafe_tz_name(cafe_id, db),
         )
 
     occupied: list[OccupiedSlotOut] = []
@@ -374,6 +340,7 @@ def get_reservation_info(
         hours=s.hours,
         occupied=occupied,
         hour_exceptions=hour_exceptions,
+        time_zone=cafe_tz_name(cafe_id, db),
     )
 
 
@@ -410,7 +377,7 @@ def create_public_reservation(
             detail="Ta kawiarnia korzysta z zaawansowanego systemu rezerwacji — wymagany jest wybór stolika przez zalogowanego klienta.",
         )
 
-    _validate_not_in_past(payload.date, payload.start_time)
+    _validate_not_in_past(payload.date, payload.start_time, cafe_tz(cafe_id, db))
 
     r = Reservation(
         table_id         = None,        # brak przydziału stolika w trybie simple
@@ -463,7 +430,7 @@ def create_reservation_as_client(
             detail="Ta kawiarnia korzysta z zaawansowanego systemu rezerwacji. Użyj POST /reservations/client/{cafe_id}/advanced.",
         )
 
-    _validate_not_in_past(payload.date, payload.start_time)
+    _validate_not_in_past(payload.date, payload.start_time, cafe_tz(cafe_id, db))
 
     r = Reservation(
         table_id         = None,
@@ -526,7 +493,7 @@ def create_advanced_reservation_as_client(
     if not table:
         raise HTTPException(404, detail="Wybrany stolik nie istnieje.")
 
-    _validate_not_in_past(payload.date, payload.start_time)
+    _validate_not_in_past(payload.date, payload.start_time, cafe_tz(cafe_id, db))
 
     _validate_slot(table, s, payload.date, payload.start_time, payload.guests, db)
 
@@ -576,7 +543,7 @@ def cancel_reservation_as_client(
     if r.status == ReservationStatus.cancelled:
         raise HTTPException(400, detail="Ta rezerwacja jest już anulowana.")
 
-    _ensure_client_can_cancel(r.date, r.start_time)
+    _ensure_client_can_cancel(r.date, r.start_time, cafe_tz(r.cafe_id, db))
 
     r.status       = ReservationStatus.cancelled
     r.cancelled_by = "client"
@@ -609,6 +576,7 @@ def list_my_reservations(
 
     cafe_ids = {r.cafe_id for r in rows}
     cafes = {c.id: c for c in db.query(Cafe).filter(Cafe.id.in_(cafe_ids)).all()} if cafe_ids else {}
+    tzs = cafe_tz_names(cafe_ids, db)
 
     result: list[ClientReservationOut] = []
     for r in rows:
@@ -618,6 +586,7 @@ def list_my_reservations(
             **base.model_dump(),
             cafe_name=cafe.cafe_name if cafe else "Nieznana kawiarnia",
             is_advanced=r.table_id is not None,
+            time_zone=tzs.get(r.cafe_id),
         ))
 
     return ClientReservationListOut(reservations=result)

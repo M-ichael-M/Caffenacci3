@@ -6,6 +6,8 @@ import InfoTooltip from './InfoTooltip'
 import { API_URL } from '../config'
 import { thumbUrl } from '../utils/imageUrl'
 import { useI18n } from '../i18n'
+import { useCafeSettings } from './CafeSettingsContext'
+import { addDays, todayInTz } from '../utils/cafeTime'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -125,9 +127,7 @@ function defaultWeeklyHours(): WeeklyHours[] {
   }))
 }
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
-}
+
 
 // ═════════════════════════════════════════════════════════════════════════════
 // SMALL UI HELPERS
@@ -257,6 +257,9 @@ function BadgeChip({
 
 export default function ProfileTab({ token }: Props) {
   const { t, tApi, locale } = useI18n()
+  const { timeZone } = useCafeSettings()
+  const minExceptionDate = todayInTz(timeZone)
+  const maxExceptionDate = addDays(minExceptionDate, MAX_EXCEPTION_DAYS_AHEAD)
   const dayNames = useMemo(() => weekdayNames(locale), [locale])
   const [profile, setProfile]   = useState<CafeProfileData | null>(null)
   const [loading, setLoading]   = useState(true)
@@ -491,12 +494,6 @@ export default function ProfileTab({ token }: Props) {
     setWeeklyHours(prev => prev.map(h => h.day_of_week === day ? { ...h, [field]: val } : h))
 
   // ── Exceptions mutations ─────────────────────────────────────────────────
-
-  const maxExceptionDate = (() => {
-    const d = new Date()
-    d.setDate(d.getDate() + MAX_EXCEPTION_DAYS_AHEAD)
-    return d.toISOString().slice(0, 10)
-  })()
 
   const saveException = async (exc: HourException) => {
     setExceptionsLoading(true)
@@ -1003,7 +1000,7 @@ export default function ProfileTab({ token }: Props) {
             <ExceptionEditor
               exceptions={exceptions}
               maxDate={maxExceptionDate}
-              minDate={todayStr()}
+              minDate={minExceptionDate}
               loading={exceptionsLoading}
               onSave={saveException}
               onDelete={deleteException}
@@ -1327,6 +1324,7 @@ function ExceptionEditor({ exceptions, maxDate, minDate, loading, onSave, onDele
   const [isClosed, setIsClosed]   = useState(false)
   const [openTime, setOpenTime]   = useState('09:00')
   const [closeTime, setCloseTime] = useState('21:00')
+  useEffect(() => { setDate(d => (d < minDate ? minDate : d)) }, [minDate])
 
   const handleAdd = () => {
     onSave({

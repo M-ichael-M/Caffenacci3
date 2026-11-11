@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { API_URL, CUSTOMER_URL } from '../config'
 import { useI18n } from '../i18n'
+import { parseUtc } from '../utils/cafeTime'
 
 interface Props {
   token: string
@@ -37,7 +38,7 @@ interface PublishStatusOut {
 
 function formatDate(s: string | null, locale: string) {
   if (!s) return '—'
-  return new Date(s).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
+  return parseUtc(s).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function SubBadge({ status }: { status: SubStatus }) {

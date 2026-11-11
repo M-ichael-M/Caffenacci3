@@ -8,6 +8,7 @@
   "preview.unavailable": "Not available in preview mode.",
   "page.not_found": "This café could not be found.",
   "page.back_home_title": "Back to the Caffenacci home page",
+  "time.cafe_local": "café local time ({offset})",
   "status.closed_today": "Closed today", "status.open_until": "Open until {time}", "status.closed_hours": "Closed · today {open}–{close}",
   "section.news": "News", "section.menu": "Menu", "section.reservation": "Table reservation",
   "section.loyalty": "Loyalty program", "section.gallery": "Gallery", "section.amenities": "Amenities",

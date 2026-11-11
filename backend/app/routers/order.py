@@ -7,6 +7,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
+from app.core.cafe_time import cafe_tz, cafe_now, cafe_today, cafe_datetime, cafe_tz_names
+from app.core.opening_hours import to_minutes, from_minutes, effective_hours_fn, sessions_for
 from app.core.page_cache import invalidate_cafe
 from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings
@@ -24,7 +26,6 @@ from app.schemas.order import (
     MAX_ORDER_DAYS_AHEAD,
     ClientOrderOut, ClientOrderListOut,   # ← nowe
 )
-from app.models.cafe_profile import CafeProfile
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 bearer_scheme = HTTPBearer()
@@ -59,10 +60,10 @@ def _get_or_create_settings(cafe_id: str, db: Session) -> OrderSettings:
     return s
 
 
-def _validate_order_date(date_str: str) -> None:
+def _validate_order_date(date_str: str, tz) -> None:
     y, mo, d = date_str.split("-")
     target = date_cls(int(y), int(mo), int(d))
-    today = date_cls.today()
+    today = cafe_today(tz)
     if target < today:
         raise HTTPException(400, detail="Nie można zamawiać na przeszłą datę.")
     if target > today + timedelta(days=MAX_ORDER_DAYS_AHEAD):
@@ -83,80 +84,31 @@ ORDER_TIME_BUFFER_MINUTES = 15
 ORDER_LEAD_MINUTES = 15  # minimalny odstęp od "teraz" dla zamówień na dzisiaj
 
 
-def _to_minutes(t: str) -> int:
-    h, m = t.split(":")
-    return int(h) * 60 + int(m)
-
-
-def _from_minutes(m: int) -> str:
-    hh = str((m // 60) % 24).zfill(2)
-    mm = str(m % 60).zfill(2)
-    return f"{hh}:{mm}"
-
-
-def _day_of_week(date_str: str) -> int:
-    y, mo, d = date_str.split("-")
-    return date_cls(int(y), int(mo), int(d)).weekday()
-
-
-def _get_effective_hours(cafe_id: str, date_str: str, db: Session) -> tuple[str | None, str | None]:
-    """Zwraca (open_time, close_time) obowiązujące w danym dniu. Wyjątek
-    z profilu kawiarni ma pierwszeństwo przed planem tygodniowym.
-    (None, None) oznacza, że kawiarnia jest tego dnia zamknięta."""
-    profile = (
-        db.query(CafeProfile)
-        .options(
-            selectinload(CafeProfile.weekly_hours),
-            selectinload(CafeProfile.hour_exceptions),
-        )
-        .filter(CafeProfile.cafe_id == cafe_id)
-        .first()
-    )
-    if not profile:
-        return None, None
-
-    exception = next((e for e in profile.hour_exceptions if e.date == date_str), None)
-    if exception:
-        if exception.is_closed:
-            return None, None
-        return exception.open_time, exception.close_time
-
-    dow = _day_of_week(date_str)
-    day_plan = next((h for h in profile.weekly_hours if h.day_of_week == dow), None)
-    if not day_plan:
-        return None, None
-    return day_plan.open_time, day_plan.close_time
-
-
-def _validate_order_time(cafe_id: str, date_str: str, start_time: str, db: Session) -> None:
-    open_time, close_time = _get_effective_hours(cafe_id, date_str, db)
-    if not open_time or not close_time:
+def _validate_order_time(cafe_id: str, date_str: str, start_time: str, db: Session, tz) -> None:
+    sessions = sessions_for(date_str, effective_hours_fn(cafe_id, db))
+    if not sessions:
         raise HTTPException(400, detail="Kawiarnia jest zamknięta w wybranym dniu.")
 
-    open_m  = _to_minutes(open_time)  + ORDER_TIME_BUFFER_MINUTES
-    close_m = _to_minutes(close_time) - ORDER_TIME_BUFFER_MINUTES
-
-    if close_m <= open_m:
+    buf = ORDER_TIME_BUFFER_MINUTES
+    windows = [(a + buf, b - buf) for a, b in sessions if b - a > 2 * buf]
+    if not windows:
         raise HTTPException(
             400,
             detail="Kawiarnia jest czynna zbyt krótko w tym dniu, aby przyjąć zamówienie.",
         )
 
-    requested = _to_minutes(start_time)
-    if requested < open_m or requested > close_m:
+    requested = to_minutes(start_time)
+    if not any(a <= requested <= b for a, b in windows):
+        text = " oraz ".join(f"od {from_minutes(max(a, 0))} do {from_minutes(b)}" for a, b in windows)
         raise HTTPException(
             400,
-            detail=(
-                f"Zamówienia na ten dzień przyjmujemy od {_from_minutes(open_m)} "
-                f"do {_from_minutes(close_m)} (kawiarnia czynna {open_time}–{close_time})."
-            ),
+            detail=f"Zamówienia na ten dzień przyjmujemy {text}.",
         )
 
-    # Zamówienie na dzisiaj: najwcześniej "teraz + 15 min".
-    now = datetime.now()
+    now = cafe_now(tz)
     if date_str == now.date().isoformat():
         earliest = now.hour * 60 + now.minute + ORDER_LEAD_MINUTES
-        if earliest > close_m:
+        if earliest >= 1440 or earliest > max(b for _, b in windows):
             raise HTTPException(
                 400,
                 detail="Na dzisiaj nie można już złożyć zamówienia — wybierz inną datę.",
@@ -164,7 +116,7 @@ def _validate_order_time(cafe_id: str, date_str: str, start_time: str, db: Sessi
         if requested < earliest:
             raise HTTPException(
                 400,
-                detail=f"Na dzisiaj najwcześniejsza możliwa godzina odbioru to {_from_minutes(earliest)}.",
+                detail=f"Na dzisiaj najwcześniejsza możliwa godzina odbioru to {from_minutes(earliest)}.",
             )
 
 
@@ -188,12 +140,10 @@ def _resolve_item(cafe_id: str, item_in, db: Session) -> tuple[str, float]:
 CLIENT_CANCEL_DEADLINE_MINUTES = 30
 
 
-def _ensure_client_can_cancel(date_str: str, start_time: str) -> None:
+def _ensure_client_can_cancel(date_str: str, start_time: str, tz) -> None:
     """Klient może anulować najpóźniej 30 minut przed godziną odbioru."""
-    y, mo, d = date_str.split("-")
-    h, m = start_time.split(":")
-    start_dt = datetime(int(y), int(mo), int(d), int(h), int(m))
-    if datetime.now() > start_dt - timedelta(minutes=CLIENT_CANCEL_DEADLINE_MINUTES):
+    start_dt = cafe_datetime(date_str, start_time, tz)
+    if cafe_now(tz) > start_dt - timedelta(minutes=CLIENT_CANCEL_DEADLINE_MINUTES):
         raise HTTPException(
             400,
             detail=f"Zamówienie można anulować najpóźniej {CLIENT_CANCEL_DEADLINE_MINUTES} minut przed godziną odbioru.",
@@ -254,8 +204,9 @@ def create_public_order(
     if not settings or not settings.enabled:
         raise HTTPException(400, detail="Ta kawiarnia nie przyjmuje zamówień online.")
 
-    _validate_order_date(payload.date)
-    _validate_order_time(cafe_id, payload.date, payload.start_time, db)
+    tz = cafe_tz(cafe_id, db)
+    _validate_order_date(payload.date, tz)
+    _validate_order_time(cafe_id, payload.date, payload.start_time, db, tz)
 
     order = Order(
         cafe_id     = cafe_id,
@@ -310,8 +261,9 @@ def create_order_as_client(
     if not settings or not settings.enabled:
         raise HTTPException(400, detail="Ta kawiarnia nie przyjmuje zamówień online.")
 
-    _validate_order_date(payload.date)
-    _validate_order_time(cafe_id, payload.date, payload.start_time, db)
+    tz = cafe_tz(cafe_id, db)
+    _validate_order_date(payload.date, tz)
+    _validate_order_time(cafe_id, payload.date, payload.start_time, db, tz)
 
     order = Order(
         cafe_id     = cafe_id,
@@ -361,7 +313,7 @@ def cancel_order_public(
     if order.client_id and order.client_id != payload.client_id:
         raise HTTPException(403, detail="Brak uprawnień do anulowania tego zamówienia.")
 
-    _ensure_client_can_cancel(order.date, order.start_time)
+    _ensure_client_can_cancel(order.date, order.start_time, cafe_tz(order.cafe_id, db))
 
     order.status       = OrderStatus.cancelled
     order.cancelled_by = "client"
@@ -394,11 +346,13 @@ def list_my_orders(
 
     cafe_ids = {o.cafe_id for o in rows}
     cafes = {c.id: c for c in db.query(Cafe).filter(Cafe.id.in_(cafe_ids)).all()} if cafe_ids else {}
+    tzs = cafe_tz_names(cafe_ids, db)
 
     result = [
         ClientOrderOut(
             **OrderOut.model_validate(o).model_dump(),
             cafe_name=(cafes.get(o.cafe_id).cafe_name if cafes.get(o.cafe_id) else "Nieznana kawiarnia"),
+            time_zone=tzs.get(o.cafe_id),
         )
         for o in rows
     ]
@@ -432,7 +386,7 @@ def cancel_order_as_client(
             detail=f"Zamówienie ma już status '{order.status}' i nie może być anulowane.",
         )
 
-    _ensure_client_can_cancel(order.date, order.start_time)
+    _ensure_client_can_cancel(order.date, order.start_time, cafe_tz(order.cafe_id, db))
 
     order.status       = OrderStatus.cancelled
     order.cancelled_by = "client"

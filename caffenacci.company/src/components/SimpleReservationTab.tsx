@@ -4,6 +4,8 @@ import {
 } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
+import { useCafeSettings } from './CafeSettingsContext'
+import { parseUtc } from '../utils/cafeTime'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -39,17 +41,16 @@ function formatDate(ds: string, locale: string) {
   return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-function formatCreatedAt(s: string | null, locale: string) {
+function formatCreatedAt(s: string | null, locale: string, tz: string) {
   if (!s) return ''
-  const d = new Date(s)
-  return d.toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return parseUtc(s).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: tz })
 }
 
 type TFn = ReturnType<typeof useI18n>['t']
 
 function timeAgo(s: string | null, t: TFn): string {
   if (!s) return ''
-  const diff = Math.floor((Date.now() - new Date(s).getTime()) / 1000)
+  const diff = Math.floor((Date.now() - parseUtc(s).getTime()) / 1000)
   if (diff < 60)    return t('time.justNow')
   if (diff < 3600)  return t('time.minutesAgo', { count: Math.floor(diff / 60) })
   if (diff < 86400) return t('time.hoursAgo', { count: Math.floor(diff / 3600) })
@@ -221,6 +222,7 @@ function PendingCard({
   onDecide: (r: ReservationOut, action: 'confirmed' | 'cancelled') => void
 }) {
   const { t, locale } = useI18n()
+  const { timeZone } = useCafeSettings()
   return (
     <div style={{
       background: 'var(--surface)',
@@ -348,6 +350,7 @@ function PendingCard({
 
 function HistoryCard({ r, onDelete }: { r: ReservationOut; onDelete: (id: string) => void }) {
   const { t, locale } = useI18n()
+  const { timeZone } = useCafeSettings()
   const isConfirmed = r.status === 'confirmed'
 
   return (
@@ -385,7 +388,7 @@ function HistoryCard({ r, onDelete }: { r: ReservationOut; onDelete: (id: string
           </div>
         )}
         <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-          {formatCreatedAt(r.created_at, locale)}
+          {formatCreatedAt(r.created_at, locale, timeZone)}
         </div>
       </div>
       <button
