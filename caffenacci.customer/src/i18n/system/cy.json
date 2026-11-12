@@ -122,7 +122,6 @@
   "reviews.err_add": "Gwall wrth ychwanegu adolygiad.",
   "reviews.err_edit": "Gwall wrth olygu adolygiad.",
   "reviews.err_delete": "Gwall wrth ddileu adolygiad.",
-  "loyalty.how_points": "Casglwch bwyntiau am bob pryniant yn ein caffi — 3 pwynt am bob {amount} a warir. Cyfnewid nhw am y gwobrau a restrir isod.",
   "loyalty.stamp_earn": "Rydych chi'n derbyn stamp {desc}.",
   "loyalty.stamp_reward": "Ar ôl casglu {max} stamp rydych chi'n derbyn: {desc}.",
   "loyalty.points": "{points} pwynt",

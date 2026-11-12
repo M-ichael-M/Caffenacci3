@@ -122,7 +122,6 @@
   "reviews.err_add": "Fejl ved tilføjelse af anmeldelse.",
   "reviews.err_edit": "Fejl ved redigering af anmeldelse.",
   "reviews.err_delete": "Fejl ved sletning af anmeldelse.",
-  "loyalty.how_points": "Opsaml point ved hvert køb i vores café — 3 point for hver {amount}, der bruges. Ombyt dem til belønninger vist nedenfor.",
   "loyalty.stamp_earn": "Du modtager et stempel {desc}.",
   "loyalty.stamp_reward": "Efter at have samlet {max} stempler modtager du: {desc}.",
   "loyalty.points": "{points} pt.",

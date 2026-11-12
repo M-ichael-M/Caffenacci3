@@ -122,7 +122,6 @@
   "reviews.err_add": "Virhe arvostelun lisäämisessä.",
   "reviews.err_edit": "Virhe arvostelun muokkaamisessa.",
   "reviews.err_delete": "Virhe arvostelun poistamisessa.",
-  "loyalty.how_points": "Kerää pisteitä jokaisesta ostoksesta kahvilassamme — 3 pistettä jokaista käytettyä summa-aluetta {amount} kohden. Vaihda ne alla esitettyihin palkintoihin.",
   "loyalty.stamp_earn": "Saat leiman {desc}.",
   "loyalty.stamp_reward": "Kun olet kerännyt {max} leimaa, saat: {desc}.",
   "loyalty.points": "{points} p.",

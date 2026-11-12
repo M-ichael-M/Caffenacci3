@@ -122,7 +122,6 @@
   "reviews.err_add": "Error al añadir la opinión.",
   "reviews.err_edit": "Error al editar la opinión.",
   "reviews.err_delete": "Error al eliminar la opinión.",
-  "loyalty.how_points": "Acumula puntos por cada compra en nuestra cafetería — 3 puntos por cada {amount} gastados. Canjéalos por los premios indicados a continuación.",
   "loyalty.stamp_earn": "Recibes un sello {desc}.",
   "loyalty.stamp_reward": "Tras juntar {max} sellos recibes: {desc}.",
   "loyalty.points": "{points} pts.",

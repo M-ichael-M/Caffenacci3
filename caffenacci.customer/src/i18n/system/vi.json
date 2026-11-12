@@ -122,7 +122,6 @@
   "reviews.err_add": "Lỗi thêm đánh giá.",
   "reviews.err_edit": "Lỗi chỉnh sửa đánh giá.",
   "reviews.err_delete": "Lỗi xóa đánh giá.",
-  "loyalty.how_points": "Tích điểm cho mỗi lần mua hàng tại quán — 3 điểm cho mỗi {amount} đã chi tiêu. Đổi lấy các phần thưởng bên dưới.",
   "loyalty.stamp_earn": "Bạn nhận được con dấu {desc}.",
   "loyalty.stamp_reward": "Sau khi thu thập {max} con dấu, bạn nhận được: {desc}.",
   "loyalty.points": "{points} điểm",

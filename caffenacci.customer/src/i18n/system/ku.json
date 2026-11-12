@@ -121,7 +121,6 @@
   "reviews.err_add": "Çewtiya lê zêdekirina nêrînê.",
   "reviews.err_edit": "Çewtiya guherandina nêrînê.",
   "reviews.err_delete": "Çewtiya jêbirina nêrînê.",
-  "loyalty.how_points": "Ji bo her kirîna li qehwexaneya me xalan kom bikin — ji bo her {amount} yê hatî xerckirin 3 pûan. Wan bi xelatên li jêr re biguherînin.",
   "loyalty.stamp_earn": "Hûn mohrekê bi {desc} distînin.",
   "loyalty.stamp_reward": "Piştî komkirina {max} mohran hûn distînin: {desc}.",
   "loyalty.points": "{points} pûan",

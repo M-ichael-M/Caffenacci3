@@ -30,6 +30,10 @@ class LoyaltySettings(Base):
     stamps_earn_desc   = Column(Text, nullable=True)   # za co przyznawana jest pieczątka
     stamps_reward_desc = Column(Text, nullable=True)   # co się dostaje po zebraniu maksimum
 
+    # ── Punkty: „za każde N [waluta kawiarni] klient dostaje P punktów” ──
+    points_per_amount  = Column(Integer, nullable=False, default=30, server_default="30")
+    points_amount_unit = Column(Integer, nullable=False, default=1, server_default="1")
+
     updated_at = Column(DateTime, nullable=True, onupdate=datetime.utcnow)
 
     rewards = relationship(

@@ -122,7 +122,6 @@
   "reviews.err_add": "Flater by it taheakjen fan resinsje.",
   "reviews.err_edit": "Flater by it wizigjen fan resinsje.",
   "reviews.err_delete": "Flater by it wiskjen fan resinsje.",
-  "loyalty.how_points": "Sammelje punten foar elke oankeap yn ús kafé — 3 punten foar elke útjûne {amount}. Wikselje se om foar de hjirûnder oantsjutte beleannings.",
   "loyalty.stamp_earn": "Stempel krije jo {desc}.",
   "loyalty.stamp_reward": "Nei it sammeljen fan {max} stempels krije jo: {desc}.",
   "loyalty.points": "{points} pt.",

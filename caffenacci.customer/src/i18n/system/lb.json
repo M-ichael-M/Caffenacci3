@@ -121,7 +121,6 @@
   "reviews.err_add": "Feeler beim Derbäisetze vun der Bewäertung.",
   "reviews.err_edit": "Feeler beim Editéiere vun der Bewäertung.",
   "reviews.err_delete": "Feeler beim Läsche vun der Bewäertung.",
-  "loyalty.how_points": "Sammelt Cumpunkte fir all Akaf an eisem Kaffi — 3 Punkte fir all ausgeginn {amount}. Tauscht se géint Belounungen hei drënner an.",
   "loyalty.stamp_earn": "Dir kritt e Stempel {desc}.",
   "loyalty.stamp_reward": "Nom Sammle vu {max} Stempelen kritt Dir: {desc}.",
   "loyalty.points": "{points} Pkt.",

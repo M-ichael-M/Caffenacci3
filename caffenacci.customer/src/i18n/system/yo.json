@@ -121,7 +121,6 @@
   "reviews.err_add": "Aṣiṣe ni afikun atunyẹwo.",
   "reviews.err_edit": "Aṣiṣe ni ṣatunkọ atunyẹwo.",
   "reviews.err_delete": "Aṣiṣe ni piparẹ atunyẹwo.",
-  "loyalty.how_points": "Gba awọn aaye fun gbogbo ra ni ile kọfi wa — awọn aaye 3 fun gbogbo {amount} ti a lo. Ṣe iṣowo wọn fun awọn ere ti a fi han ni isalẹ.",
   "loyalty.stamp_earn": "O gba stampu {desc}.",
   "loyalty.stamp_reward": "Lẹhin igbati o gba awọn stampu {max}, o gba: {desc}.",
   "loyalty.points": "{points} pt.",

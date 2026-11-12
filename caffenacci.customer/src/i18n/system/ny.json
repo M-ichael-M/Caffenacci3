@@ -122,7 +122,6 @@
   "reviews.err_add": "Zolakwika zowonjezera ndemanga.",
   "reviews.err_edit": "Zolakwika zosinthira ndemanga.",
   "reviews.err_delete": "Zolakwika zochotsa ndemanga.",
-  "loyalty.how_points": "Sonkhanitsani mfundo pa kugula kulikonse m'malo mwathu a khofi — mfundo 3 pa chilichonse {amount} chomwe mwagwiritsa ntchito. Zisinthitseni ndi mphotho zili m'munsizi.",
   "loyalty.stamp_earn": "Mumalandira chisindikizo {desc}.",
   "loyalty.stamp_reward": "Mukangosonkhanitsa zisindikizo {max} mumalandira: {desc}.",
   "loyalty.points": "{points} mfundo",

@@ -225,6 +225,8 @@ class PublicSiteOut(BaseModel):
     loyalty_stamps_max: int = 10
     loyalty_stamps_earn_desc: Optional[str] = None
     loyalty_stamps_reward_desc: Optional[str] = None
+    loyalty_points_per_amount: int = 30
+    loyalty_points_amount_unit: int = 1
     loyalty_rewards: List[SiteLoyaltyRewardOut] = []
 
     gallery_images: List[PublicGalleryImageOut] = []

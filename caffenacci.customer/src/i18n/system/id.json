@@ -121,7 +121,6 @@
   "reviews.err_add": "Gagal menambahkan ulasan.",
   "reviews.err_edit": "Gagal memperbarui ulasan.",
   "reviews.err_delete": "Gagal menghapus ulasan.",
-  "loyalty.how_points": "Kumpulkan poin setiap kali berbelanja di kafe kami — 3 poin untuk setiap {amount} yang dibelanjakan. Tukarkan dengan hadiah di bawah ini.",
   "loyalty.stamp_earn": "Anda mendapatkan stempel {desc}.",
   "loyalty.stamp_reward": "Setelah mengumpulkan {max} stempel, Anda mendapatkan: {desc}.",
   "loyalty.points": "{points} poin",

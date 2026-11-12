@@ -122,7 +122,6 @@
   "reviews.err_add": "خطأ في إضافة التقييم.",
   "reviews.err_edit": "خطأ في تعديل التقييم.",
   "reviews.err_delete": "خطأ في حذف التقييم.",
-  "loyalty.how_points": "اجمع النقاط مع كل عملية شراء في مقهانا — 3 نقاط لكل {amount} يتم إنفاقها. استبدلها بالمكافآت الموضحة أدناه.",
   "loyalty.stamp_earn": "تحصل على طابع عند {desc}.",
   "loyalty.stamp_reward": "بعد جمع {max} طوابع تحصل على: {desc}.",
   "loyalty.points": "{points} نقطة",

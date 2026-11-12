@@ -122,7 +122,6 @@
   "reviews.err_add": "添加评价出错。",
   "reviews.err_edit": "编辑评价出错。",
   "reviews.err_delete": "删除评价出错。",
-  "loyalty.how_points": "在我们咖啡馆的每次消费都可以积累积分 — 每消费 {amount} 可获得 3 积分。可用于兑换下方列出的奖励。",
   "loyalty.stamp_earn": "您获得了印章 {desc}。",
   "loyalty.stamp_reward": "集齐 {max} 个印章后，您将获得：{desc}。",
   "loyalty.points": "{points} 积分",

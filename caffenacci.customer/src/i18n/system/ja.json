@@ -121,7 +121,6 @@
   "reviews.err_add": "口コミの投稿時にエラーが発生しました。",
   "reviews.err_edit": "口コミの編集時にエラーが発生しました。",
   "reviews.err_delete": "口コミの削除時にエラーが発生しました。",
-  "loyalty.how_points": "カフェでのお会計ごとにポイントが貯まります — {amount} のお支払いにつき3ポイントを付与。貯まったポイントは以下の特典と交換できます。",
   "loyalty.stamp_earn": "スタンプ獲得条件: {desc}。",
   "loyalty.stamp_reward": "スタンプを {max} 個集めると受取可能: {desc}。",
   "loyalty.points": "{points} pt",

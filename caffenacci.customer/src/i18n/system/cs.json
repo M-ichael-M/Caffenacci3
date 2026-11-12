@@ -122,7 +122,6 @@
   "reviews.err_add": "Chyba při přidávání hodnocení.",
   "reviews.err_edit": "Chyba při úpravě hodnocení.",
   "reviews.err_delete": "Chyba při mazání hodnocení.",
-  "loyalty.how_points": "Sbírejte body za každý nákup v naší kavárně — 3 body za každých utracených {amount}. Vyměňte je za odměny uvedené níže.",
   "loyalty.stamp_earn": "Razítko získáte {desc}.",
   "loyalty.stamp_reward": "Po nasbírání {max} razítek získáte: {desc}.",
   "loyalty.points": "{points} b.",

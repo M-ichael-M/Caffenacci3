@@ -121,7 +121,6 @@
   "reviews.err_add": "Ikibazo mu kongera igitekerezo.",
   "reviews.err_edit": "Ikibazo mu guhindura igitekerezo.",
   "reviews.err_delete": "Ikibazo mu gusiba igitekerezo.",
-  "loyalty.how_points": "Gakoraho amanota ku cyo uguze cyose muri kashe yacu — amanota 3 kuri buri {amount} watanze. Uyavunamishemo ibihembo byatanzwe hepfo.",
   "loyalty.stamp_earn": "Ubona ikimenyetso cya {desc}.",
   "loyalty.stamp_reward": "Nyuma yo gukorakoranya ibimenyetso {max} ubona: {desc}.",
   "loyalty.points": "{points} amanota",

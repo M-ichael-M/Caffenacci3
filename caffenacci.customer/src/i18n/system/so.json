@@ -122,7 +122,6 @@
   "reviews.err_add": "Khalad ku darista faallada.",
   "reviews.err_edit": "Khalad wax ka beddelka faallada.",
   "reviews.err_delete": "Khalad tirtiridda faallada.",
-  "loyalty.how_points": "Ururi dhibco iib kasta oo aad ka sameyso maqaaxideena — 3 dhibcood {amount} kasta oo aad bixiso. Ku beddel abaalmarinta hoos ku xusan.",
   "loyalty.stamp_earn": "Waxaad haysataa shaambad {desc}.",
   "loyalty.stamp_reward": "Markaad ururiso {max} shaambadood waxaad helaysaa: {desc}.",
   "loyalty.points": "{points} dhibcood",

@@ -122,7 +122,6 @@
   "reviews.err_add": "Бәяләмә өстәү хатасы.",
   "reviews.err_edit": "Бәяләмә үзгәртү хатасы.",
   "reviews.err_delete": "Бәяләмә бетерү хатасы.",
-  "loyalty.how_points": "Кафебыздагы һәр сатып алу өчен очколар җыегыз — һәр сарыф ителгән {amount} өчен 3 очко. Аларны түбәндәге бүләкләргә алмаштырыгыз.",
   "loyalty.stamp_earn": "Сез {desc} мөһере аласыз.",
   "loyalty.stamp_reward": "{max} мөһер җыйгач, сезгә бирелә: {desc}.",
   "loyalty.points": "{points} очко",

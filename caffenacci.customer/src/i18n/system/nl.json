@@ -122,7 +122,6 @@
   "reviews.err_add": "Fout bij toevoegen beoordeling.",
   "reviews.err_edit": "Fout bij bewerken beoordeling.",
   "reviews.err_delete": "Fout bij verwijderen beoordeling.",
-  "loyalty.how_points": "Spaar punten voor elke aankoop in ons café — 3 punten per uitgegeven {amount}. Wissel ze in voor beloningen hieronder.",
   "loyalty.stamp_earn": "Je ontvangt een stempel {desc}.",
   "loyalty.stamp_reward": "Na het verzamelen van {max} stempels ontvang je: {desc}.",
   "loyalty.points": "{points} pnt.",

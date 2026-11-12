@@ -122,7 +122,6 @@
   "reviews.err_add": "Błąd dodawania opinii.",
   "reviews.err_edit": "Błąd edycji opinii.",
   "reviews.err_delete": "Błąd usuwania opinii.",
-  "loyalty.how_points": "Zbieraj punkty za każdy zakup w naszej kawiarni — 3 punkty za każde wydane {amount}. Wymieniaj je na nagrody wskazane poniżej.",
   "loyalty.stamp_earn": "Pieczątkę otrzymujesz {desc}.",
   "loyalty.stamp_reward": "Po zebraniu {max} pieczątek otrzymujesz: {desc}.",
   "loyalty.points": "{points} pkt.",

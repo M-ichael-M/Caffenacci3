@@ -121,7 +121,6 @@
   "reviews.err_add": "Hadisoana tamin'ny fampidirana hevitra.",
   "reviews.err_edit": "Hadisoana tamin'ny fanovana hevitra.",
   "reviews.err_delete": "Hadisoana tamin'ny famafana hevitra.",
-  "loyalty.how_points": "Manangona teboka amin'ny fividianana tsirairay ao amin'ny kafeanay — teboka 3 isaky ny {amount} lany. Atakalo ireo valisoa voalaza etsy ambany.",
   "loyalty.stamp_earn": "Mahazo tombokase ianao {desc}.",
   "loyalty.stamp_reward": "Rehefa voangona ny tombokase {max} dia azonao ny: {desc}.",
   "loyalty.points": "{points} pt.",

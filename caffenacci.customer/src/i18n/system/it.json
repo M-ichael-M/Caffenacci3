@@ -122,7 +122,6 @@
   "reviews.err_add": "Errore durante l'aggiunta della recensione.",
   "reviews.err_edit": "Errore durante la modifica della recensione.",
   "reviews.err_delete": "Errore durante l'eliminazione della recensione.",
-  "loyalty.how_points": "Raccogli punti per ogni acquisto nel nostro caffè — 3 punti per ogni {amount} speso. Scambiali con i premi indicati di seguito.",
   "loyalty.stamp_earn": "Ricevi un timbro {desc}.",
   "loyalty.stamp_reward": "Dopo aver raccolto {max} timbri ricevi: {desc}.",
   "loyalty.points": "{points} pt",

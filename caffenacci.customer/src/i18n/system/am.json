@@ -122,7 +122,6 @@
   "reviews.err_add": "ግምገማ ሲጨመር ስህተት ተፈጥሯል።",
   "reviews.err_edit": "ግምገማ ሲታረም ስህተት ተፈጥሯል።",
   "reviews.err_delete": "ግምገማ ሲሰረዝ ስህተት ተፈጥሯል።",
-  "loyalty.how_points": "በካፌአችን ለሚያደርጉት ለእያንዳንዱ ግዢ ነጥቦችን ይሰብስቡ — ለወጣው ለእያንዳንዱ {amount} 3 ነጥቦች። ከታች ለተጠቀሱት ሽልማቶች ይለውጧቸው።",
   "loyalty.stamp_earn": "ማኅተም ያገኛሉ {desc}።",
   "loyalty.stamp_reward": "{max} ማኅተሞችን ከሰበሰቡ በኋላ፡ {desc} ያገኛሉ።",
   "loyalty.points": "{points} ነጥብ",

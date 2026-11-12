@@ -121,7 +121,6 @@
   "reviews.err_add": "Gagal nambahake ulasan.",
   "reviews.err_edit": "Gagal ngowahi ulasan.",
   "reviews.err_delete": "Gagal mbusak ulasan.",
-  "loyalty.how_points": "Kumpulake poin saben belanja ing kafe kita — 3 poin kanggo saben {amount} sing dituku. Ijolake karo hadiah ing ngisor iki.",
   "loyalty.stamp_earn": "Sampeyan entuk stempel {desc}.",
   "loyalty.stamp_reward": "Sawise ngumpulake {max} stempel, sampeyan entuk: {desc}.",
   "loyalty.points": "{points} pt",

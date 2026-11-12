@@ -122,7 +122,6 @@
   "reviews.err_add": "Eroare la adăugarea recenziei.",
   "reviews.err_edit": "Eroare la editarea recenziei.",
   "reviews.err_delete": "Eroare la ștergerea recenziei.",
-  "loyalty.how_points": "Adunați puncte pentru fiecare achiziție din cafeneaua noastră — 3 puncte pentru fiecare {amount} cheltuit. Schimbați-le pe premiile indicate mai jos.",
   "loyalty.stamp_earn": "Primiți o ștampilă {desc}.",
   "loyalty.stamp_reward": "După acumularea a {max} ștampile, primiți: {desc}.",
   "loyalty.points": "{points} pct.",

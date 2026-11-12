@@ -121,7 +121,6 @@
   "reviews.err_add": "Impazamo ekongezeni uluvo.",
   "reviews.err_edit": "Impazamo ekuhleleni uluvo.",
   "reviews.err_delete": "Impazamo ekucimeni uluvo.",
-  "loyalty.how_points": "Qokelela amanqaku ngokuqokelela ngakunye kwi-khofu yethu — amanqaku ama-3 kwisixa ngasinye esisetyenzisiweyo {amount}. Wotshintshiselana ngamawonga aboniswe ngezantsi.",
   "loyalty.stamp_earn": "Ufumana istampu nge-{desc}.",
   "loyalty.stamp_reward": "Emva kokuqokelela izitampu ezi-{max} ufumana: {desc}.",
   "loyalty.points": "{points} amanqaku",

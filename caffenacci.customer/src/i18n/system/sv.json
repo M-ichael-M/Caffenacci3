@@ -123,7 +123,6 @@
   "reviews.err_add": "Fel vid tillägg av recension.",
   "reviews.err_edit": "Fel vid redigering av recension.",
   "reviews.err_delete": "Fel vid radering av recension.",
-  "loyalty.how_points": "Samla poäng för varje köp på vårt café — 3 poäng för varje spenderad {amount}. Byt ut dem mot belöningar som anges nedan.",
   "loyalty.stamp_earn": "Du får en stämpel {desc}.",
   "loyalty.stamp_reward": "Efter att ha samlat {max} stämplar får du: {desc}.",
   "loyalty.points": "{points} p.",

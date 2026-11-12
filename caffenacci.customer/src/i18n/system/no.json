@@ -122,7 +122,6 @@
   "reviews.err_add": "Feil vedlegg til omtale.",
   "reviews.err_edit": "Feil ved redigering av omtale.",
   "reviews.err_delete": "Feil ved sletting av omtale.",
-  "loyalty.how_points": "Samle poeng for hvert kjøp i kaféen vår — 3 poeng for hver {amount} du bruker. Bytt dem inn i belønningene nedenfor.",
   "loyalty.stamp_earn": "Du får et stempel {desc}.",
   "loyalty.stamp_reward": "Etter å ha samlet {max} stempler får du: {desc}.",
   "loyalty.points": "{points} pnt.",

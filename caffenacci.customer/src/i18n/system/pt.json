@@ -122,7 +122,6 @@
   "reviews.err_add": "Erro ao adicionar avaliação.",
   "reviews.err_edit": "Erro ao editar avaliação.",
   "reviews.err_delete": "Erro ao eliminar avaliação.",
-  "loyalty.how_points": "Acumule pontos em cada compra no nosso café — 3 pontos por cada {amount} gasto. Troque-os pelos prémios indicados abaixo.",
   "loyalty.stamp_earn": "Recebe um carimbo {desc}.",
   "loyalty.stamp_reward": "Após acumular {max} carimbos, recebe: {desc}.",
   "loyalty.points": "{points} pts.",

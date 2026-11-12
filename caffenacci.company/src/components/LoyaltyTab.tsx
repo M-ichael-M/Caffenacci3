@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { Gift, Receipt, Coins, Bookmark, X } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
-import { useCafeSettings } from './CafeSettingsContext'
-import { currencyExponent } from '../utils/currency'
+import { useCafeSettings, useMoney } from './CafeSettingsContext'
+import { currencyExponent, roundMoney } from '../utils/currency'
+import { computePoints } from '../utils/loyaltyRule'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,8 @@ interface LoyaltySettingsData {
   stamps_max: number
   stamps_earn_desc: string | null
   stamps_reward_desc: string | null
+  points_per_amount: number
+  points_amount_unit: number
   rewards: RewardOut[]
 }
 
@@ -92,6 +95,7 @@ function Toggle({ checked, onChange, disabled = false }: {
 export default function LoyaltyTab({ token }: Props) {
   const { t, tApi } = useI18n()
   const { currency } = useCafeSettings()
+  const money = useMoney()
   const step = currencyExponent(currency) === 0 ? 1 : 0.01
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
@@ -103,6 +107,14 @@ export default function LoyaltyTab({ token }: Props) {
   const [stampsMax, setStampsMax] = useState(10)
   const [stampsEarnDesc, setStampsEarnDesc]     = useState('')
   const [stampsRewardDesc, setStampsRewardDesc] = useState('')
+  const [pointsPerAmount, setPointsPerAmount] = useState('30')
+  const [pointsAmountUnit, setPointsAmountUnit] = useState('1')
+
+  const perN = parseInt(pointsPerAmount, 10)
+  const unitN = parseInt(pointsAmountUnit, 10)
+  const ruleValid = perN >= 1 && unitN >= 1
+  const sampleAmount = roundMoney((unitN >= 1 ? unitN : 1) * 12.5, currency)
+  const samplePoints = ruleValid ? computePoints(sampleAmount, currency, perN, unitN) : 0
 
   // ── Kasa ──────────────────────────────────────────────────────────────
   const [searchCode, setSearchCode]   = useState('')
@@ -135,6 +147,8 @@ export default function LoyaltyTab({ token }: Props) {
         setEnabled(data.enabled)
         setMode(data.mode)
         setStampsMax(data.stamps_max)
+        setPointsPerAmount(String(data.points_per_amount))
+        setPointsAmountUnit(String(data.points_amount_unit))
         setStampsEarnDesc(data.stamps_earn_desc ?? '')
         setStampsRewardDesc(data.stamps_reward_desc ?? '')
         setRewards(data.rewards.map(r => ({ _uid: uid(), id: r.id, name: r.name, cost_points: String(r.cost_points) })))
@@ -158,6 +172,7 @@ export default function LoyaltyTab({ token }: Props) {
     setSaveMsg(null)
 
     if (mode === 'points') {
+      if (!ruleValid) { setSaveMsg({ type: 'err', text: t('loyalty.err.rule') }); return }
       for (const r of rewards) {
         if (!r.name.trim()) { setSaveMsg({ type: 'err', text: t('loyalty.err.rewardName') }); return }
         const cost = parseInt(r.cost_points, 10)
@@ -173,6 +188,8 @@ export default function LoyaltyTab({ token }: Props) {
         stamps_max: stampsMax,
         stamps_earn_desc: stampsEarnDesc.trim() || null,
         stamps_reward_desc: stampsRewardDesc.trim() || null,
+        points_per_amount: perN >= 1 ? perN : null,
+        points_amount_unit: unitN >= 1 ? unitN : null,
         rewards: rewards.map((r, i) => ({
           name: r.name.trim(),
           cost_points: parseInt(r.cost_points, 10) || 0,
@@ -325,15 +342,45 @@ export default function LoyaltyTab({ token }: Props) {
 
           {/* ── Nagrody (punkty) ────────────────────────────────────────── */}
           {mode === 'points' && (
+            <>
+            <div className="info-card">
+              <div className="info-card__header">
+                <span className="info-card__icon"><Coins size={20} /></span>
+                <h2 className="info-card__title">{t('loyalty.rule.title')}</h2>
+              </div>
+              <div className="info-card__body">
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
+                  {t('loyalty.rule.hint')}
+                </p>
+                <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div className="field" style={{ flex: '1 1 160px' }}>
+                    <label className="me-label">{t('loyalty.rule.amount', { currency })}</label>
+                    <input className="me-input" type="number" min={1} step={1} value={pointsAmountUnit}
+                      onChange={e => setPointsAmountUnit(e.target.value)} />
+                  </div>
+                  <div className="field" style={{ flex: '1 1 160px' }}>
+                    <label className="me-label">{t('loyalty.rule.points')}</label>
+                    <input className="me-input" type="number" min={1} step={1} value={pointsPerAmount}
+                      onChange={e => setPointsPerAmount(e.target.value)} />
+                  </div>
+                </div>
+                <div style={{
+                  background: 'rgba(169,114,47,0.08)', color: 'var(--gold)', borderRadius: 'var(--radius-sm)',
+                  padding: '0.625rem 0.875rem', fontSize: '0.875rem', fontWeight: 600,
+                }}>
+                  {ruleValid
+                    ? t('loyalty.rule.preview', { amount: money(sampleAmount), points: t('loyalty.points', { count: samplePoints }) })
+                    : t('loyalty.err.rule')}
+                </div>
+              </div>
+            </div>
+
             <div className="info-card">
               <div className="info-card__header">
                 <span className="info-card__icon"><Gift size={20} /></span>
                 <h2 className="info-card__title">{t('loyalty.rewards.title')}</h2>
               </div>
               <div className="info-card__body">
-                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
-                  {t('loyalty.rewards.rule')}
-                </p>
                 {rewards.length === 0 && (
                   <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('loyalty.rewards.none')}</p>
                 )}
@@ -367,6 +414,7 @@ export default function LoyaltyTab({ token }: Props) {
                 </button>
               </div>
             </div>
+            </>
           )}
 
           {/* ── Ustawienia pieczątek ─────────────────────────────────────── */}

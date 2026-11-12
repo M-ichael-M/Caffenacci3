@@ -63,7 +63,7 @@
   "reviews.confirm_delete": "Are you sure you want to delete your review?",
   "reviews.err_more": "Could not load more reviews.", "reviews.err_add": "Could not add the review.",
   "reviews.err_edit": "Could not edit the review.", "reviews.err_delete": "Could not delete the review.",
-  "loyalty.how_points": "Earn points on every purchase — 3 points for every {amount} spent. Redeem them for the rewards below.",
+  "loyalty.how_points": "Earn points on every purchase at our café — {points} for every {amount} spent. Redeem them for the rewards listed below.",
   "loyalty.stamp_earn": "You get a stamp {desc}.",
   "loyalty.stamp_reward": "Collect {max} stamps to receive: {desc}.",
   "loyalty.points": "{points} pts", "loyalty.your_balance": "Your balance",

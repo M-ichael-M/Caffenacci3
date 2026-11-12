@@ -121,7 +121,6 @@
   "reviews.err_add": "Atsauksmes pievienošanas kļūda.",
   "reviews.err_edit": "Atsauksmes rediģēšanas kļūda.",
   "reviews.err_delete": "Atsauksmes dzēšanas kļūda.",
-  "loyalty.how_points": "Krājiet punktus par katru pirkumu mūsu kafejnīcā — 3 punkti par katriem iztērētajiem {amount}. Mainiet tos pret zemāk norādītajām balvām.",
   "loyalty.stamp_earn": "Zīmogu saņemat {desc}.",
   "loyalty.stamp_reward": "Savācot {max} zīmogus, saņemat: {desc}.",
   "loyalty.points": "{points} p.",

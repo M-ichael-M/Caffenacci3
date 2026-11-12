@@ -122,7 +122,6 @@
   "reviews.err_add": "Kanganiso pakuwedzera maonero.",
   "reviews.err_edit": "Kanganiso pakurongora maonero.",
   "reviews.err_delete": "Kanganiso pakubvisa maonero.",
-  "loyalty.how_points": "Unganidza mapoinzi pane zvese zvaunotenga kucafé yedu — mapoinzi matatu panguva yega yega {amount} yashandiswa. Chinjanisai nemibairo yakanyorwa pasi apa.",
   "loyalty.stamp_earn": "Unogamuchira chisimbiso {desc}.",
   "loyalty.stamp_reward": "Mushure mekuunganidza {max} zvisimbiso unogamuchira: {desc}.",
   "loyalty.points": "{points} map.",

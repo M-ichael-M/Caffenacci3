@@ -122,7 +122,6 @@
   "reviews.err_add": "Error sa pagdaragdag ng review.",
   "reviews.err_edit": "Error sa pag-edit ng review.",
   "reviews.err_delete": "Error sa pag-delete ng review.",
-  "loyalty.how_points": "Makisali sa pag-ipon ng puntos sa bawat pagbili sa aming cafe — 3 puntos sa bawat gastusing {amount}. Ipalit ang mga ito sa mga reward na nakasaad sa ibaba.",
   "loyalty.stamp_earn": "Makakakuha ka ng stamp kapag {desc}.",
   "loyalty.stamp_reward": "Pagkatapos mangolekta ng {max} (na) stamp, makakakuha ka ng: {desc}.",
   "loyalty.points": "{points} (na) pt.",

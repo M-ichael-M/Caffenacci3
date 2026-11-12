@@ -122,7 +122,6 @@
   "reviews.err_add": "Kasalahan nambihan ulasan.",
   "reviews.err_edit": "Kasalahan ngédit ulasan.",
   "reviews.err_delete": "Kasalahan mupus ulasan.",
-  "loyalty.how_points": "Kumpulkeun poin pikeun unggal pameseran di kafe kami — 3 poin pikeun unggal {amount} anu dibebankeun. Tukeurkeun kana hadiah anu dituduhkeun di handap.",
   "loyalty.stamp_earn": "Anjeun nampi cap {desc}.",
   "loyalty.stamp_reward": "Saatos ngumpulkeun {max} cap anjeun nampi: {desc}.",
   "loyalty.points": "{points} pt",

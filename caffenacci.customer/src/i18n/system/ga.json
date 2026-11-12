@@ -121,7 +121,6 @@
   "reviews.err_add": "Earráid agus léirmheas á chur leis.",
   "reviews.err_edit": "Earráid agus léirmheas á eagrú.",
   "reviews.err_delete": "Earráid agus léirmheas á scriosadh.",
-  "loyalty.how_points": "Bailigh pointí le haghaidh gach ceannachán inár gcaifé — 3 phointe in aghaidh gach {amount} a chaitear. Malartaigh iad ar na luaíochtaí atá léirithe thíos.",
   "loyalty.stamp_earn": "Faigheann tú stampa {desc}.",
   "loyalty.stamp_reward": "Tar éis {max} stampa a bhailiú faigheann tú: {desc}.",
   "loyalty.points": "{points} pt.",

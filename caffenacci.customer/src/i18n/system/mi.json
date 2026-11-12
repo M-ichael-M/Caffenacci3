@@ -122,7 +122,6 @@
   "reviews.err_add": "Hapa tāpiri arotake.",
   "reviews.err_edit": "Hapa whakatika arotake.",
   "reviews.err_delete": "Hapa muku arotake.",
-  "loyalty.how_points": "Kohikohi piro mō ia hoko i tō mātou whare kawhe — 3 piro mō ia {amount} i whakapaua. Whakawhitia ki ngā utu i raro nei.",
   "loyalty.stamp_earn": "Ka whiwhi koe i te pane {desc}.",
   "loyalty.stamp_reward": "I muri i te kohikohi {max} pane ka whiwhi koe i: {desc}.",
   "loyalty.points": "{points} piro",

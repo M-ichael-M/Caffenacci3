@@ -122,7 +122,6 @@
   "reviews.err_add": "Ralat menambah ulasan.",
   "reviews.err_edit": "Ralat menyunting ulasan.",
   "reviews.err_delete": "Ralat memadamkan ulasan.",
-  "loyalty.how_points": "Kumpul mata untuk setiap pembelian di kafe kami — 3 mata untuk setiap {amount} yang dibelanjakan. Tukarkannya dengan ganjaran di bawah.",
   "loyalty.stamp_earn": "Anda menerima setem {desc}.",
   "loyalty.stamp_reward": "Selepas mengumpul {max} setem, anda menerima: {desc}.",
   "loyalty.points": "{points} pt.",

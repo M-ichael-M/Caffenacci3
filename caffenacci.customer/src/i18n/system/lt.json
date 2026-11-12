@@ -121,7 +121,6 @@
   "reviews.err_add": "Atsiliepimo pridėjimo klaida.",
   "reviews.err_edit": "Atsiliepimo redagavimo klaida.",
   "reviews.err_delete": "Atsiliepimo trynimo klaida.",
-  "loyalty.how_points": "Rinkite taškus už kiekvieną pirkimą mūsų kavinėje — 3 taškai už kiekvieną išleistą {amount}. Keiskite juos į žemiau nurodytus prizus.",
   "loyalty.stamp_earn": "Antspaudą gaunate {desc}.",
   "loyalty.stamp_reward": "Surinkę {max} antspaudų gaunate: {desc}.",
   "loyalty.points": "{points} tšk.",

@@ -122,7 +122,6 @@
   "reviews.err_add": "Greška pri dodavanju recenzije.",
   "reviews.err_edit": "Greška pri izmeni recenzije.",
   "reviews.err_delete": "Greška pri brisanju recenzije.",
-  "loyalty.how_points": "Sakupljajte poene za svaku kupovinu u našoj kafeteriji — 3 poena za svakih potrošenih {amount}. Zamenite ih za nagrade navedene u nastavku.",
   "loyalty.stamp_earn": "Dobijate pečat za {desc}.",
   "loyalty.stamp_reward": "Nakon sakupljenih {max} pečata dobijate: {desc}.",
   "loyalty.points": "{points} poena",

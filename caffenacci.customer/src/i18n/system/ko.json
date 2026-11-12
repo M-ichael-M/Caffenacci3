@@ -121,7 +121,6 @@
   "reviews.err_add": "후기 등록 중 오류가 발생했습니다.",
   "reviews.err_edit": "후기 수정 중 오류가 발생했습니다.",
   "reviews.err_delete": "후기 삭제 중 오류가 발생했습니다.",
-  "loyalty.how_points": "카페에서 구매할 때마다 포인트가 적립됩니다 — 결제 금액 {amount}당 3포인트. 아래 혜택으로 교환해 보세요.",
   "loyalty.stamp_earn": "{desc} 통해 스탬프가 적립됩니다.",
   "loyalty.stamp_reward": "스탬프 {max}개 수집 시 지급: {desc}.",
   "loyalty.points": "{points}P",

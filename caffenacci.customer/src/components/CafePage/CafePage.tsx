@@ -100,6 +100,8 @@ interface PublicSiteData {
   loyalty_stamps_max: number
   loyalty_stamps_earn_desc: string | null
   loyalty_stamps_reward_desc: string | null
+  loyalty_points_per_amount: number
+  loyalty_points_amount_unit: number
   loyalty_rewards: { id: string; name: string; cost_points: number }[]
   gallery_images: GalleryImageItem[]
   news_enabled: boolean
@@ -556,6 +558,8 @@ function CafeContent({
                   stampsEarnDesc={data.loyalty_stamps_earn_desc}
                   stampsRewardDesc={data.loyalty_stamps_reward_desc}
                   rewards={data.loyalty_rewards}
+                  pointsPerAmount={data.loyalty_points_per_amount}
+                  pointsAmountUnit={data.loyalty_points_amount_unit}
                   requireLogin={requireLogin}
                   authToken={auth?.token ?? null}
                   previewMode={isPreview}

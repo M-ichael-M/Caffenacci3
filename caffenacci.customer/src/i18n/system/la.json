@@ -121,7 +121,6 @@
   "reviews.err_add": "Error addendae censurae.",
   "reviews.err_edit": "Error mutandae censurae.",
   "reviews.err_delete": "Error delendae censurae.",
-  "loyalty.how_points": "Congere puncta pro quaque emptione in cafaeo nostro — 3 puncta pro quoque {amount} expenso. Ea commutato in praemia infra indicata.",
   "loyalty.stamp_earn": "Sigillum accipis {desc}.",
   "loyalty.stamp_reward": "Post {max} sigilla congesta accipis: {desc}.",
   "loyalty.points": "{points} pt.",

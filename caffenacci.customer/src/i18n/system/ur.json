@@ -122,7 +122,6 @@
   "reviews.err_add": "جائزہ شامل کرنے میں خرابی۔",
   "reviews.err_edit": "جائزہ ترمیم میں خرابی۔",
   "reviews.err_delete": "جائزہ حذف کرنے میں خرابی۔",
-  "loyalty.how_points": "ہمارے کیفے میں ہر خریداری پر پوائنٹس جمع کریں — ہر خرچ کردہ {amount} پر 3 پوائنٹس۔ انہیں نیچے دیئے گئے انعامات کے لیے تبادلہ کریں۔",
   "loyalty.stamp_earn": "آپ کو {desc} مہر ملتی ہے۔",
   "loyalty.stamp_reward": "{max} مہریں جمع کرنے کے بعد آپ کو ملتا ہے: {desc}۔",
   "loyalty.points": "{points} پوائنٹس",

@@ -122,7 +122,6 @@
   "reviews.err_add": "Fehler beim Hinzufügen der Bewertung.",
   "reviews.err_edit": "Fehler beim Bearbeiten der Bewertung.",
   "reviews.err_delete": "Fehler beim Löschen der Bewertung.",
-  "loyalty.how_points": "Sammeln Sie Punkte für jeden Einkauf in unserem Café — 3 Punkte pro ausgegebenem {amount}. Lösen Sie diese gegen unten aufgeführte Prämien ein.",
   "loyalty.stamp_earn": "Einen Stempel erhalten Sie {desc}.",
   "loyalty.stamp_reward": "Nach dem Sammeln von {max} Stempeln erhalten Sie: {desc}.",
   "loyalty.points": "{points} Pkt.",

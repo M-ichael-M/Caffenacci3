@@ -122,7 +122,6 @@
   "reviews.err_add": "Phoso ha ho eketsoa maikutlo.",
   "reviews.err_edit": "Phoso ha ho fetoloa maikutlo.",
   "reviews.err_delete": "Phoso ha ho hlakoloa maikutlo.",
-  "loyalty.how_points": "Pokella lintlha thekong e 'ngoe le e 'ngoe kofing ea rona — lintlha tse 3 bakeng sa {amount} ka 'ngoe e sebelisitsoeng. Li fapanyetse bakeng sa meputso e ka tlase.",
   "loyalty.stamp_earn": "U fumana setempe {desc}.",
   "loyalty.stamp_reward": "Kamora ho bokella lisetempe tse {max} u fumana: {desc}.",
   "loyalty.points": "{points} lintlha",

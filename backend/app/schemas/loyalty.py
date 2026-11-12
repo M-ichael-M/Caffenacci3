@@ -24,6 +24,9 @@ class LoyaltySettingsIn(BaseModel):
     stamps_max:         int  = Field(10, ge=2, le=100)
     stamps_earn_desc:   Optional[str] = Field(None, max_length=500)
     stamps_reward_desc: Optional[str] = Field(None, max_length=500)
+    # None = bez zmian (stary klient bez tych pól nie nadpisze reguły)
+    points_per_amount:  Optional[int] = Field(None, ge=1, le=100_000)
+    points_amount_unit: Optional[int] = Field(None, ge=1, le=1_000_000_000)
     rewards:            List[LoyaltyRewardIn] = []
 
 
@@ -35,6 +38,8 @@ class LoyaltySettingsOut(BaseModel):
     stamps_max:         int
     stamps_earn_desc:   Optional[str]
     stamps_reward_desc: Optional[str]
+    points_per_amount:  int
+    points_amount_unit: int
     rewards:            List[LoyaltyRewardOut] = []
     model_config = {"from_attributes": True}
 

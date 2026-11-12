@@ -122,7 +122,6 @@
   "reviews.err_add": "Pikir goşmak ýalňyşlygy.",
   "reviews.err_edit": "Pikir üýtgetmek ýalňyşlygy.",
   "reviews.err_delete": "Pikir pozmak ýalňyşlygy.",
-  "loyalty.how_points": "Kafämizde eden her satyn almalaryňyz üçin utuk ýygnap bilersiňiz — sarp edilen her {amount} üçin 3 utuk. Olary aşakdaky baýraklara çalyşyň.",
   "loyalty.stamp_earn": "{desc} möhür alýarsyňyz.",
   "loyalty.stamp_reward": "{max} möhür ýygnaanyňyzdan soň alýarsyňyz: {desc}.",
   "loyalty.points": "{points} utuk",

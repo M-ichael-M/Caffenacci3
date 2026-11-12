@@ -122,7 +122,6 @@
   "reviews.err_add": "เกิดข้อผิดพลาดในการเพิ่มรีวิว",
   "reviews.err_edit": "เกิดข้อผิดพลาดในการแก้ไขรีวิว",
   "reviews.err_delete": "เกิดข้อผิดพลาดในการลบรีวิว",
-  "loyalty.how_points": "สะสมแต้มทุกครั้งที่ซื้อสินค้าในคาเฟ่ของเรา — 3 แต้ม ทุกๆ ยอดใช้จ่าย {amount} แลกรับรางวัลด้านล่างนี้",
   "loyalty.stamp_earn": "คุณได้รับแสตมป์ {desc}",
   "loyalty.stamp_reward": "เมื่อสะสมครบ {max} แสตมป์ จะได้รับ: {desc}",
   "loyalty.points": "{points} แต้ม",

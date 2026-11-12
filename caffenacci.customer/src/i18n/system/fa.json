@@ -122,7 +122,6 @@
   "reviews.err_add": "خطا در افزودن نظر.",
   "reviews.err_edit": "خطا در ویرایش نظر.",
   "reviews.err_delete": "خطا در حذف نظر.",
-  "loyalty.how_points": "برای هر خرید در کافه ما امتیاز جمع‌آوری کنید — ۳ امتیاز به ازای هر {amount} خرج شده. آنها را با جوایز ذکر شده در زیر عوض کنید.",
   "loyalty.stamp_earn": "شما برای {desc} یک مهر دریافت می‌کنید.",
   "loyalty.stamp_reward": "پس از جمع‌آوری {max} مهر دریافت می‌کنید: {desc}.",
   "loyalty.points": "{points} امتیاز",

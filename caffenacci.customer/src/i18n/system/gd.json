@@ -122,7 +122,6 @@
   "reviews.err_add": "Mearachd a' cur lèirmheas ris.",
   "reviews.err_edit": "Mearachd a' deasachadh an lèirmheas.",
   "reviews.err_delete": "Mearachd a' sguab às an lèirmheas.",
-  "loyalty.how_points": "Cruinnich puingean airson gach ceannach anns a' chafaidh againn — 3 puingean airson gach {amount} a chaidh a chaitheamh. Iomlaid iad airson duaisean a tha air an liostadh gu h-ìosal.",
   "loyalty.stamp_earn": "Gheibh thu stampa {desc}.",
   "loyalty.stamp_reward": "An dèidh cruinneachadh {max} stampaichean gheibh thu: {desc}.",
   "loyalty.points": "{points} puingean",

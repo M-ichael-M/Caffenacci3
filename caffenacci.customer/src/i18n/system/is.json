@@ -121,7 +121,6 @@
   "reviews.err_add": "Villa við að bæta við umsögn.",
   "reviews.err_edit": "Villa við að breyta umsögn.",
   "reviews.err_delete": "Villa við að eyða umsögn.",
-  "loyalty.how_points": "Safnaðu stigum fyrir hverja pöntun á kaffihúsinu okkar — 3 stig fyrir hverja {amount} sem eytt er. Skiptu þeim út fyrir verðlaunin hér að neðan.",
   "loyalty.stamp_earn": "Þú færð stimpil {desc}.",
   "loyalty.stamp_reward": "Eftir að hafa safnað {max} stimplum færðu: {desc}.",
   "loyalty.points": "{points} stig",

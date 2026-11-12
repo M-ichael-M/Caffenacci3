@@ -122,7 +122,6 @@
   "reviews.err_add": "שגיאה בהוספת חוות דעת.",
   "reviews.err_edit": "שגיאה בעריכת חוות דעת.",
   "reviews.err_delete": "שגיאה במחיקת חוות דעת.",
-  "loyalty.how_points": "אסוף נקודות על כל רכישה בבית הקפה שלנו — 3 נקודות על כל {amount} שיוצאו. המר אותן לפרס המפורט להלן.",
   "loyalty.stamp_earn": "אתה מקבל חותמת {desc}.",
   "loyalty.stamp_reward": "לאחר איסוף של {max} חותמות תקבל: {desc}.",
   "loyalty.points": "{points} נק'",

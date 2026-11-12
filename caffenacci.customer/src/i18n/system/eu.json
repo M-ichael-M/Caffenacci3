@@ -122,7 +122,6 @@
   "reviews.err_add": "Errorea balorazioa gehitzean.",
   "reviews.err_edit": "Errorea balorazioa editatzean.",
   "reviews.err_delete": "Errorea balorazioa ezabatzean.",
-  "loyalty.how_points": "Metatu puntuak gure kafetegian egindako erosketa bakoitzeko — 3 puntu gastatutako {amount} bakoitzeko. Trukatu behen adierazitako sariekin.",
   "loyalty.stamp_earn": "Zigilu bat lortuko duzu {desc}.",
   "loyalty.stamp_reward": "{max} zigilu bildu ondoren honako hau lortuko duzu: {desc}.",
   "loyalty.points": "{points} pt.",

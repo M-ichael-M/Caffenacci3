@@ -122,7 +122,6 @@
   "reviews.err_add": "Sharh qo'shish xatosi.",
   "reviews.err_edit": "Sharhni tahrirlash xatosi.",
   "reviews.err_delete": "Sharhni o'chirish xatosi.",
-  "loyalty.how_points": "Qahvaxonamizdagi har bir xarid uchun ochko yig'ing — sarflangan har {amount} uchun 3 ochko. Ularni quyidagi mukofotlarga almashtiring.",
   "loyalty.stamp_earn": "Siz {desc} shtamp olasiz.",
   "loyalty.stamp_reward": "{max} ta shtamp yig'ganingizdan so'ng quyidagilarni olasiz: {desc}.",
   "loyalty.points": "{points} ochko",

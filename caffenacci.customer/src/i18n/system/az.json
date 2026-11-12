@@ -122,7 +122,6 @@
   "reviews.err_add": "Rəy əlavə edilərkən xəta baş verdi.",
   "reviews.err_edit": "Rəy redaktə edilərkən xəta baş verdi.",
   "reviews.err_delete": "Rəy silinərkən xəta baş verdi.",
-  "loyalty.how_points": "Kafemizdəki hər alış üçün xal toplayın — xərclənən hər {amount} üçün 3 xal. Onları aşağıda göstərilən mükafatlara dəyişin.",
   "loyalty.stamp_earn": "Ştamp əldə edirsiniz {desc}.",
   "loyalty.stamp_reward": "{max} ştamp topladıqdan sonra əldə edirsiniz: {desc}.",
   "loyalty.points": "{points} xal",

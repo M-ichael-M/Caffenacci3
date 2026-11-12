@@ -121,7 +121,6 @@
   "reviews.err_add": "Żball fl-iżjieda tar-reviżjoni.",
   "reviews.err_edit": "Żball fl-editjar tar-reviżjoni.",
   "reviews.err_delete": "Żball fit-tħassir tar-reviżjoni.",
-  "loyalty.how_points": "Iġbor punti għal kull xiri fil-kafè tagħna — 3 punti għal kull {amount} minfuqa. Skambjahom għall-premjijiet indikati hawn taħt.",
   "loyalty.stamp_earn": "Tirċievi timbru {desc}.",
   "loyalty.stamp_reward": "Wara li tiġbor {max} timbri tirċievi: {desc}.",
   "loyalty.points": "{points} pt.",

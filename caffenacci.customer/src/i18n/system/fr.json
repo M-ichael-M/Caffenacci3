@@ -122,7 +122,6 @@
   "reviews.err_add": "Erreur lors de l'ajout de l'avis.",
   "reviews.err_edit": "Erreur lors de la modification de l'avis.",
   "reviews.err_delete": "Erreur lors de la suppression de l'avis.",
-  "loyalty.how_points": "Cumulez des points pour chaque achat dans notre café — 3 points pour chaque {amount} dépensé. Échangez-les contre les récompenses ci-dessous.",
   "loyalty.stamp_earn": "Vous obtenez un tampon : {desc}.",
   "loyalty.stamp_reward": "Après avoir collecté {max} tampons, vous recevez : {desc}.",
   "loyalty.points": "{points} pts",

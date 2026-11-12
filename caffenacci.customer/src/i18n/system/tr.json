@@ -122,7 +122,6 @@
   "reviews.err_add": "Değerlendirme ekleme hatası.",
   "reviews.err_edit": "Değerlendirme düzenleme hatası.",
   "reviews.err_delete": "Değerlendirme silme hatası.",
-  "loyalty.how_points": "Kafemizde yaptığınız her alışveriş için puan toplayın — harcanan her {amount} için 3 puan. Bunları aşağıda belirtilen ödüllerle değiştirin.",
   "loyalty.stamp_earn": "{desc} damga alırsınız.",
   "loyalty.stamp_reward": "{max} damga topladıktan sonra şunları alırsınız: {desc}.",
   "loyalty.points": "{points} puan",

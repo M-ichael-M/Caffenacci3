@@ -122,7 +122,6 @@
   "reviews.err_add": "Sese i le faaopoopoina o le iloiloga.",
   "reviews.err_edit": "Sese i le suiga o le iloiloga.",
   "reviews.err_delete": "Sese i le tapeina o le iloiloga.",
-  "loyalty.how_points": "Aoao fa'ailoga mo fa'atau ta'itasi i la matou fale kofe — 3 fa'ailoga mo ta'itasi {amount} na fa'aalu. Fesuia'i mo tau o lo'o lisi i lalo.",
   "loyalty.stamp_earn": "E te maua se fa'amaufa'ailoga {desc}.",
   "loyalty.stamp_reward": "A uma ona aoao {max} fa'amaufa'ailoga e te maua: {desc}.",
   "loyalty.points": "{points} pt.",

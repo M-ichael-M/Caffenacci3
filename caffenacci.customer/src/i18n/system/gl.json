@@ -122,7 +122,6 @@
   "reviews.err_add": "Erro ao engadir a opinión.",
   "reviews.err_edit": "Erro ao editar a opinión.",
   "reviews.err_delete": "Erro ao eliminar a opinión.",
-  "loyalty.how_points": "Acumula puntos por cada compra na nosa cafetaría — 3 puntos por cada {amount} gastados. Cámbiaos polos premios indicados abaixo.",
   "loyalty.stamp_earn": "Recibes un selo {desc}.",
   "loyalty.stamp_reward": "Despois de xuntar {max} selos recibes: {desc}.",
   "loyalty.points": "{points} pts.",

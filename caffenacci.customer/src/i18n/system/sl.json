@@ -122,7 +122,6 @@
   "reviews.err_add": "Napaka pri dodajanju mnenja.",
   "reviews.err_edit": "Napaka pri urejanju mnenja.",
   "reviews.err_delete": "Napaka pri brisanju mnenja.",
-  "loyalty.how_points": "Zbirajte točke za vsak nakup v naši kavarni — 3 točke za vsak porabljen {amount}. Zamenjajte jih za nagrade, navedene spodaj.",
   "loyalty.stamp_earn": "Žig prejmete za {desc}.",
   "loyalty.stamp_reward": "Po zbranih {max} žigih prejmete: {desc}.",
   "loyalty.points": "{points} točk",

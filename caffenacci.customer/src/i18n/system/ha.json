@@ -122,7 +122,6 @@
   "reviews.err_add": "Kuskure wajen ƙara ra'ayi.",
   "reviews.err_edit": "Kuskure wajen gyara ra'ayi.",
   "reviews.err_delete": "Kuskure wajen share ra'ayi.",
-  "loyalty.how_points": "Tara maki ga kowane siyayya a gidan kofinmu — maki 3 ga kowane {amount} da aka kashe. Musanya su da kyaututtukan da aka jera a ƙasa.",
   "loyalty.stamp_earn": "Kuna samun hatimi {desc}.",
   "loyalty.stamp_reward": "Bayan tara hatimi {max} kuna karɓar: {desc}.",
   "loyalty.points": "{points} maki",

@@ -122,7 +122,6 @@
   "reviews.err_add": "Gabim gjatë shtimit të vlerësimit.",
   "reviews.err_edit": "Gabim gjatë ndryshimit të vlerësimit.",
   "reviews.err_delete": "Gabim gjatë fshirjes së vlerësimit.",
-  "loyalty.how_points": "Mblidhni pikë për çdo blerje në kafenenë tonë — 3 pikë për çdo {amount} të shpenzuar. Shkëmbejini ato me shpërblimet e treguara më poshtë.",
   "loyalty.stamp_earn": "Ju merrni një pullë {desc}.",
   "loyalty.stamp_reward": "Pasi të mblidhni {max} pulla, merrni: {desc}.",
   "loyalty.points": "{points} pikë",

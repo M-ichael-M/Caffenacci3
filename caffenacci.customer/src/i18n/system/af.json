@@ -122,7 +122,6 @@
   "reviews.err_add": "Fout met die byvoeg van resensie.",
   "reviews.err_edit": "Fout met die wysiging van resensie.",
   "reviews.err_delete": "Fout met die uitvee van resensie.",
-  "loyalty.how_points": "Versamel punte met elke aankoop by ons koffiewinkel — 3 punte vir elke {amount} wat bestee word. Ruil dit in vir belonings soos hieronder aangedui.",
   "loyalty.stamp_earn": "Jy ontvang 'n stempel {desc}.",
   "loyalty.stamp_reward": "Nadat jy {max} stempels ingesamel het, ontvang jy: {desc}.",
   "loyalty.points": "{points} pte.",

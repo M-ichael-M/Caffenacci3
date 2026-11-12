@@ -122,7 +122,6 @@
   "reviews.err_add": "Viga arvustuse lisamisel.",
   "reviews.err_edit": "Viga arvustuse muutmisel.",
   "reviews.err_delete": "Viga arvustuse kustutamisel.",
-  "loyalty.how_points": "Koguge meie kohvikus iga ostuga punkte — 3 punkti iga kulutatud {amount} kohta. Vahetage need allpool näidatud preemiate vastu.",
   "loyalty.stamp_earn": "Saate templi {desc}.",
   "loyalty.stamp_reward": "Pärast {max} templi kogumist saate: {desc}.",
   "loyalty.points": "{points} p.",

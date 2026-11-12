@@ -122,7 +122,6 @@
   "reviews.err_add": "Hiba a vélemény hozzáadásakor.",
   "reviews.err_edit": "Hiba a vélemény szerkesztésekor.",
   "reviews.err_delete": "Hiba a vélemény törlésekor.",
-  "loyalty.how_points": "Gyűjtsön pontokat minden vásárlás után a kávézónkban — 3 pont minden elköltött {amount} után. Váltsa be őket az alábbi jutalmakra.",
   "loyalty.stamp_earn": "Pecsétet kap: {desc}.",
   "loyalty.stamp_reward": "{max} pecsét összegyűjtése után kapja: {desc}.",
   "loyalty.points": "{points} pont",

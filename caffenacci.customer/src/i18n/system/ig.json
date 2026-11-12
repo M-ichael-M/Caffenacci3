@@ -122,7 +122,6 @@
   "reviews.err_add": "Mts mgbakwunye nyocha adaghị.",
   "reviews.err_edit": "Mmegharị nyocha adaghị.",
   "reviews.err_delete": "Ihichapụ nyocha adaghị.",
-  "loyalty.how_points": "Gbanwee isi maka ịzụta ihe ọ bụla n'ụlọ kọfị anyị — isi 3 maka {amount} ọ bụla ejiri mee ihe. Gbanwee ha maka onyinye egosiri n'okpuru.",
   "loyalty.stamp_earn": "Ị na-enweta stampụ {desc}.",
   "loyalty.stamp_reward": "Mgbe ị chịkọtara stampụ {max}, ị na-enweta: {desc}.",
   "loyalty.points": "{points} pt.",

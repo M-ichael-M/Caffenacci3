@@ -122,7 +122,6 @@
   "reviews.err_add": "جائزو شامل ڪرڻ ۾ خرابي.",
   "reviews.err_edit": "جائزو ايڊٽ ڪرڻ ۾ خرابي.",
   "reviews.err_delete": "جائزو ڊيليٽ ڪرڻ ۾ خرابي.",
-  "loyalty.how_points": "اسان جي ڪافي هائوس مان هر خريداري تي پوائنٽس گڏ ڪريو — هر خرچ ڪيل {amount} تي 3 پوائنٽس. انهن کي هيٺ ڏنل انعامن سان مٽايو.",
   "loyalty.stamp_earn": "توهان کي {desc} لاءِ اسٽامپ ملي ٿو.",
   "loyalty.stamp_reward": "{max} اسٽامپس گڏ ڪرڻ کان پوءِ توهان کي ملندو: {desc}.",
   "loyalty.points": "{points} پوائنٽس",

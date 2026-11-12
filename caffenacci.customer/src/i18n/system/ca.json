@@ -121,7 +121,6 @@
   "reviews.err_add": "Error en afegir l'opinió.",
   "reviews.err_edit": "Error en editar l'opinió.",
   "reviews.err_delete": "Error en eliminar l'opinió.",
-  "loyalty.how_points": "Acumuleu punts amb cada compra a la nostra cafeteria — 3 punts per cada {amount} gastat. Canvieu-los pels premis indicats a continuació.",
   "loyalty.stamp_earn": "Aconseguiu un segell amb {desc}.",
   "loyalty.stamp_reward": "En aconseguir {max} segells obtingueu: {desc}.",
   "loyalty.points": "{points} pts.",

@@ -13,7 +13,8 @@ from app.core.employee_access import get_current_cafe_id
 from app.core.page_cache import invalidate_cafe
 from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings
-from app.core.currency import cafe_currency, currency_exponent
+from app.core.currency import cafe_currency, round_decimal
+from app.core.loyalty_rules import DEFAULT_POINTS, default_unit, compute_points
 from app.models.cafe import Cafe
 from app.models.cafe_profile import CafeProfile
 from app.models.client import Client
@@ -59,8 +60,11 @@ def _get_or_create_settings(cafe_id: str, db: Session, *, create: bool = True) -
         .filter(LoyaltySettings.cafe_id == cafe_id)
         .first()
     )
-    if not s and create:
-        s = LoyaltySettings(cafe_id=cafe_id)
+    if s:
+        return s
+    unit = default_unit(cafe_currency(cafe_id, db))
+    if create:
+        s = LoyaltySettings(cafe_id=cafe_id, points_per_amount=DEFAULT_POINTS, points_amount_unit=unit)
         db.add(s)
         db.commit()
         db.refresh(s)
@@ -70,9 +74,11 @@ def _get_or_create_settings(cafe_id: str, db: Session, *, create: bool = True) -
             .filter(LoyaltySettings.id == s.id)
             .first()
         )
-    return s or LoyaltySettings(
+        return s
+    return LoyaltySettings(
         id=f"default-{cafe_id}", cafe_id=cafe_id,
-        enabled=False, mode="points", stamps_max=10, rewards=[],
+        enabled=False, mode="points", stamps_max=10,
+        points_per_amount=DEFAULT_POINTS, points_amount_unit=unit, rewards=[],
     )
 
 
@@ -124,6 +130,10 @@ def save_settings(
     s.stamps_max         = payload.stamps_max
     s.stamps_earn_desc   = payload.stamps_earn_desc
     s.stamps_reward_desc = payload.stamps_reward_desc
+    if payload.points_per_amount is not None:
+        s.points_per_amount = payload.points_per_amount
+    if payload.points_amount_unit is not None:
+        s.points_amount_unit = payload.points_amount_unit
     s.updated_at         = datetime.utcnow()
 
     # Nagrody — replace-all (analogicznie do menu)
@@ -195,14 +205,14 @@ def earn_points(
     client = _find_client_by_code(payload.loyalty_code, db)
     cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
 
-    grosze = round(payload.amount * 100)
-    earned = (grosze // 10) * 3
+    amount = round_decimal(payload.amount, currency)
+    earned = compute_points(amount, currency, settings.points_per_amount, settings.points_amount_unit)
 
     cl.points     += earned
     cl.updated_at  = datetime.utcnow()
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="earn_points",
-        description=f"Transakcja {payload.amount:.{currency_exponent(currency)}f} {currency} ({earned} pkt.)",
+        description=f"{amount} {currency}",
         points_delta=earned, currency=currency,
     ))
     db.commit()
@@ -243,7 +253,7 @@ def redeem_reward(
     cl.updated_at = datetime.utcnow()
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="redeem_points",
-        description=f"Wymiana: {reward.name}",
+        description=reward.name,
         points_delta=-reward.cost_points, currency=currency,
     ))
     db.commit()
@@ -281,7 +291,7 @@ def add_stamp(
     cl.updated_at = datetime.utcnow()
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="add_stamp",
-        description="Nowa pieczątka", stamps_delta=1, currency=currency,
+        stamps_delta=1, currency=currency,
     ))
     db.commit()
     db.refresh(cl)
@@ -314,7 +324,7 @@ def reset_stamps(
     cl.updated_at = datetime.utcnow()
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="reset_stamps",
-        description="Odebrano nagrodę — karta wyzerowana", currency=currency,
+        currency=currency,
     ))
     db.commit()
     db.refresh(cl)

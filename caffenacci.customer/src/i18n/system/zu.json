@@ -122,7 +122,6 @@
   "reviews.err_add": "Iphutha lokungeza isibuyekezo.",
   "reviews.err_edit": "Iphutha lokuhlela isibuyekezo.",
   "reviews.err_delete": "Iphutha lokususa isibuyekezo.",
-  "loyalty.how_points": "Qoqa amaphuzu ngokuthenga ngakunye ekhefini lethu — amaphuzu angu-3 ngalinye {amount} elichithiwe. Shintshana ngawo ngemivuzo ebalulwe ngezansi.",
   "loyalty.stamp_earn": "Uthola isitembu {desc}.",
   "loyalty.stamp_reward": "Ngemuva kokuqoqa izitembu ezingu-{max} uthola: {desc}.",
   "loyalty.points": "{points} amaph.",

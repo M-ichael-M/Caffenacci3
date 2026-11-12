@@ -365,6 +365,8 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
         loyalty_stamps_max=(loyalty_settings.stamps_max if loyalty_settings else 10),
         loyalty_stamps_earn_desc=(loyalty_settings.stamps_earn_desc if loyalty_settings else None),
         loyalty_stamps_reward_desc=(loyalty_settings.stamps_reward_desc if loyalty_settings else None),
+        loyalty_points_per_amount=(loyalty_settings.points_per_amount if loyalty_settings else 30),
+        loyalty_points_amount_unit=(loyalty_settings.points_amount_unit if loyalty_settings else 1),
         loyalty_rewards=(loyalty_settings.rewards if loyalty_settings and loyalty_settings.enabled else []),
 
         gallery_images=gallery_images,

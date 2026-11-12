@@ -122,7 +122,6 @@
   "reviews.err_add": "باھا قوشۇش خاتالىقى.",
   "reviews.err_edit": "باھا تەھرىرلەش خاتالىقى.",
   "reviews.err_delete": "باھا ئۆچۈرۈش خاتالىقى.",
-  "loyalty.how_points": "ھەر بىر سېتىۋېلىشقا نومۇر توپلاڭ — ھەر {amount} ئۈچۈن 3 نومۇر.",
   "loyalty.stamp_earn": "{desc} تامغا ئالىسىز.",
   "loyalty.stamp_reward": "{max} تامغا يىغقاندىن كېيىن: {desc}.",
   "loyalty.points": "{points} نومۇر",

@@ -122,7 +122,6 @@
   "reviews.err_add": "Hitilafu katika kuongeza maoni.",
   "reviews.err_edit": "Hitilafu katika kuhariri maoni.",
   "reviews.err_delete": "Hitilafu katika kufuta maoni.",
-  "loyalty.how_points": "Kusanya pointi kwa kila ununuzi katika kahawa yetu — pointi 3 kwa kila {amount} uliyotumia. Zibadilishe kwa zawadi zilizo hapa chini.",
   "loyalty.stamp_earn": "Unapokea muhuri {desc}.",
   "loyalty.stamp_reward": "Baada ya kukusanya mihuri {max} unapokea: {desc}.",
   "loyalty.points": "pt {points}",

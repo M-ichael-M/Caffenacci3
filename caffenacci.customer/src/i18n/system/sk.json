@@ -122,7 +122,6 @@
   "reviews.err_add": "Chyba pri pridávaní recenzie.",
   "reviews.err_edit": "Chyba pri úprave recenzie.",
   "reviews.err_delete": "Chyba pri odstraňovaní recenzie.",
-  "loyalty.how_points": "Zbierajte body za každý nákup v našej kaviareň — 3 body za každých minutých {amount}. Vymieňajte ich za odmeny uvedené nižšie.",
   "loyalty.stamp_earn": "Pečiatku získavate {desc}.",
   "loyalty.stamp_reward": "Po nazbieraní {max} pečiatok získavate: {desc}.",
   "loyalty.points": "{points} bod.",

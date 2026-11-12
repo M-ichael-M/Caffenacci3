@@ -19,6 +19,8 @@ interface Props {
   stampsEarnDesc: string | null
   stampsRewardDesc: string | null
   rewards: RewardItem[]
+  pointsPerAmount: number
+  pointsAmountUnit: number
   requireLogin: (action: () => void) => void
   authToken: string | null
   previewMode?: boolean
@@ -49,6 +51,7 @@ function StampsTrack({ stamps, max }: { stamps: number; max: number }) {
 
 export default function LoyaltyWidget({
   cafeId, mode, stampsMax, stampsEarnDesc, stampsRewardDesc, rewards,
+  pointsPerAmount, pointsAmountUnit,
   requireLogin, authToken, previewMode = false,
 }: Props) {
   const { t, fmt } = useI18n()
@@ -82,7 +85,10 @@ export default function LoyaltyWidget({
         <p className="cp-muted-note" style={{ fontStyle: 'normal', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
           <CoinIcon size={16} className="cp-inline-icon" />
           <span>
-            {t('loyalty.how_points', { amount: formatCurrency(0.1, fmt) })}
+            {t('loyalty.how_points', {
+              points: t('loyalty.points', { points: formatNumber(pointsPerAmount, fmt) }),
+              amount: formatCurrency(pointsAmountUnit, fmt),
+            })}
           </span>
         </p>
       ) : (
