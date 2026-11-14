@@ -11,7 +11,8 @@ from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.cafe import Cafe
 from app.models.billing import Subscription
-from app.schemas.billing import SubscriptionStatusOut, PromoRedeemIn
+from app.core.billing_prices import BILLING_PRICES_MINOR, default_billing_currency
+from app.schemas.billing import SubscriptionStatusOut, PromoRedeemIn, BillingCurrencyIn
 from app.routers.employee_auth import ensure_staff_code
 
 router = APIRouter(prefix="/billing", tags=["billing"])
@@ -73,6 +74,26 @@ def _sync_subscription(sub: Subscription, db: Session) -> None:
         db.refresh(sub)
 
 
+def _has_paid(sub) -> bool:
+    return bool(sub and sub.price_minor is not None)
+
+
+def _chosen_currency(cafe: Cafe) -> str:
+    pref = cafe.billing_currency
+    return pref if pref in BILLING_PRICES_MINOR else default_billing_currency(cafe.country)
+
+
+def _billing_fields(sub, cafe: Cafe) -> dict:
+    locked = _has_paid(sub)
+    cur = sub.billing_currency if locked else _chosen_currency(cafe)
+    return dict(
+        billing_currency=cur,
+        price_minor=sub.price_minor if locked else BILLING_PRICES_MINOR[cur],
+        currency_locked=locked,
+        prices=dict(BILLING_PRICES_MINOR),
+    )
+
+
 def _get_effective_subscription(cafe_id: str, db: Session, *, sync: bool = False) -> Subscription | SimpleNamespace | None:
     sub = db.query(Subscription).filter(Subscription.cafe_id == cafe_id).first()
     if sub and sync:
@@ -90,13 +111,15 @@ def _get_effective_subscription(cafe_id: str, db: Session, *, sync: bool = False
                 kind=sub.kind, period_start=start, period_end=end,
                 cancel_at_period_end=sub.cancel_at_period_end,
                 promo_code=sub.promo_code,
+                billing_currency=sub.billing_currency, price_minor=sub.price_minor,
             )
     return sub
 
 
-def _to_status_out(sub: Subscription | None) -> SubscriptionStatusOut:
+def _to_status_out(sub: Subscription | None, cafe: Cafe) -> SubscriptionStatusOut:
+    extra = _billing_fields(sub, cafe)
     if not sub:
-        return SubscriptionStatusOut(status="none")
+        return SubscriptionStatusOut(status="none", **extra)
 
     now = datetime.utcnow()
 
@@ -109,6 +132,7 @@ def _to_status_out(sub: Subscription | None) -> SubscriptionStatusOut:
             cancel_at_period_end=sub.cancel_at_period_end,
             promo_code=sub.promo_code,
             can_cancel=False,
+            **extra,
         )
 
     is_cancelling = sub.kind == "subscription" and sub.cancel_at_period_end
@@ -127,6 +151,7 @@ def _to_status_out(sub: Subscription | None) -> SubscriptionStatusOut:
         promo_code=sub.promo_code,
         can_cancel=can_cancel,
         next_billing_date=(sub.period_end if sub.kind == "subscription" and not sub.cancel_at_period_end else None),
+        **extra,
     )
 
 
@@ -150,7 +175,7 @@ def get_status(
     db:           Session = Depends(get_db),
 ):
     sub = _get_effective_subscription(current_cafe.id, db)
-    return _to_status_out(sub)
+    return _to_status_out(sub, current_cafe)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -168,9 +193,15 @@ def subscribe(
     if existing and now < existing.period_end:
         raise HTTPException(400, detail="Masz już aktywny dostęp — nie można aktywować kolejnej subskrypcji.")
 
+    # Po pierwszej płatności waluta jest zamrożona; wcześniej obowiązuje wybór właściciela.
+    currency = existing.billing_currency if _has_paid(existing) else _chosen_currency(current_cafe)
+    price = BILLING_PRICES_MINOR[currency]
+
     if existing:
         existing.kind = "subscription"
         existing.promo_code = None
+        existing.billing_currency = currency
+        existing.price_minor = price
         existing.period_start = now
         existing.period_end = now + timedelta(days=SUBSCRIPTION_PERIOD_DAYS)
         existing.cancel_at_period_end = False
@@ -183,6 +214,8 @@ def subscribe(
         sub = Subscription(
             cafe_id=current_cafe.id,
             kind="subscription",
+            billing_currency=currency,
+            price_minor=price,
             period_start=now,
             period_end=now + timedelta(days=SUBSCRIPTION_PERIOD_DAYS),
         )
@@ -190,7 +223,7 @@ def subscribe(
         db.commit()
         db.refresh(sub)
 
-    return _to_status_out(sub)
+    return _to_status_out(sub, current_cafe)
 
 
 @router.post("/promo", response_model=SubscriptionStatusOut,
@@ -213,6 +246,8 @@ def redeem_promo(
     if existing:
         existing.kind = "promo"
         existing.promo_code = code
+        if not _has_paid(existing):
+            existing.billing_currency = _chosen_currency(current_cafe)
         existing.period_start = now
         existing.period_end = now + timedelta(days=days)
         existing.cancel_at_period_end = False
@@ -226,6 +261,7 @@ def redeem_promo(
             cafe_id=current_cafe.id,
             kind="promo",
             promo_code=code,
+            billing_currency=_chosen_currency(current_cafe),
             period_start=now,
             period_end=now + timedelta(days=days),
         )
@@ -233,7 +269,25 @@ def redeem_promo(
         db.commit()
         db.refresh(sub)
 
-    return _to_status_out(sub)
+    return _to_status_out(sub, current_cafe)
+
+
+@router.put("/currency", response_model=SubscriptionStatusOut,
+            summary="Ustaw walutę rozliczeń z Caffenacci (do pierwszej płatności)")
+def set_billing_currency(
+    payload:      BillingCurrencyIn,
+    current_cafe: Cafe    = Depends(get_current_cafe),
+    db:           Session = Depends(get_db),
+):
+    code = payload.currency.strip().upper()
+    if code not in BILLING_PRICES_MINOR:
+        raise HTTPException(400, detail="Nieobsługiwana waluta rozliczeń.")
+    sub = _get_effective_subscription(current_cafe.id, db)
+    if _has_paid(sub):
+        raise HTTPException(400, detail="Waluta rozliczeń jest zablokowana po pierwszej płatności.")
+    current_cafe.billing_currency = code
+    db.commit()
+    return _to_status_out(sub, current_cafe)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -263,7 +317,7 @@ def cancel_subscription(
     sub.updated_at = now
     db.commit()
     db.refresh(sub)
-    return _to_status_out(sub)
+    return _to_status_out(sub, current_cafe)
 
 
 @router.post("/resume", response_model=SubscriptionStatusOut,
@@ -282,7 +336,7 @@ def resume_subscription(
     sub.updated_at = now
     db.commit()
     db.refresh(sub)
-    return _to_status_out(sub)
+    return _to_status_out(sub, current_cafe)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

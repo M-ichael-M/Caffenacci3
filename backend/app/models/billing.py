@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer
 from app.core.types import ID
 
 from app.core.database import Base
@@ -28,6 +28,11 @@ class Subscription(Base):
 
     kind       = Column(String(20), nullable=False)   # subscription | promo
     promo_code = Column(String(50), nullable=True)
+
+    # Snapshot z chwili płatności. price_minor NULL = kawiarnia jeszcze nigdy nie płaciła
+    # (kod promocyjny nie liczy się) — dopiero wtedy można zmienić walutę rozliczeń.
+    billing_currency = Column(String(3), nullable=False, default="PLN", server_default="PLN")
+    price_minor      = Column(Integer, nullable=True)   # grosze / centy; stały cennik
 
     period_start = Column(DateTime, nullable=False)
     period_end   = Column(DateTime, nullable=False)

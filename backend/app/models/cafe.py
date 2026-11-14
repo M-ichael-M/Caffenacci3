@@ -33,3 +33,7 @@ class Cafe(Base):
     # Stały 8-znakowy kod kawiarni używany przez pracowników do logowania
     # w aplikacji mobilnej (obok ich osobistego kodu z zaproszenia).
     staff_code = Column(String(8), nullable=True, unique=True, index=True)
+
+    # Preferowana waluta rozliczeń z Caffenacci (PLN/EUR/USD). NULL = domyślna z kraju
+    # (patrz core/billing_prices.py). Zmiana możliwa tylko do pierwszej płatności.
+    billing_currency = Column(String(3), nullable=True)

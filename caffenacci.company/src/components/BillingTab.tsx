@@ -6,6 +6,7 @@ import {
 import { API_URL, CUSTOMER_URL } from '../config'
 import { useI18n } from '../i18n'
 import { parseUtc } from '../utils/cafeTime'
+import { formatMoney } from '../utils/currency'
 
 interface Props {
   token: string
@@ -25,6 +26,10 @@ interface SubscriptionStatusOut {
   promo_code: string | null
   can_cancel: boolean
   next_billing_date: string | null
+  billing_currency: string
+  price_minor: number
+  currency_locked: boolean
+  prices: Record<string, number>
 }
 
 interface PublishStatusOut {
@@ -98,12 +103,12 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
     return () => window.removeEventListener('caffenacci:profile-saved', fetchAll)
   }, [fetchAll])
 
-  async function call(path: string, body?: object) {
+  async function call(path: string, body?: object, method: 'POST' | 'PUT' = 'POST') {
     setBusy(true)
     setMsg(null)
     try {
       const res = await fetch(`${API}${path}`, {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: body ? JSON.stringify(body) : undefined,
       })
@@ -151,6 +156,14 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
       setPromoCode('')
       setMsg({ type: 'ok', text: t('billing.msg.promo') })
       fetchAll()
+    } catch (e) { setMsg({ type: 'err', text: errText(e) }) }
+  }
+
+  const handleCurrency = async (currency: string) => {
+    if (!sub || currency === sub.billing_currency) return
+    try {
+      setSub(await call('/billing/currency', { currency }, 'PUT'))
+      setMsg({ type: 'ok', text: t('billing.msg.currency') })
     } catch (e) { setMsg({ type: 'err', text: errText(e) }) }
   }
 
@@ -215,6 +228,41 @@ export default function BillingTab({ token, cafeId: _cafeId }: Props) {
           <SubBadge status={status} />
         </div>
         <div className="info-card__body">
+
+          {sub && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+              <div>
+                <div className="me-label">{t('billing.price.label')}</div>
+                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+                  {t('billing.price.perMonth', { price: formatMoney(sub.price_minor / 100, locale, sub.billing_currency) })}
+                </div>
+              </div>
+
+              <div>
+                <div className="me-label" style={{ marginBottom: '0.375rem' }}>{t('billing.currency.label')}</div>
+                {sub.currency_locked ? (
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    {t('billing.currency.locked', { currency: sub.billing_currency })}
+                  </p>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {Object.entries(sub.prices).map(([c, p]) => (
+                        <button key={c} type="button" disabled={busy}
+                          className={`res-mode-btn${sub.billing_currency === c ? ' res-mode-btn--active' : ''}`}
+                          onClick={() => handleCurrency(c)}>
+                          {c} · {formatMoney(p / 100, locale, c)}
+                        </button>
+                      ))}
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', lineHeight: 1.5 }}>
+                      {t('billing.currency.hint')}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {status === 'none' && (
             <>
