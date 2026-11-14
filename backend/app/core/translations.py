@@ -56,7 +56,7 @@ def get_settings(cafe_id: str, db: Session) -> CafeLanguageSettings:
     s = db.query(CafeLanguageSettings).filter(CafeLanguageSettings.cafe_id == cafe_id).first()
     return s or CafeLanguageSettings(
         cafe_id=cafe_id, primary_language=DEFAULT_PRIMARY_LANGUAGE, secondary_language=None,
-        currency=DEFAULT_CURRENCY, time_zone=DEFAULT_TIME_ZONE,
+        currency=DEFAULT_CURRENCY, time_zone=DEFAULT_TIME_ZONE, region_confirmed=False,
     )
 
 

@@ -2,9 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db          # ← tego brakowało
+from app.core.languages import DEFAULT_PRIMARY_LANGUAGE
+from app.core.regions import currency_for_country, valid_time_zone
 from app.core.security import create_access_token, hash_password, verify_password
 from app.core.slugs import generate_unique_slug
 from app.models.cafe import Cafe
+from app.models.translation import CafeLanguageSettings
 from app.schemas.cafe import LoginIn, RegisterIn, RegisterOut, TokenOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -43,6 +46,14 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     cafe.staff_code = _generate_code(db, check_employee=False, check_cafe=True)
 
     db.add(cafe)
+    db.flush()          # id kawiarni potrzebne do wiersza ustawień
+    db.add(CafeLanguageSettings(
+        cafe_id=cafe.id,
+        primary_language=DEFAULT_PRIMARY_LANGUAGE,
+        currency=currency_for_country(payload.address.country),
+        time_zone=valid_time_zone(payload.time_zone),
+        region_confirmed=False,
+    ))
     db.commit()
     db.refresh(cafe)
 

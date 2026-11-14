@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
-import { useMoney } from './CafeSettingsContext'
+import { useCafeSettings, useMoney } from './CafeSettingsContext'
 
 interface AuthState {
   token: string
@@ -82,6 +82,8 @@ function Stars({ rating }: { rating: number }) {
 export default function Dashboard({ auth, profile, loadingProfile, onLogout }: Props) {
   const { t, locale } = useI18n()
   const money = useMoney()
+  const { loaded, regionConfirmed, timeZone, currency } = useCafeSettings()
+  const [regionHintHidden, setRegionHintHidden] = useState(false)
   const p = profile as MeProfile | null
   const cafeName  = p?.cafe_name  ?? auth.cafe_name
   const ownerName = p?.owner_name ?? auth.owner_name
@@ -159,6 +161,18 @@ export default function Dashboard({ auth, profile, loadingProfile, onLogout }: P
 
         <div className="app-main">
           <main className="dashboard-main">
+            {loaded && !regionConfirmed && !regionHintHidden && activeTab !== 'profile' && (
+              <div className="region-banner" role="status">
+                <span>{t('region.banner.text', { tz: timeZone, currency })}</span>
+                <span className="region-banner__actions">
+                  <button type="button" className="btn btn--outline-dark btn--sm" style={{ width: 'auto' }}
+                    onClick={() => setActiveTab('profile')}>{t('region.banner.cta')}</button>
+                  <button type="button" className="link-btn" onClick={() => setRegionHintHidden(true)}>
+                    {t('region.banner.dismiss')}
+                  </button>
+                </span>
+              </div>
+            )}
 
             {/* PRZEGLĄD */}
             {activeTab === 'overview' && (

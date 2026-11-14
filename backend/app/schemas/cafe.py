@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -18,6 +20,8 @@ class RegisterIn(BaseModel):
     phone: str = Field(..., min_length=7, max_length=30, examples=["+48 123 456 789"])
     password: str = Field(..., min_length=8, examples=["Mocne#Haslo1"])
     address: AddressIn
+    # Strefa z przeglądarki (Intl) — tylko sugestia; backend waliduje i w razie błędu bierze domyślną.
+    time_zone: Optional[str] = Field(None, max_length=64, examples=["Asia/Phnom_Penh"])
 
 
 class RegisterOut(BaseModel):

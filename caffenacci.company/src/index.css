@@ -745,6 +745,14 @@ body {
   letter-spacing: -0.02em;
 }
 
+.region-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  background: var(--surface-2); border: 1px solid var(--border); border-left: 3px solid var(--gold);
+  border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1.5rem;
+  font-size: 0.8125rem; color: var(--text-body); line-height: 1.5;
+}
+.region-banner__actions { display: inline-flex; align-items: center; gap: 0.75rem; }
+
 /* ── Welcome banner (Overview hero) ─────────────── */
 .welcome-banner {
   position: relative;

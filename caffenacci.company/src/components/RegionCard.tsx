@@ -10,7 +10,7 @@ interface Props { token: string }
 export default function RegionCard({ token }: Props) {
   const { t, tApi, locale } = useI18n()
   const [currencies, setCurrencies] = useState<string[]>([])
-  const [saved, setSaved] = useState<{ currency: string; time_zone: string } | null>(null)
+  const [saved, setSaved] = useState<{ currency: string; time_zone: string; confirmed: boolean } | null>(null)
   const [currency, setCurrency] = useState('PLN')
   const [timeZone, setTimeZone] = useState('Europe/Warsaw')
   const [loading, setLoading] = useState(true)
@@ -40,6 +40,8 @@ export default function RegionCard({ token }: Props) {
 
   const currencyChanged = !!saved && saved.currency !== currency
   const dirty = !!saved && (currencyChanged || saved.time_zone !== timeZone)
+  const unconfirmed = !!saved && !saved.confirmed
+  const canSave = unconfirmed || dirty
 
   const handleSave = async () => {
     if (currencyChanged && !confirm(t('profile.region.confirmCurrency', { from: saved!.currency, to: currency }))) return
@@ -99,10 +101,12 @@ export default function RegionCard({ token }: Props) {
           <div className="form-error" role="status">{t('profile.region.warn')}</div>
         )}
 
+        {unconfirmed && <div className="form-error" role="status">{t('profile.region.unconfirmed')}</div>}
+
         <div>
           <button type="button" className="btn btn--primary" style={{ width: 'auto', marginTop: 0 }}
-            onClick={handleSave} disabled={saving || !dirty}>
-            {saving ? t('common.saving') : t('profile.region.save')}
+            onClick={handleSave} disabled={saving || !canSave}>
+            {saving ? t('common.saving') : unconfirmed && !dirty ? t('profile.region.confirm') : t('profile.region.save')}
           </button>
         </div>
       </div>

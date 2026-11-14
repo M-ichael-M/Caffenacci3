@@ -34,7 +34,7 @@ def _overview(cafe_id: str, db: Session) -> TranslationOverviewOut:
     return TranslationOverviewOut(
         settings=LanguageSettingsOut(
             primary_language=s.primary_language, secondary_language=s.secondary_language,
-            currency=s.currency, time_zone=s.time_zone,
+            currency=s.currency, time_zone=s.time_zone, region_confirmed=s.region_confirmed,
         ),
         status=compute_status(cafe_id, s, db),
     )
@@ -81,7 +81,7 @@ def save_settings(
 @router.get("/i18n/region", response_model=RegionSettingsOut, summary="Strefa czasowa i waluta kawiarni")
 def get_region(cafe: Cafe = Depends(get_current_cafe_owner), db: Session = Depends(get_db)):
     s = get_settings(cafe.id, db)
-    return RegionSettingsOut(currency=s.currency, time_zone=s.time_zone)
+    return RegionSettingsOut(currency=s.currency, time_zone=s.time_zone, confirmed=s.region_confirmed)
 
 
 @router.put("/i18n/region", response_model=RegionSettingsOut,
@@ -97,10 +97,11 @@ def save_region(
         db.add(s)
     s.currency = payload.currency
     s.time_zone = payload.time_zone
+    s.region_confirmed = True
     db.commit()
     invalidate_cafe(cafe.id)
     purge_urls(cafe_page_urls(cafe.slug, app_settings.PUBLIC_SITE_URL))
-    return RegionSettingsOut(currency=s.currency, time_zone=s.time_zone)
+    return RegionSettingsOut(currency=s.currency, time_zone=s.time_zone, confirmed=True)
 
 
 @router.post("/i18n/packages", response_model=PackageFileOut,

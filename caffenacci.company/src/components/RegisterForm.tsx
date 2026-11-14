@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
+import { browserTimeZone, detectCountryName } from '../utils/regionDefaults'
+
+const COUNTRY_CODES = `AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW`.split(' ')
 
 interface FormData {
   owner_name: string
@@ -24,15 +27,13 @@ interface Props {
   onSwitchToLogin: () => void
 }
 
-// Kraj zostaje "Polska" niezależnie od języka UI — to wartość zapisywana w bazie
-// i używana w filtrze krajów wyszukiwarki, więc nie może zależeć od języka panelu.
 const INITIAL: FormData = {
   owner_name: '',
   cafe_name: '',
   email: '',
   phone: '',
   password: '',
-  country: 'Polska',
+  country: '',
   city: '',
   street: '',
   building_number: '',
@@ -46,8 +47,11 @@ function isValidEmail(email: string) {
 }
 
 export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
-  const { t, tApi } = useI18n()
-  const [form, setForm] = useState<FormData>(INITIAL)
+  const { t, tApi, lang } = useI18n()
+  const [form, setForm] = useState<FormData>(() => ({ ...INITIAL, country: detectCountryName() }))
+  const timeZone = browserTimeZone()
+  const countryNames = new Intl.DisplayNames([lang === 'pl' ? 'pl' : 'en'], { type: 'region' })
+  const polishCountryNames = new Intl.DisplayNames(['pl'], { type: 'region' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -70,6 +74,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
     if (!form.building_number.trim())    e.building_number  = 'register.err.number'
     if (!form.postal_code.trim())        e.postal_code      = 'register.err.postalCode'
     if (!form.city.trim())               e.city             = 'register.err.city'
+    if (!form.country.trim())            e.country          = 'register.err.country'
     if (!form.terms)                     e.terms            = 'register.err.terms'
     setFieldErrors(e)
     return Object.keys(e).length === 0
@@ -92,12 +97,13 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
           phone: form.phone,
           password: form.password,
           address: {
-            country: form.country,
+            country: form.country.trim(),
             city: form.city,
             street: form.street,
             building_number: form.building_number,
             postal_code: form.postal_code,
           },
+          time_zone: timeZone || null,
         }),
       })
       const data = await res.json()
@@ -271,15 +277,25 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
 
           <div className="field">
             <label className="field__label" htmlFor="reg-country">{t('register.country')}</label>
-            <input
+            <select
               id="reg-country"
-              type="text"
-              className="field__input"
+              className={`field__input${fe.country ? ' field__input--error' : ''}`}
               value={form.country}
               onChange={e => set('country', e.target.value)}
-              placeholder="Polska"
               autoComplete="country-name"
-            />
+            >
+              <option value="">{lang === 'pl' ? 'Wybierz kraj' : 'Select a country'}</option>
+              {COUNTRY_CODES.map(code => {
+                const value = polishCountryNames.of(code) ?? code
+                return <option key={code} value={value}>{countryNames.of(code) ?? value}</option>
+              })}
+            </select>
+            {err('country')}
+            {timeZone && (
+              <span className="field__hint" translate="no">
+                {t('register.timeZoneHint', { tz: timeZone })}
+              </span>
+            )}
           </div>
         </div>
 

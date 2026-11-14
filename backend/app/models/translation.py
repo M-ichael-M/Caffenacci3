@@ -2,8 +2,9 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    BigInteger, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint,
+    BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint,
 )
+from sqlalchemy import true
 
 from app.core.database import Base
 from app.core.types import ID
@@ -24,6 +25,10 @@ class CafeLanguageSettings(Base):
     # Przygotowanie pod formatowanie: waluta cen z menu i strefa czasowa kawiarni.
     currency  = Column(String(3), nullable=False, default="PLN")
     time_zone = Column(String(64), nullable=False, default="Europe/Warsaw")
+    # False = wartości zasugerowano automatycznie (rejestracja) albo wiersz nigdy nie był
+    # świadomie zapisany; właściciel potwierdza je w Profilu. Backfill istniejących = true
+    # (server_default), a każdy NOWY wiersz tworzony kodem domyślnie jest niepotwierdzony.
+    region_confirmed = Column(Boolean, nullable=False, default=False, server_default=true())
 
     updated_at = Column(DateTime, nullable=True, onupdate=datetime.utcnow)
 

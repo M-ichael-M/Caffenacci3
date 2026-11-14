@@ -42,6 +42,7 @@ export const pl = {
   'register.postalCode': 'Kod pocztowy',
   'register.city': 'Miasto',
   'register.country': 'Kraj',
+  'register.timeZoneHint': 'Strefa czasowa kawiarni: {tz} (z Twojej przeglądarki). Potwierdzisz ją w Profilu.',
   'register.terms.prefix': 'Akceptuję',
   'register.terms.link': 'Regulamin serwisu Caffenacci',
   'register.marketing.prefix': 'Wyrażam zgodę na',
@@ -61,6 +62,7 @@ export const pl = {
   'register.err.number': 'Podaj numer',
   'register.err.postalCode': 'Podaj kod pocztowy',
   'register.err.city': 'Podaj miasto',
+  'register.err.country': 'Podaj kraj',
   'register.err.terms': 'Akceptacja regulaminu jest wymagana',
   'register.err.generic': 'Błąd rejestracji. Sprawdź dane i spróbuj ponownie.',
 
@@ -659,6 +661,11 @@ export const pl = {
   'languages.search.noResults': 'Brak wyników wyszukiwania',
   // Region i waluta (Profil)
   'profile.region.title': 'Region i waluta',
+  'region.banner.text': 'Strefa czasowa ({tz}) i waluta ({currency}) zostały ustawione automatycznie. Sprawdź je — wpływają na godziny rezerwacji i zamówień oraz na ceny.',
+  'region.banner.cta': 'Sprawdź w Profilu',
+  'region.banner.dismiss': 'Później',
+  'profile.region.unconfirmed': 'Ta strefa i waluta zostały zasugerowane automatycznie. Sprawdź je i potwierdź.',
+  'profile.region.confirm': 'Potwierdź region i walutę',
   'profile.region.intro': 'To ustawienia operacyjne kawiarni — wpływają na zamówienia, rezerwacje, godziny otwarcia, ceny w menu, program lojalnościowy i statystyki, a nie tylko na wygląd strony.',
   'profile.region.warn': 'Ceny w menu nie zostaną przeliczone. Zamówienia historyczne zachowają starą walutę.',
   'profile.region.confirmCurrency': 'Zmienić walutę z {from} na {to}? Ceny w menu nie zostaną przeliczone. Zamówienia historyczne zachowają starą walutę.',

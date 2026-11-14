@@ -43,6 +43,7 @@ export const en: Record<Exclude<keyof typeof pl, PolishOnlyPlural>, string> = {
   'register.postalCode': 'Postal code',
   'register.city': 'City',
   'register.country': 'Country',
+  'register.timeZoneHint': 'Café time zone: {tz} (from your browser). You will confirm it in Profile.',
   'register.terms.prefix': 'I accept the',
   'register.terms.link': 'Caffenacci Terms of Service',
   'register.marketing.prefix': 'I consent to',
@@ -62,6 +63,7 @@ export const en: Record<Exclude<keyof typeof pl, PolishOnlyPlural>, string> = {
   'register.err.number': 'Enter the number',
   'register.err.postalCode': 'Enter the postal code',
   'register.err.city': 'Enter the city',
+  'register.err.country': 'Enter the country',
   'register.err.terms': 'You must accept the Terms of Service',
   'register.err.generic': 'Registration failed. Check your details and try again.',
 
@@ -621,6 +623,11 @@ export const en: Record<Exclude<keyof typeof pl, PolishOnlyPlural>, string> = {
   'languages.search.noResults': 'No search results',
   // Region i waluta (Profil)
   'profile.region.title': 'Region and currency',
+  'region.banner.text': 'The time zone ({tz}) and currency ({currency}) were set automatically. Please check them — they affect reservation and order times as well as prices.',
+  'region.banner.cta': 'Check in Profile',
+  'region.banner.dismiss': 'Later',
+  'profile.region.unconfirmed': 'This time zone and currency were suggested automatically. Please check and confirm them.',
+  'profile.region.confirm': 'Confirm region and currency',
   'profile.region.intro': 'These are operational settings of your café — they affect orders, reservations, opening hours, menu prices, the loyalty programme and statistics, not just how the website looks.',
   'profile.region.warn': 'Menu prices will not be converted. Past orders keep their original currency.',
   'profile.region.confirmCurrency': 'Change the currency from {from} to {to}? Menu prices will not be converted. Past orders keep their original currency.',

@@ -102,6 +102,7 @@ class RegionSettingsIn(BaseModel):
 class RegionSettingsOut(BaseModel):
     currency: str
     time_zone: str
+    confirmed: bool = True
 
 
 class LanguageSettingsOut(BaseModel):
@@ -109,6 +110,7 @@ class LanguageSettingsOut(BaseModel):
     secondary_language: Optional[str]
     currency:           str
     time_zone:          str
+    region_confirmed:   bool = True
 
 
 # â”€â”€ Status tĹ‚umaczenia â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
