@@ -46,17 +46,6 @@ class OrderItemOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── Zamówienie publiczne (od klienta, bez logowania) ──────────────────────
-
-class PublicOrderIn(BaseModel):
-    """Formularz klienta — system kont jeszcze nie istniał, gdy powstał ten endpoint."""
-    client_nick: str = Field(..., min_length=2, max_length=60, examples=["Kasia_W"])
-    client_id:   Optional[str] = Field(None, max_length=100)
-    date:        str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
-    start_time:  str = Field(..., pattern=r"^\d{2}:\d{2}$")
-    items:       List[OrderItemIn] = Field(..., min_length=1, max_length=100)
-
-
 class PublicOrderCancelIn(BaseModel):
     """Klient anuluje własne zamówienie — autoryzacja przez client_id."""
     client_id: Optional[str] = Field(None, max_length=100)

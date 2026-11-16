@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { CalendarIcon } from './icons'
 import { API_URL } from '../../config'
 import { useI18n } from '../../i18n/I18nProvider'
-import { todayInTz } from '../../utils/cafeTime'
+import { todayInTz, differsFromBrowser, offsetLabel } from '../../utils/cafeTime'
 
 interface Props {
   cafeId: string
@@ -76,6 +76,11 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken,
             <div className="field" style={{ flex: '1 1 100px' }}>
               <label className="me-label">{t('res.time')}</label>
               <input type="time" className="me-input" value={time} onChange={e => setTime(e.target.value)} />
+              {differsFromBrowser(fmt.timeZone) && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {t('time.cafe_local', { offset: offsetLabel(fmt.timeZone) })}
+                </span>
+              )}
             </div>
             <div className="field" style={{ flex: '1 1 80px' }}>
               <label className="me-label">{t('res.guests')}</label>

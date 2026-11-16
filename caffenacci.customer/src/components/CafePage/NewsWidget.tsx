@@ -3,6 +3,7 @@ import { NewspaperIcon } from './icons'
 import { X } from 'lucide-react'
 import ResponsiveImage from '../ResponsiveImage'
 import { useI18n } from '../../i18n/I18nProvider'
+import { formatDateTime } from '../../i18n/localeFormat'
 
 interface NewsPostItem {
   id: string
@@ -16,13 +17,6 @@ interface NewsPostItem {
 
 interface Props {
   posts: NewsPostItem[]
-}
-
-function formatDateTime(s: string, fmt: any, options: { dateStyle: string }) {
-  // Zakładam, że formatDateTime jest dostępny z useI18n / i18n utils
-  // Jeśli jest eksportowany osobno, zaimportuj go.
-  // Poniżej używamy go zgodnie z instrukcją.
-  return fmt(s, options) // lub konkretna implementacja formatDateTime(s, fmt, options)
 }
 
 export default function NewsWidget({ posts }: Props) {

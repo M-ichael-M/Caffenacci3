@@ -9,6 +9,7 @@ from app.core.cache_purge import cafe_page_urls, purge_urls
 from app.core.config import settings as app_settings
 from app.core.database import get_db
 from app.core.languages import CURRENCIES, DEFAULT_PRIMARY_LANGUAGE, LANGUAGES
+from app.core.loyalty_rules import default_unit
 from app.core.page_cache import invalidate_cafe
 from app.core.security import decode_access_token
 from app.core.slugs import resolve_slug
@@ -20,6 +21,7 @@ from app.core.translations import (
 from app.models.cafe import Cafe
 from app.models.site import CafeSite
 from app.models.translation import CafeLanguageSettings, TranslationPackage
+from app.models.loyalty import LoyaltySettings
 from app.routers.employee_auth import get_current_cafe_owner
 from app.schemas.translation import (
     LanguageSettingsIn, LanguageSettingsOut, OptionsOut, PackageFileOut,
@@ -56,7 +58,7 @@ def get_overview(cafe: Cafe = Depends(get_current_cafe_owner), db: Session = Dep
 
 
 @router.put("/i18n/settings", response_model=TranslationOverviewOut,
-            summary="Zapisz język podstawowy, dodatkowy, walutę i strefę czasową")
+            summary="Zapisz język podstawowy i dodatkowy")
 def save_settings(
     payload: LanguageSettingsIn,
     cafe: Cafe = Depends(get_current_cafe_owner),
@@ -68,10 +70,6 @@ def save_settings(
         db.add(s)
     s.primary_language = payload.primary_language
     s.secondary_language = payload.secondary_language
-    if payload.currency is not None:
-        s.currency = payload.currency
-    if payload.time_zone is not None:
-        s.time_zone = payload.time_zone
     db.commit()
     invalidate_cafe(cafe.id)
     purge_urls(cafe_page_urls(cafe.slug, app_settings.PUBLIC_SITE_URL))
@@ -95,6 +93,11 @@ def save_region(
     if not s:
         s = CafeLanguageSettings(cafe_id=cafe.id, primary_language=DEFAULT_PRIMARY_LANGUAGE)
         db.add(s)
+    currency_changed = bool(s.currency and s.currency != payload.currency)
+    if currency_changed:
+        loyalty = db.query(LoyaltySettings).filter(LoyaltySettings.cafe_id == cafe.id).first()
+        if loyalty:
+            loyalty.points_amount_unit = default_unit(payload.currency)
     s.currency = payload.currency
     s.time_zone = payload.time_zone
     s.region_confirmed = True

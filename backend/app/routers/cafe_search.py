@@ -2,16 +2,18 @@ from __future__ import annotations
 
 import math
 import re
-from datetime import date, datetime
+from datetime import datetime, timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import func, literal, or_, select, union
+from sqlalchemy import and_, func, literal, or_, select, union
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.cafe_time import zone, cafe_now
+from app.core.opening_hours import day_of_week, sessions_for
+from app.core.languages import DEFAULT_TIME_ZONE
 from app.core.security import decode_access_token
 from app.core.images import logo_url
 from app.models.cafe import Cafe
@@ -53,16 +55,27 @@ def get_optional_client_id(
     return row[0] if row else None
 
 
-def _visited_subquery(client_id: str):
+def _visited_subquery(client_id: str, db: Session):
     """Cafes where this client has completed an eligible activity."""
-    today = date.today().isoformat()
+    timezone_rows = db.query(CafeLanguageSettings.time_zone, Cafe.id).select_from(Cafe).outerjoin(
+        CafeLanguageSettings, CafeLanguageSettings.cafe_id == Cafe.id
+    ).all()
+    cafes_by_timezone: dict[str, list[str]] = {}
+    for tz_name, cafe_id in timezone_rows:
+        tz = tz_name or DEFAULT_TIME_ZONE
+        cafes_by_timezone.setdefault(tz, []).append(cafe_id)
+    reservation_cutoffs = [
+        and_(Reservation.cafe_id.in_(cafe_ids),
+             Reservation.date < cafe_now(zone(tz_name)).date().isoformat())
+        for tz_name, cafe_ids in cafes_by_timezone.items()
+    ]
     return union(
         select(Order.cafe_id.label("cafe_id")).where(
             Order.client_id == client_id, Order.status == OrderStatus.completed),
         select(Reservation.cafe_id.label("cafe_id")).where(
             Reservation.client_id == client_id,
             Reservation.status == ReservationStatus.confirmed,
-            Reservation.date < today),
+            or_(*reservation_cutoffs) if reservation_cutoffs else False),
         select(LoyaltyTransaction.cafe_id.label("cafe_id")).where(
             LoyaltyTransaction.client_id == client_id,
             LoyaltyTransaction.kind.in_(("earn_points", "redeem_points", "add_stamp"))),
@@ -88,11 +101,6 @@ def list_all_cafes(db: Session = Depends(get_db)):
 
 # ── Czas / godziny ──────────────────────────────────────────────────────────
 
-def _hm(t: str) -> int:
-    h, m = t.split(":")
-    return int(h) * 60 + int(m)
-
-
 def _today_hours(profile: CafeProfile | None, now: datetime) -> TodayHoursOut | None:
     if not profile:
         return None
@@ -101,32 +109,46 @@ def _today_hours(profile: CafeProfile | None, now: datetime) -> TodayHoursOut | 
 
     exception = next((e for e in profile.hour_exceptions if e.date == today_str), None)
     if exception:
-        return TodayHoursOut(
+        today = TodayHoursOut(
             is_closed=exception.is_closed or not (exception.open_time and exception.close_time),
             open_time=exception.open_time,
             close_time=exception.close_time,
         )
+    else:
+        day_plan = next((h for h in profile.weekly_hours if h.day_of_week == dow), None)
+        today = TodayHoursOut(
+            is_closed=day_plan is None or day_plan.open_time is None or day_plan.close_time is None,
+            open_time=day_plan.open_time if day_plan else None,
+            close_time=day_plan.close_time if day_plan else None,
+        ) if day_plan else None
 
-    day_plan = next((h for h in profile.weekly_hours if h.day_of_week == dow), None)
-    if day_plan:
-        return TodayHoursOut(
-            is_closed=day_plan.open_time is None or day_plan.close_time is None,
-            open_time=day_plan.open_time,
-            close_time=day_plan.close_time,
-        )
-    return None
+    def hours(ds: str):
+        exc = next((e for e in profile.hour_exceptions if e.date == ds), None)
+        if exc:
+            return (None, None) if exc.is_closed else (exc.open_time, exc.close_time)
+        p = next((h for h in profile.weekly_hours if h.day_of_week == day_of_week(ds)), None)
+        return (p.open_time, p.close_time) if p else (None, None)
 
-
-def _is_open_now(today: TodayHoursOut | None, now: datetime) -> bool | None:
-    """None = brak danych. Godziny przechodzące przez północ (np. 20:00–02:00)
-    są obsługiwane przybliżeniem: po północy liczy się dzisiejszy plan."""
-    if today is None:
-        return None
-    if today.is_closed or not (today.open_time and today.close_time):
-        return False
     cur = now.hour * 60 + now.minute
-    o, c = _hm(today.open_time), _hm(today.close_time)
-    return (o <= cur < c) if o < c else (cur >= o or cur < c)
+    if any(a < 0 <= cur < b for a, b in sessions_for(today_str, hours)):
+        previous_hours = hours((now.date() - timedelta(days=1)).isoformat())
+        return TodayHoursOut(is_closed=False, open_time=previous_hours[0], close_time=previous_hours[1])
+    return today
+
+
+def _is_open_now(profile: CafeProfile | None, now: datetime) -> bool | None:
+    if not profile:
+        return None
+    cur = now.hour * 60 + now.minute
+
+    def hours(ds: str):
+        exc = next((e for e in profile.hour_exceptions if e.date == ds), None)
+        if exc:
+            return (None, None) if exc.is_closed else (exc.open_time, exc.close_time)
+        p = next((h for h in profile.weekly_hours if h.day_of_week == day_of_week(ds)), None)
+        return (p.open_time, p.close_time) if p else (None, None)
+
+    return any(a <= cur < b for a, b in sessions_for(now.date().isoformat(), hours))
 
 
 def _open_days(profile: CafeProfile | None) -> list[int]:
@@ -227,7 +249,7 @@ def map_cafes(
         points.append(CafeMapPointOut(
             cafe_id=cafe.id, slug=cafe.slug or cafe.id, cafe_name=cafe.cafe_name,
             latitude=profile.latitude, longitude=profile.longitude,
-            is_open_now=_is_open_now(today, now),
+            is_open_now=_is_open_now(profile, now),
             open_time=today.open_time if today and not today.is_closed else None,
             close_time=today.close_time if today and not today.is_closed else None,
             closed_today=bool(today and today.is_closed),
@@ -273,7 +295,7 @@ def search_cafes(
         raise HTTPException(400, detail=f"Nieznane plakietki: {', '.join(unknown)}")
     if visited != "any" and not client_id:
         raise HTTPException(401, detail="Zaloguj si\u0119 na konto go\u015bcia, aby filtrowa\u0107 kawiarnie po odwiedzinach.")
-    visited_sq = _visited_subquery(client_id) if client_id else None
+    visited_sq = _visited_subquery(client_id, db) if client_id else None
 
     # Średnia ocen liczona w SQL (jedno zapytanie, bez N+1)
     rating_sq = (
@@ -404,7 +426,7 @@ def search_cafes(
 
         now = cafe_now(zone(tz_map.get(cafe.id)))
         today = _today_hours(profile, now)
-        is_open = _is_open_now(today, now)
+        is_open = _is_open_now(profile, now)
         if open_now and is_open is not True:
             continue
 

@@ -12,7 +12,10 @@ from app.core.languages import DEFAULT_CURRENCY
 from app.models.translation import CafeLanguageSettings
 
 # Domyślnie 2 miejsca po przecinku; tu tylko waluty bez podjednostki.
-EXPONENT_OVERRIDES: dict[str, int] = {"ISK": 0, "JPY": 0, "KRW": 0, "VND": 0, "CLP": 0}
+EXPONENT_OVERRIDES: dict[str, int] = {
+    "ISK": 0, "JPY": 0, "KRW": 0, "VND": 0, "CLP": 0,
+    "KHR": 0, "IDR": 0, "COP": 0, "HUF": 0,
+}
 
 
 def currency_exponent(code: str | None) -> int:

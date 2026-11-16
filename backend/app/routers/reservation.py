@@ -311,22 +311,29 @@ def get_reservation_info(
 
     occupied: list[OccupiedSlotOut] = []
     if date and s.enabled and s.mode == "advanced":
+        previous_date = (date_cls.fromisoformat(date) - timedelta(days=1)).isoformat()
         rows = (
             db.query(Reservation)
             .filter(
                 Reservation.cafe_id == cafe_id,
-                Reservation.date    == date,
+                Reservation.date.in_((previous_date, date)),
                 Reservation.status  == ReservationStatus.confirmed,
                 Reservation.table_id.isnot(None),
             )
             .all()
         )
         for r in rows:
-            start_m = _to_minutes(r.start_time)
-            end_m   = start_m + s.slot_duration_minutes
+            day_offset = -1440 if r.date == previous_date else 0
+            start_m = _to_minutes(r.start_time) + day_offset
+            end_m = start_m + s.slot_duration_minutes
+            if r.date == previous_date:
+                if end_m <= 0:
+                    continue
+                start_m = 0
+                end_m = min(end_m, 1440)
             occupied.append(OccupiedSlotOut(
                 table_id=r.table_id,
-                start_time=r.start_time,
+                start_time=_from_minutes(start_m) if r.date == previous_date else r.start_time,
                 end_time=_from_minutes(end_m),
                 guests=r.guests,
             ))

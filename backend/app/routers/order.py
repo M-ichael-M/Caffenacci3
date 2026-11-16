@@ -23,7 +23,7 @@ from app.models.order import Order, OrderItem, OrderSettings, OrderStatus
 from app.routers.client_auth import get_current_client
 from app.schemas.order import (
     OrderSettingsIn, OrderSettingsOut,
-    PublicOrderIn, PublicOrderCancelIn, ClientOrderIn,
+    PublicOrderCancelIn, ClientOrderIn,
     OrderStatusUpdate, OrderOut, OrderListOut,
     MAX_ORDER_DAYS_AHEAD,
     ClientOrderOut, ClientOrderListOut,   # ← nowe
@@ -123,20 +123,21 @@ def _validate_order_time(cafe_id: str, date_str: str, start_time: str, db: Sessi
 
 
 def _resolve_item(cafe_id: str, item_in, db: Session) -> tuple[str, float]:
-    """Jeśli klient podał menu_item_id, nadpisz nazwę/cenę aktualnymi danymi
-    z menu (ochrona przed manipulacją ceną). W przeciwnym razie (albo gdy
-    pozycja nie istnieje / została usunięta) użyj tego, co przyszło z formularza
-    — traktując to jako pozycję niestandardową."""
-    if item_in.menu_item_id:
-        mi = (
-            db.query(MenuItem)
-            .join(MenuSection, MenuItem.section_id == MenuSection.id)
-            .filter(MenuItem.id == item_in.menu_item_id, MenuSection.cafe_id == cafe_id)
-            .first()
-        )
-        if mi:
-            return mi.name, mi.price
-    return item_in.name, item_in.price
+    """Resolve every order line to an available item in this cafe's menu."""
+    if not item_in.menu_item_id:
+        raise HTTPException(400, detail="Każda pozycja zamówienia musi pochodzić z menu.")
+
+    mi = (
+        db.query(MenuItem)
+        .join(MenuSection, MenuItem.section_id == MenuSection.id)
+        .filter(MenuItem.id == item_in.menu_item_id, MenuSection.cafe_id == cafe_id)
+        .first()
+    )
+    if not mi:
+        raise HTTPException(400, detail="Pozycja nie istnieje w menu tej kawiarni.")
+    if mi.is_unavailable:
+        raise HTTPException(400, detail="Ta pozycja jest obecnie niedostępna.")
+    return mi.name, mi.price
 
 
 def _fill_items(order: Order, items_in, cafe_id: str, currency: str, db: Session) -> None:
@@ -200,50 +201,9 @@ def save_settings(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PUBLICZNY ENDPOINT — klient składa zamówienie (bez logowania)
+# PUBLICZNY ENDPOINT TWORZENIA ZAMÓWIEŃ USUNIĘTY
+# Strona klienta używa uwierzytelnionego endpointu /client/{cafe_id}.
 # ══════════════════════════════════════════════════════════════════════════════
-
-@router.post(
-    "/public/{cafe_id}",
-    response_model=OrderOut,
-    status_code=status.HTTP_201_CREATED,
-    summary="Złóż zamówienie jako klient (publiczny)",
-)
-def create_public_order(
-    cafe_id: str,
-    payload: PublicOrderIn,
-    db:      Session = Depends(get_db),
-):
-    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
-    if not cafe:
-        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
-
-    settings = db.query(OrderSettings).filter(OrderSettings.cafe_id == cafe_id).first()
-    if not settings or not settings.enabled:
-        raise HTTPException(400, detail="Ta kawiarnia nie przyjmuje zamówień online.")
-
-    tz = cafe_tz(cafe_id, db)
-    _validate_order_date(payload.date, tz)
-    _validate_order_time(cafe_id, payload.date, payload.start_time, db, tz)
-
-    currency = cafe_currency(cafe_id, db)
-    order = Order(
-        cafe_id     = cafe_id,
-        client_nick = payload.client_nick,
-        client_id   = payload.client_id,
-        date        = payload.date,
-        start_time  = payload.start_time,
-        currency    = currency,
-        status      = OrderStatus.pending,
-    )
-    _fill_items(order, payload.items, cafe_id, currency, db)
-
-    db.add(order)
-    db.commit()
-    db.refresh(order)
-    return order
-
-
 # ══════════════════════════════════════════════════════════════════════════════
 # ZAMÓWIENIE OD ZALOGOWANEGO KLIENTA — wygenerowana strona kawiarni
 # ══════════════════════════════════════════════════════════════════════════════

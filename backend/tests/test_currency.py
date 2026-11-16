@@ -3,9 +3,9 @@ from app.core.languages import CURRENCIES
 
 
 def test_exponents():
-    for code in ("JPY", "KRW", "VND", "CLP", "ISK"):
+    for code in ("JPY", "KRW", "VND", "CLP", "ISK", "KHR", "IDR", "COP", "HUF"):
         assert currency_exponent(code) == 0
-    for code in ("PLN", "EUR", "USD", "KHR", "IDR"):
+    for code in ("PLN", "EUR", "USD"):
         assert currency_exponent(code) == 2
     assert currency_exponent(None) == 2
 

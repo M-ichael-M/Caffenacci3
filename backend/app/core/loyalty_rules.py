@@ -11,6 +11,7 @@ DEFAULT_POINTS = 30
 DEFAULT_UNIT_BY_CURRENCY: dict[str, int] = {
     "JPY": 100, "KRW": 100, "ISK": 100, "CLP": 100, "HUF": 100,
     "VND": 10_000, "IDR": 10_000,
+    "KHR": 4_000, "COP": 1_000, "ARS": 1_000,
 }
 
 

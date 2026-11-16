@@ -1,5 +1,8 @@
 // Tabela musi być identyczna z backend/app/core/currency.py (EXPONENT_OVERRIDES).
-const EXPONENT_OVERRIDES: Record<string, number> = { ISK: 0, JPY: 0, KRW: 0, VND: 0, CLP: 0 }
+const EXPONENT_OVERRIDES: Record<string, number> = {
+  ISK: 0, JPY: 0, KRW: 0, VND: 0, CLP: 0,
+  KHR: 0, IDR: 0, COP: 0, HUF: 0,
+}
 
 export const currencyExponent = (code?: string | null): number =>
   EXPONENT_OVERRIDES[(code ?? '').toUpperCase()] ?? 2

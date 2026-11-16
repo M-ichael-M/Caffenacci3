@@ -191,7 +191,7 @@ def lookup_client(
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/earn", response_model=LoyaltyBalanceOut,
-             summary="Dolicz punkty za kwotę transakcji (10 gr = 3 pkt.)")
+             summary="Dolicz punkty za kwotę transakcji zgodnie z regułą programu")
 def earn_points(
     payload: LoyaltyEarnIn,
     cafe_id: str = Depends(get_current_cafe_id),
@@ -203,10 +203,12 @@ def earn_points(
         raise HTTPException(400, detail="Ta kawiarnia nie korzysta z punktowego programu lojalnościowego.")
 
     client = _find_client_by_code(payload.loyalty_code, db)
-    cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
-
     amount = round_decimal(payload.amount, currency)
     earned = compute_points(amount, currency, settings.points_per_amount, settings.points_amount_unit)
+    if earned == 0:
+        raise HTTPException(400, detail="Kwota jest zbyt niska, aby naliczyć punkty.")
+
+    cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
 
     cl.points     += earned
     cl.updated_at  = datetime.utcnow()
