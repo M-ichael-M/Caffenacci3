@@ -77,7 +77,7 @@ class PublicReservationIn(BaseModel):
     guests:      int  = Field(..., ge=1, le=50)
     guest_name:  str  = Field(..., min_length=2, max_length=150)
     guest_phone: Optional[str] = Field(None, max_length=30)
-    guest_email: Optional[str] = Field(None, max_length=255)
+    guest_email: EmailStr
     comment:     Optional[str] = Field(None, max_length=1000)
 
 
@@ -88,8 +88,6 @@ class ClientReservationIn(BaseModel):
     date:        str  = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     start_time:  str  = Field(..., pattern=r"^\d{2}:\d{2}$")
     guests:      int  = Field(..., ge=1, le=50)
-    guest_phone: Optional[str] = Field(None, max_length=30)
-    guest_email: Optional[str] = Field(None, max_length=255)
     comment:     Optional[str] = Field(None, max_length=1000)
 
 
@@ -103,8 +101,6 @@ class ClientAdvancedReservationIn(BaseModel):
     date:        str  = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     start_time:  str  = Field(..., pattern=r"^\d{2}:\d{2}$")
     guests:      int  = Field(..., ge=1, le=50)
-    guest_phone: Optional[str] = Field(None, max_length=30)
-    guest_email: Optional[str] = Field(None, max_length=255)
     comment:     Optional[str] = Field(None, max_length=1000)
 
 

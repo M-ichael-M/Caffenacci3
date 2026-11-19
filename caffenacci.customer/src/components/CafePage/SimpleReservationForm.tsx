@@ -17,8 +17,6 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken,
   const [date, setDate] = useState(() => todayInTz(fmt.timeZone))
   const [time, setTime] = useState('12:00')
   const [guests, setGuests] = useState(2)
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,8 +32,6 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({
           date, start_time: time, guests,
-          guest_phone: phone.trim() || null,
-          guest_email: email.trim() || null,
           comment: comment.trim() || null,
         }),
       })
@@ -85,17 +81,6 @@ export default function SimpleReservationForm({ cafeId, requireLogin, authToken,
             <div className="field" style={{ flex: '1 1 80px' }}>
               <label className="me-label">{t('res.guests')}</label>
               <input type="number" min={1} max={50} className="me-input" value={guests} onChange={e => setGuests(Number(e.target.value))} />
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
-            <div className="field" style={{ flex: 1 }}>
-              <label className="me-label">{t('res.phone_opt')}</label>
-              <input type="tel" className="me-input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+48 123 456 789" />
-            </div>
-            <div className="field" style={{ flex: 1 }}>
-              <label className="me-label">{t('res.email_opt')}</label>
-              <input type="email" className="me-input" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
           </div>
 

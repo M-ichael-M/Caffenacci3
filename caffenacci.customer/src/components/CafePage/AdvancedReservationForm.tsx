@@ -129,8 +129,6 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
   const [groupKey, setGroupKey] = useState('')
   const [guests, setGuests] = useState(2)
   const [startTime, setStartTime] = useState<string | null>(null)
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
   const [comment, setComment] = useState('')
 
   const [submitting, setSubmitting] = useState(false)
@@ -245,8 +243,6 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
             date,
             start_time: startTime,
             guests,
-            guest_phone: phone.trim() || null,
-            guest_email: email.trim() || null,
             comment: comment.trim() || null,
           }),
         })
@@ -386,17 +382,6 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
             )}
           </>
         )}
-      </div>
-
-      <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-        <div className="field" style={{ flex: 1 }}>
-          <label className="me-label">{t('res.phone_opt')}</label>
-          <input type="tel" className="me-input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+48 123 456 789" />
-        </div>
-        <div className="field" style={{ flex: 1 }}>
-          <label className="me-label">{t('res.email_opt')}</label>
-          <input type="email" className="me-input" value={email} onChange={e => setEmail(e.target.value)} />
-        </div>
       </div>
 
       <div className="field" style={{ marginTop: '0.75rem' }}>
