@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import threading
+import time
 from pathlib import Path
 from urllib.parse import quote
 from xml.sax.saxutils import escape as xml_escape
@@ -14,15 +15,23 @@ from fastapi.responses import PlainTextResponse, RedirectResponse, Response
 from jinja2 import Environment
 from sqlalchemy.orm import Session
 
+from app.core import seo_listings as listings
 from app.core.config import settings
 from app.core.currency import currency_exponent
 from app.core.database import get_db
-from app.core.page_cache import page_cache
-from app.core.slugs import resolve_slug
 from app.core.images import LOGO_TIERS
+from app.core.page_cache import page_cache
+from app.core.seo_i18n import (
+    BADGE_LABELS, badge_label, badge_path, city_path, home_path, site_lang, ui,
+)
+from app.core.slugs import resolve_slug, slugify
+from app.core.translations import (
+    get_current_translation, get_settings as lang_settings, language_out, normalize_text,
+)
 from app.models.cafe import Cafe
 from app.models.site import CafeSite
 from app.routers.site import _build_public_site, PUBLIC_REVIEWS_PAGE
+from app.schemas.badges import ALLOWED_BADGE_KEYS
 from app.schemas.site import PublicSiteOut
 
 log = logging.getLogger("caffenacci.seo")
@@ -33,8 +42,9 @@ BODY_MARKER = "<!--SEO_BODY-->"
 
 CACHE_CONTROL = f"public, max-age=60, s-maxage={settings.PUBLIC_CACHE_S_MAXAGE}, stale-while-revalidate=600"
 
-DAYS_PL = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]
 DAYS_SCHEMA = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+HOME_LIST_LIMIT = 12
 
 
 # ── Szablon: zbudowany index.html klienta (przeładowywany po zmianie mtime) ─
@@ -46,7 +56,7 @@ _tpl: dict = {"mtime": None, "html": None}
 def _load_index() -> tuple[str, float] | None:
     dist = settings.CUSTOMER_DIST_DIR
     if not dist:
-        log.error("CUSTOMER_DIST_DIR nie jest ustawione - nie mozna wyrenderowac /kawiarnia/{slug}.")
+        log.error("CUSTOMER_DIST_DIR nie jest ustawione - nie mozna wyrenderowac stron SEO.")
         return None
     path = Path(dist) / "index.html"
     try:
@@ -59,6 +69,13 @@ def _load_index() -> tuple[str, float] | None:
     except OSError as e:
         log.error("Nie mozna odczytac %s: %s (zbuduj klienta: npm run build)", path, e)
         return None
+
+
+def _no_template() -> Response:
+    return PlainTextResponse(
+        "Błąd konfiguracji serwera: brak zbudowanego klienta (sprawdź CUSTOMER_DIST_DIR).",
+        status_code=500,
+    )
 
 
 # ── Bezpieczna serializacja JSON do <script> ────────────────────────────────
@@ -85,44 +102,79 @@ _HEAD_TPL = _env.from_string("""\
 <meta name="robots" content="{{ robots }}">
 {% if canonical %}<link rel="canonical" href="{{ canonical }}">
 <meta property="og:url" content="{{ canonical }}">
-{% endif %}<meta property="og:type" content="website">
+{% endif %}{% for code, href in alternates %}<link rel="alternate" hreflang="{{ code }}" href="{{ href }}">
+{% endfor %}<meta property="og:type" content="website">
 <meta property="og:site_name" content="Caffenacci">
 {% if og_locale %}<meta property="og:locale" content="{{ og_locale }}">
-{% endif %}
-<meta property="og:title" content="{{ title }}">
+{% endif %}{% for loc in og_alternates %}<meta property="og:locale:alternate" content="{{ loc }}">
+{% endfor %}<meta property="og:title" content="{{ title }}">
 <meta property="og:description" content="{{ description }}">
 {% if image %}<meta property="og:image" content="{{ image }}">
 {% endif %}{% if logo_srcset %}<link rel="preload" as="image" imagesrcset="{{ logo_srcset }}" imagesizes="112px" fetchpriority="high">
 {% endif %}<meta name="twitter:card" content="summary">
-{% if jsonld %}<script type="application/ld+json">{{ jsonld|safe }}</script>
-{% endif %}""")
+{% for j in jsonld_list %}<script type="application/ld+json">{{ j|safe }}</script>
+{% endfor %}""")
 
-_BODY_TPL = _env.from_string("""\
+_CAFE_BODY_TPL = _env.from_string("""\
 <article class="seo-content">
+<nav aria-label="breadcrumb"><ol>{% for k in c.crumbs %}<li>{% if k.href %}<a href="{{ k.href }}">{{ k.name }}</a>{% else %}{{ k.name }}{% endif %}</li>{% endfor %}</ol></nav>
 <h1>{{ c.name }}</h1>
 <p>{{ c.address }}</p>
-{% if c.phone %}<p>Telefon: {{ c.phone }}</p>{% endif %}
-{% if c.email %}<p>E-mail: {{ c.email }}</p>{% endif %}
+{% if c.phone %}<p>{{ c.u.phone }}: {{ c.phone }}</p>{% endif %}
+{% if c.email %}<p>{{ c.u.email }}: {{ c.email }}</p>{% endif %}
 {% if c.description %}<p>{{ c.description }}</p>{% endif %}
-{% if c.hours %}<section><h2>Godziny otwarcia</h2><ul>
+{% if c.hours %}<section><h2>{{ c.u.h_hours }}</h2><ul>
 {% for h in c.hours %}<li>{{ h.day }}: {{ h.text }}</li>
 {% endfor %}</ul></section>{% endif %}
-{% if c.menu %}<section><h2>Menu</h2>
+{% if c.menu %}<section><h2>{{ c.u.h_menu }}</h2>
 {% for s in c.menu %}<h3>{{ s.name }}</h3><ul>
 {% for i in s.dishes %}<li><strong>{{ i.name }}</strong> – {{ i.price }}{% if i.description %}. {{ i.description }}{% endif %}</li>
 {% endfor %}</ul>
 {% endfor %}</section>{% endif %}
-{% if c.reviews %}<section><h2>Opinie gości</h2>
+{% if c.reviews %}<section><h2>{{ c.u.h_reviews }}</h2>
 {% if c.rating_line %}<p>{{ c.rating_line }}</p>{% endif %}
 <ul>{% for r in c.reviews %}<li>{{ r.nick }} – {{ r.rating }}/5{% if r.comment %}: {{ r.comment }}{% endif %} ({{ r.date }})</li>
 {% endfor %}</ul></section>{% endif %}
+{% if c.nearby %}<section><h2>{{ c.nearby_heading }}</h2><ul>
+{% for n in c.nearby %}<li><a href="{{ n.href }}">{{ n.name }}</a></li>
+{% endfor %}</ul></section>{% endif %}
+<p><a href="{{ c.city_href }}">{{ c.city_link }}</a></p>
 </article>""")
 
+# Wspólny szablon dla strony głównej / miasta / miasta + plakietki.
+_LIST_TPL = _env.from_string("""\
+<article class="seo-content">
+{% if crumbs %}<nav aria-label="breadcrumb"><ol>{% for k in crumbs %}<li>{% if k.href %}<a href="{{ k.href }}">{{ k.name }}</a>{% else %}{{ k.name }}{% endif %}</li>{% endfor %}</ol></nav>
+{% endif %}<h1>{{ h1 }}</h1>
+{% for para in intro %}<p>{{ para }}</p>
+{% endfor %}{% for s in sections %}<section><h2>{{ s.heading }}</h2><ul>
+{% for i in s.links %}<li><a href="{{ i.href }}">{{ i.name }}</a>{% if i.note %} – {{ i.note }}{% endif %}</li>
+{% endfor %}</ul></section>
+{% endfor %}</article>""")
 
-# ── Budowanie fragmentów ────────────────────────────────────────────────────
 
-def _public_url(slug: str) -> str:
-    return f"{settings.PUBLIC_SITE_URL.rstrip('/')}/kawiarnia/{quote(slug, safe='')}"
+def _head(**kw) -> str:
+    base = dict(
+        robots="index,follow", canonical=None, alternates=[], og_locale=None, og_alternates=[],
+        image=None, logo_srcset=None, jsonld_list=[],
+    )
+    base.update(kw)
+    return _HEAD_TPL.render(**base)
+
+
+# ── Adresy ──────────────────────────────────────────────────────────────────
+
+def _abs(path: str) -> str:
+    return f"{settings.PUBLIC_SITE_URL.rstrip('/')}{path}"
+
+
+def _cafe_path(slug: str, lang_code: str | None = None) -> str:
+    p = f"/kawiarnia/{quote(slug, safe='')}"
+    return f"{p}/{quote(lang_code, safe='')}" if lang_code else p
+
+
+def _public_url(slug: str, lang_code: str | None = None) -> str:
+    return _abs(_cafe_path(slug, lang_code))
 
 
 def _abs_api(path: str | None) -> str | None:
@@ -148,28 +200,120 @@ def _fmt_price(p: float, currency: str, lang: str) -> str:
         s = s.replace(".", ",")
     return f"{s} {_CURRENCY_LABEL.get(currency, currency)}"
 
-def _title(site: PublicSiteOut) -> str:
-    return f"{site.cafe_name} – kawiarnia {site.city}, {site.street} {site.building_number} | Caffenacci"
+
+# ── Wstrzykiwanie do index.html ─────────────────────────────────────────────
+
+def _inject(index_html: str, head_html: str, body_html: str, data_script: str = "",
+            lang: str = "pl", direction: str = "ltr") -> str:
+    html = re.sub(r"<title\b[^>]*>.*?</title>", "", index_html, count=1, flags=re.I | re.S)
+    html = re.sub(r"<html\b[^>]*>", f'<html lang="{lang}" dir="{direction}">', html, count=1, flags=re.I)
+    # str.replace (nie re.sub) - fragmenty zawierają \u003c, których regex by nie zniósł.
+    if HEAD_MARKER in html:
+        html = html.replace(HEAD_MARKER, head_html, 1)
+    else:
+        html = html.replace("</head>", head_html + "</head>", 1)
+    html = html.replace("</head>", data_script + "</head>", 1)
+    if BODY_MARKER in html:
+        html = html.replace(BODY_MARKER, body_html, 1)
+    else:
+        html = html.replace('<div id="root"></div>', f'<div id="root">{body_html}</div>', 1)
+    return html
 
 
-def _meta_description(site: PublicSiteOut) -> str:
+def _etag_matches(header: str | None, etag: str) -> bool:
+    if not header:
+        return False
+    if header.strip() == "*":
+        return True
+    norm = lambda t: t.strip().removeprefix("W/").strip('"')
+    target = norm(etag)
+    return any(norm(t) == target for t in header.split(","))
+
+
+def _html_response(request: Request, key: tuple, build) -> Response:
+    """Cache ciała (per proces, krótki TTL) + ETag/304. build() zwraca HTML albo None (=404)."""
+    cached = page_cache.get(key)
+    if cached is None:
+        html = build()
+        if html is None:
+            return _not_found_response()
+        body = html.encode("utf-8")
+        etag = '"' + hashlib.sha1(body).hexdigest()[:32] + '"'
+        page_cache.set(key, body, etag)
+    else:
+        body, etag = cached
+    headers = {"ETag": etag, "Cache-Control": CACHE_CONTROL}
+    if _etag_matches(request.headers.get("if-none-match"), etag):
+        return Response(status_code=304, headers=headers)
+    return Response(content=body, media_type="text/html; charset=utf-8", headers=headers)
+
+
+def _data_script(listing: dict | None = None, cities: list | None = None) -> str:
+    parts = []
+    if listing is not None:
+        parts.append("window.__LISTING__=" + _safe_json(listing) + ";")
+    if cities is not None:
+        parts.append("window.__HOME__=" + _safe_json({"cities": cities}) + ";")
+    return "<script>" + "".join(parts) + "</script>" if parts else ""
+
+
+def _cities_payload(city_list: list[listings.City], limit: int = 40) -> list[dict]:
+    return [{"name": c.name, "slug": c.slug, "count": c.count} for c in city_list[:limit]]
+
+
+def _breadcrumb_ld(items: list[tuple[str, str]]) -> dict:
+    return {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": i, "name": name, "item": url}
+            for i, (name, url) in enumerate(items, 1)
+        ],
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STRONA KAWIARNI
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _localize(site: PublicSiteOut, entries: dict[str, str]) -> PublicSiteOut:
+    """Lustro localizeSite.ts: tłumaczy tylko teksty kawiarni (opis, menu)."""
+    def tr(s):
+        return entries.get(normalize_text(s), s) if s else s
+
+    sections = [
+        sec.model_copy(update={
+            "name": tr(sec.name),
+            "items": [i.model_copy(update={"name": tr(i.name), "description": tr(i.description)})
+                      for i in sec.items],
+        })
+        for sec in site.menu_sections
+    ]
+    return site.model_copy(update={"description": tr(site.description), "menu_sections": sections})
+
+
+def _title(site: PublicSiteOut, u: dict) -> str:
+    return u["title_cafe"].format(
+        name=site.cafe_name, city=site.city, street=site.street, no=site.building_number)
+
+
+def _meta_description(site: PublicSiteOut, u: dict) -> str:
     if site.description:
         text = re.sub(r"\s+", " ", site.description).strip()
         if len(text) > 160:
             text = text[:157].rsplit(" ", 1)[0].rstrip(",.;:") + "…"
         return text
-    return (
-        f"{site.cafe_name} – kawiarnia w {site.city}, {site.street} {site.building_number}. "
-        f"Menu, godziny otwarcia i opinie gości."
-    )
+    return u["desc_default"].format(
+        name=site.cafe_name, city=site.city, street=site.street, no=site.building_number)
 
 
-def _json_ld(site: PublicSiteOut, url: str) -> dict:
+def _json_ld(site: PublicSiteOut, url: str, lang_code: str) -> dict:
     data: dict = {
         "@context": "https://schema.org",
         "@type": "CafeOrCoffeeShop",
         "name": site.cafe_name,
         "url": url,
+        "inLanguage": lang_code,
         "address": {
             "@type": "PostalAddress",
             "streetAddress": f"{site.street} {site.building_number}",
@@ -215,21 +359,28 @@ def _json_ld(site: PublicSiteOut, url: str) -> dict:
     return data
 
 
-def _body_context(site: PublicSiteOut) -> dict:
+def _cafe_crumbs(site: PublicSiteOut, u: dict, lang_code: str) -> list[dict]:
+    crumbs = [{"name": u["crumb_home"], "href": home_path(lang_code)}]
+    if site.city_slug:
+        crumbs.append({"name": site.city, "href": city_path(lang_code, site.city_slug)})
+    crumbs.append({"name": site.cafe_name, "href": None})
+    return crumbs
+
+
+def _body_context(site: PublicSiteOut, u: dict, lang_code: str) -> dict:
     cur = site.i18n.currency if site.i18n else "PLN"
-    lang = site.i18n.primary.code if site.i18n else "pl"
     hours = []
     for h in sorted(site.weekly_hours, key=lambda x: x.day_of_week):
         if not 0 <= h.day_of_week <= 6:
             continue
         ok = h.open_time and h.close_time
-        hours.append({"day": DAYS_PL[h.day_of_week], "text": f"{h.open_time}–{h.close_time}" if ok else "Zamknięte"})
+        hours.append({"day": u["days"][h.day_of_week], "text": f"{h.open_time}–{h.close_time}" if ok else u["closed"]})
 
     menu = [
         {
             "name": s.name,
             "dishes": [
-                {"name": i.name, "description": i.description, "price": _fmt_price(i.price, cur, lang)}
+                {"name": i.name, "description": i.description, "price": _fmt_price(i.price, cur, lang_code)}
                 for i in s.items
             ],
         }
@@ -240,6 +391,8 @@ def _body_context(site: PublicSiteOut) -> dict:
         for r in site.reviews[:PUBLIC_REVIEWS_PAGE]
     ]
     return {
+        "u": u,
+        "crumbs": _cafe_crumbs(site, u, lang_code),
         "name": site.cafe_name,
         "address": f"{site.street} {site.building_number}, {site.postal_code} {site.city}",
         "phone": site.contact_phone,
@@ -249,71 +402,66 @@ def _body_context(site: PublicSiteOut) -> dict:
         "menu": menu,
         "reviews": reviews,
         "rating_line": (
-            f"Średnia ocena {site.reviews_average:.1f}/5 ({site.reviews_count})"
+            u["rating_line"].format(avg=f"{site.reviews_average:.1f}", count=site.reviews_count)
             if site.reviews_count else None
         ),
+        "nearby_heading": u["h_nearby"].format(city=site.city),
+        "nearby": [{"name": n.cafe_name, "href": _cafe_path(n.slug)} for n in site.nearby_cafes],
+        "city_href": city_path(lang_code, site.city_slug) if site.city_slug else home_path(lang_code),
+        "city_link": u["city_link"].format(city=site.city),
     }
 
 
-def _inject(index_html: str, head_html: str, body_html: str, data_script: str = "") -> str:
-    html = re.sub(r"<title\b[^>]*>.*?</title>", "", index_html, count=1, flags=re.I | re.S)
-    # str.replace (nie re.sub) - fragmenty zawierają \u003c, których regex by nie zniósł.
-    if HEAD_MARKER in html:
-        html = html.replace(HEAD_MARKER, head_html, 1)
-    else:
-        html = html.replace("</head>", head_html + "</head>", 1)
-    html = html.replace("</head>", data_script + "</head>", 1)
-    if BODY_MARKER in html:
-        html = html.replace(BODY_MARKER, body_html, 1)
-    else:
-        html = html.replace('<div id="root"></div>', f'<div id="root">{body_html}</div>', 1)
-    return html
+def _render_cafe(index_html: str, site: PublicSiteOut, lang_code: str | None,
+                 entries: dict[str, str] | None) -> str:
+    i18n = site.i18n
+    primary = i18n.primary if i18n else language_out("pl")
+    secondary = i18n.secondary if i18n else None
+    active = secondary if (lang_code and secondary) else primary
+    view = _localize(site, entries) if (lang_code and entries is not None) else site
 
+    ui_code = site_lang(active.code)
+    u = ui(ui_code)
+    url = _public_url(site.slug or "", lang_code)
 
-def _render(index_html: str, site: PublicSiteOut) -> str:
-    url = _public_url(site.slug or "")
+    alternates: list[tuple[str, str]] = []
+    og_alternates: list[str] = []
+    if secondary:
+        p_url = _public_url(site.slug or "")
+        alternates = [(primary.code, p_url), (secondary.code, _public_url(site.slug or "", secondary.code)),
+                      ("x-default", p_url)]
+        other = primary if active is secondary else secondary
+        if _OG_LOCALES.get(other.code):
+            og_alternates = [_OG_LOCALES[other.code]]
+
+    crumbs = _cafe_crumbs(view, u, ui_code)
+    ld = [
+        _json_ld(view, url, active.code),
+        _breadcrumb_ld([(c["name"], _abs(c["href"]) if c["href"] else url) for c in crumbs]),
+    ]
     logo = _abs_api(site.logo_url)
     logo_srcset = ", ".join(f"{logo}&w={w} {w}w" for w in LOGO_TIERS) if logo else None
-    head = _HEAD_TPL.render(
-        title=_title(site),
-        description=_meta_description(site),
-        robots="index,follow",
-        canonical=url,
-        image=logo,
-        logo_srcset=logo_srcset,
-        jsonld=_safe_json(_json_ld(site, url)),
-        og_locale=_OG_LOCALES.get(site.i18n.primary.code) if site.i18n else "pl_PL",
+    head = _head(
+        title=_title(view, u), description=_meta_description(view, u), canonical=url,
+        alternates=alternates, og_locale=_OG_LOCALES.get(active.code), og_alternates=og_alternates,
+        image=logo, logo_srcset=logo_srcset, jsonld_list=[_safe_json(x) for x in ld],
     )
-    body = _BODY_TPL.render(c=_body_context(site))
+    body = _CAFE_BODY_TPL.render(c=_body_context(view, u, ui_code))
+    # Klient dostaje dane ORYGINALNE (to on tłumaczy je przez localizeSite).
     data_script = "<script>window.__SITE_DATA__=" + _safe_json(site.model_dump(mode="json")) + ";</script>"
-    return _inject(index_html, head, body, data_script)
+    return _inject(index_html, head, body, data_script, lang=active.code, direction=active.dir)
 
 
-def _etag_matches(header: str | None, etag: str) -> bool:
-    if not header:
-        return False
-    if header.strip() == "*":
-        return True
-    norm = lambda t: t.strip().removeprefix("W/").strip('"')
-    target = norm(etag)
-    return any(norm(t) == target for t in header.split(","))
-
-
-# ── Endpointy ───────────────────────────────────────────────────────────────
+# ── Endpointy: kawiarnia ────────────────────────────────────────────────────
 
 def _not_found_response() -> Response:
     loaded = _load_index()
     if loaded is None:
-        return PlainTextResponse(
-            "Błąd konfiguracji serwera: brak zbudowanego klienta (sprawdź CUSTOMER_DIST_DIR).",
-            status_code=500,
-        )
+        return _no_template()
     index_html, _ = loaded
-    head = _HEAD_TPL.render(
-        title="Nie znaleziono kawiarni | Caffenacci",
-        description="Ta strona nie jest dostępna.",
-        robots="noindex",
-        canonical=None, image=None, logo_srcset=None, jsonld=None, og_locale=None,
+    head = _head(
+        title="Nie znaleziono strony | Caffenacci",
+        description="Ta strona nie jest dostępna.", robots="noindex",
     )
     return Response(
         content=_inject(index_html, head, ""),
@@ -323,14 +471,10 @@ def _not_found_response() -> Response:
     )
 
 
-def _redirect_to_current(current_slug: str) -> RedirectResponse:
+def _redirect(path: str) -> RedirectResponse:
     # Krótki max-age: 301 bywa cache'owany przez przeglądarki "na zawsze",
     # a slug może jeszcze wrócić (powrót do starej nazwy).
-    return RedirectResponse(
-        f"/kawiarnia/{quote(current_slug, safe='')}",
-        status_code=301,
-        headers={"Cache-Control": "public, max-age=300"},
-    )
+    return RedirectResponse(path, status_code=301, headers={"Cache-Control": "public, max-age=300"})
 
 
 def _resolve_published(slug: str, db: Session) -> tuple[Cafe | None, bool]:
@@ -348,38 +492,44 @@ def _resolve_published(slug: str, db: Session) -> tuple[Cafe | None, bool]:
     return (cafe, is_current) if published else (None, False)
 
 
-@router.get("/kawiarnia/{slug}", include_in_schema=False)
-def cafe_page(slug: str, request: Request, db: Session = Depends(get_db)):
-    # Publikacja sprawdzana przy każdym żądaniu — cache nie przedłuża życia
-    # wycofanej strony.
+def _serve_cafe(slug: str, lang: str | None, request: Request, db: Session) -> Response:
+    # Publikacja sprawdzana przy każdym żądaniu — cache nie przedłuża życia wycofanej strony.
     cafe, is_current = _resolve_published(slug, db)
     if cafe is None:
         return _not_found_response()
     if not is_current:
-        return _redirect_to_current(cafe.slug)
+        return _redirect(_cafe_path(cafe.slug, lang))
 
     loaded = _load_index()
     if loaded is None:
-        return PlainTextResponse(
-            "Błąd konfiguracji serwera: brak zbudowanego klienta (sprawdź CUSTOMER_DIST_DIR).",
-            status_code=500,
-        )
+        return _no_template()
     index_html, mtime = loaded
 
-    key = (cafe.id, mtime)
-    cached = page_cache.get(key)
-    if cached is None:
+    def build() -> str | None:
         site = _build_public_site(cafe, db)
-        body = _render(index_html, site).encode("utf-8")
-        etag = '"' + hashlib.sha1(body).hexdigest()[:32] + '"'
-        page_cache.set(key, body, etag)
-    else:
-        body, etag = cached
+        entries = None
+        if lang:
+            # Wersja językowa istnieje tylko dla AKTUALNEGO tłumaczenia drugiego języka kawiarni.
+            if not site.i18n or not site.i18n.secondary or site.i18n.secondary.code != lang:
+                return None
+            tr = get_current_translation(cafe.id, lang, db)
+            if tr is None:
+                return None
+            entries = json.loads(tr.entries)
+        return _render_cafe(index_html, site, lang, entries)
 
-    headers = {"ETag": etag, "Cache-Control": CACHE_CONTROL}
-    if _etag_matches(request.headers.get("if-none-match"), etag):
-        return Response(status_code=304, headers=headers)
-    return Response(content=body, media_type="text/html; charset=utf-8", headers=headers)
+    # page_cache.drop_cafe() czyści wszystkie klucze zaczynające się od cafe.id
+    return _html_response(request, (cafe.id, mtime, lang or ""), build)
+
+
+@router.get("/kawiarnia/{slug}", include_in_schema=False)
+def cafe_page(slug: str, request: Request, db: Session = Depends(get_db)):
+    return _serve_cafe(slug, None, request, db)
+
+
+@router.get("/kawiarnia/{slug}/{lang}", include_in_schema=False)
+def cafe_page_lang(slug: str, lang: str, request: Request, db: Session = Depends(get_db)):
+    return _serve_cafe(slug, lang, request, db)
 
 
 @router.get("/cafe/{slug}", include_in_schema=False)
@@ -388,33 +538,275 @@ def legacy_cafe_redirect(slug: str, db: Session = Depends(get_db)):
     cafe, _ = _resolve_published(slug, db)
     if cafe is None:
         return _not_found_response()
-    return _redirect_to_current(cafe.slug)
+    return _redirect(_cafe_path(cafe.slug))
 
 
-@router.get("/sitemap.xml", include_in_schema=False)
-def sitemap(db: Session = Depends(get_db)):
-    base = settings.PUBLIC_SITE_URL.rstrip("/")
-    rows = (
-        db.query(Cafe.slug, CafeSite.published_at, CafeSite.updated_at)
+# ══════════════════════════════════════════════════════════════════════════════
+# STRONA GŁÓWNA
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _home_alternates() -> list[tuple[str, str]]:
+    return [("pl", _abs("/")), ("en", _abs("/en/")), ("x-default", _abs("/"))]
+
+
+def _build_home(index_html: str, db: Session, lang: str) -> str:
+    rows = listings.load_cafes(db)
+    city_list = listings.cities(rows)
+    u = ui(lang)
+
+    sections = []
+    if city_list:
+        sections.append({
+            "heading": u["h_cities"],
+            "links": [{"href": city_path(lang, c.slug), "name": c.name, "note": c.country}
+                      for c in city_list[:40]],
+        })
+    top = sorted(rows, key=lambda r: (-r.reviews, r.name.lower()))[:HOME_LIST_LIMIT]
+    if top:
+        sections.append({
+            "heading": u["h_popular"],
+            "links": [{"href": _cafe_path(r.slug), "name": r.name,
+                       "note": f"{r.street} {r.building_number}, {r.city}"} for r in top],
+        })
+
+    canonical = _abs(home_path(lang))
+    ld = [
+        {"@context": "https://schema.org", "@type": "WebSite", "name": "Caffenacci",
+         "alternateName": ["Caffenacci cafe finder", "Caffenacci wyszukiwarka kawiarni"],
+         "url": _abs("/"), "inLanguage": lang},
+        {"@context": "https://schema.org", "@type": "Organization", "name": "Caffenacci", "url": _abs("/")},
+    ]
+    head = _head(
+        title=u["home_title"], description=u["home_desc"], canonical=canonical,
+        alternates=_home_alternates(), og_locale=_OG_LOCALES[lang],
+        og_alternates=[_OG_LOCALES["en" if lang == "pl" else "pl"]],
+        jsonld_list=[_safe_json(x) for x in ld],
+    )
+    body = _LIST_TPL.render(crumbs=None, h1=u["home_h1"], intro=u["home_intro"], sections=sections)
+    return _inject(index_html, head, body, _data_script(cities=_cities_payload(city_list)), lang=lang)
+
+
+def _serve_home(request: Request, db: Session, lang: str) -> Response:
+    loaded = _load_index()
+    if loaded is None:
+        return _no_template()
+    index_html, mtime = loaded
+    return _html_response(request, ("__home__", mtime, lang), lambda: _build_home(index_html, db, lang))
+
+
+@router.get("/", include_in_schema=False)
+def home_pl(request: Request, db: Session = Depends(get_db)):
+    return _serve_home(request, db, "pl")
+
+
+@router.get("/en", include_in_schema=False)
+@router.get("/en/", include_in_schema=False)
+def home_en(request: Request, db: Session = Depends(get_db)):
+    return _serve_home(request, db, "en")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MIASTA I PLAKIETKI  (programmatic SEO: "kawiarnie Kraków", "kawiarnie Kraków wifi")
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _listing_alternates(city_slug: str, badge_key: str | None) -> list[tuple[str, str]]:
+    def path(lang: str) -> str:
+        return badge_path(lang, city_slug, badge_key) if badge_key else city_path(lang, city_slug)
+    return [("pl", _abs(path("pl"))), ("en", _abs(path("en"))), ("x-default", _abs(path("pl")))]
+
+
+def _build_city(index_html: str, db: Session, lang: str, city_slug: str, badge_key: str | None) -> str | None:
+    all_rows = listings.load_cafes(db)
+    city_rows = listings.city_cafes(all_rows, city_slug)
+    if len(city_rows) < listings.MIN_CITY_CAFES:
+        return None
+    shown = [r for r in city_rows if badge_key in r.badges] if badge_key else city_rows
+    if badge_key and len(shown) < listings.MIN_BADGE_CAFES:
+        return None
+
+    u = ui(lang)
+    city = listings.city_name(city_rows)
+    country = city_rows[0].country
+    city_list = listings.cities(all_rows)
+    counts = listings.badge_counts(city_rows)
+    eligible = [k for k in BADGE_LABELS if counts.get(k, 0) >= listings.MIN_BADGE_CAFES]
+    blabel = badge_label(badge_key, lang) if badge_key else None
+
+    if badge_key:
+        title = u["badge_title"].format(city=city, badge=blabel)
+        description = u["badge_desc"].format(city=city, badge=blabel)
+        h1 = u["badge_h1"].format(city=city, badge=blabel)
+        intro = [u["badge_intro"].format(city=city, badge=blabel), u["count_line"].format(count=len(shown))]
+    else:
+        title = u["city_title"].format(city=city)
+        description = u["city_desc"].format(city=city)
+        h1 = u["city_h1"].format(city=city)
+        intro = [u["city_intro"].format(city=city), u["count_line"].format(count=len(shown))]
+
+    sections = []
+    if badge_key:
+        sections.append({"heading": u["h_cafes"], "links": [
+            {"href": city_path(lang, city_slug), "name": u["city_link"].format(city=city), "note": None}]})
+    else:
+        if eligible:
+            sections.append({"heading": u["h_filters"], "links": [
+                {"href": badge_path(lang, city_slug, k), "name": badge_label(k, lang), "note": str(counts[k])}
+                for k in eligible]})
+    # Lista kawiarni (po sekcji filtrów, żeby nagłówek "Lista kawiarni" nie dublował się dla plakietki)
+    sections = [s for s in sections if not (badge_key and s["heading"] == u["h_cafes"])] if False else sections
+    sections.append({"heading": u["h_cafes"] if not badge_key else u["h_cafes"], "links": [
+        {"href": _cafe_path(r.slug), "name": r.name,
+         "note": f"{r.street} {r.building_number}" + (f" · {r.rating}/5" if r.rating else "")}
+        for r in shown]})
+    if badge_key:
+        others = [k for k in eligible if k != badge_key]
+        if others:
+            sections.append({"heading": u["h_other_badges"], "links": [
+                {"href": badge_path(lang, city_slug, k), "name": badge_label(k, lang), "note": str(counts[k])}
+                for k in others]})
+    other_cities = [c for c in city_list if c.slug != city_slug][:HOME_LIST_LIMIT]
+    if other_cities:
+        sections.append({"heading": u["h_other_cities"], "links": [
+            {"href": city_path(lang, c.slug), "name": c.name, "note": c.country} for c in other_cities]})
+
+    canonical_path = badge_path(lang, city_slug, badge_key) if badge_key else city_path(lang, city_slug)
+    canonical = _abs(canonical_path)
+    crumbs = [{"name": u["crumb_home"], "href": home_path(lang)},
+              {"name": city, "href": city_path(lang, city_slug) if badge_key else None}]
+    if badge_key:
+        crumbs.append({"name": blabel, "href": None})
+
+    ld = [
+        {"@context": "https://schema.org", "@type": "ItemList", "name": h1,
+         "itemListElement": [
+             {"@type": "ListItem", "position": i, "name": r.name, "url": _public_url(r.slug)}
+             for i, r in enumerate(shown, 1)]},
+        _breadcrumb_ld([(c["name"], _abs(c["href"]) if c["href"] else canonical) for c in crumbs]),
+    ]
+    head = _head(
+        title=title, description=description, canonical=canonical,
+        alternates=_listing_alternates(city_slug, badge_key), og_locale=_OG_LOCALES[lang],
+        og_alternates=[_OG_LOCALES["en" if lang == "pl" else "pl"]],
+        jsonld_list=[_safe_json(x) for x in ld],
+    )
+    body = _LIST_TPL.render(crumbs=crumbs, h1=h1, intro=intro, sections=sections)
+    script = _data_script(
+        listing={"city": city, "country": country, "badge": badge_key},
+        cities=_cities_payload(city_list),
+    )
+    return _inject(index_html, head, body, script, lang=lang)
+
+
+def _serve_city(request: Request, db: Session, lang: str, city: str, badge: str | None) -> Response:
+    norm_city = slugify(city)
+    if norm_city != city:      # np. /kawiarnie/Kraków -> /kawiarnie/krakow
+        target = badge_path(lang, norm_city, badge.replace("-", "_")) if badge else city_path(lang, norm_city)
+        return _redirect(quote(target, safe="/-")) if norm_city else _not_found_response()
+
+    badge_key = None
+    if badge:
+        badge_key = badge.replace("-", "_")
+        if badge_key not in ALLOWED_BADGE_KEYS or badge != badge_key.replace("_", "-"):
+            return _not_found_response()
+
+    loaded = _load_index()
+    if loaded is None:
+        return _no_template()
+    index_html, mtime = loaded
+    key = ("__listing__", mtime, lang, city, badge or "")
+    return _html_response(request, key, lambda: _build_city(index_html, db, lang, city, badge_key))
+
+
+@router.get("/kawiarnie/{city}", include_in_schema=False)
+def city_pl(city: str, request: Request, db: Session = Depends(get_db)):
+    return _serve_city(request, db, "pl", city, None)
+
+
+@router.get("/kawiarnie/{city}/{badge}", include_in_schema=False)
+def city_badge_pl(city: str, badge: str, request: Request, db: Session = Depends(get_db)):
+    return _serve_city(request, db, "pl", city, badge)
+
+
+@router.get("/en/cafes/{city}", include_in_schema=False)
+def city_en(city: str, request: Request, db: Session = Depends(get_db)):
+    return _serve_city(request, db, "en", city, None)
+
+
+@router.get("/en/cafes/{city}/{badge}", include_in_schema=False)
+def city_badge_en(city: str, badge: str, request: Request, db: Session = Depends(get_db)):
+    return _serve_city(request, db, "en", city, badge)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SITEMAP + ROBOTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+_sm_lock = threading.Lock()
+_sm: dict = {"at": 0.0, "xml": None}
+SITEMAP_TTL = 600.0     # budowa sprawdza aktualność tłumaczeń każdej kawiarni — nie robimy tego na każde żądanie
+
+
+def _sm_entries(alts: list[tuple[str, str]], lastmod: str | None = None) -> list[str]:
+    """Każdy wariant językowy to osobny <url> z kompletem xhtml:link (wymóg Google)."""
+    lm = f"<lastmod>{lastmod}</lastmod>" if lastmod else ""
+    links = ""
+    if len(alts) > 1:
+        links = "".join(
+            f'<xhtml:link rel="alternate" hreflang="{xml_escape(c)}" href="{xml_escape(h)}"/>' for c, h in alts
+        ) + f'<xhtml:link rel="alternate" hreflang="x-default" href="{xml_escape(alts[0][1])}"/>'
+    return [f"<url><loc>{xml_escape(h)}</loc>{lm}{links}</url>" for _, h in alts]
+
+
+def _build_sitemap(db: Session) -> str:
+    entries: list[str] = []
+    entries += _sm_entries([("pl", _abs("/")), ("en", _abs("/en/"))])
+
+    rows = listings.load_cafes(db)
+    for city in listings.cities(rows):
+        if city.count < listings.MIN_CITY_CAFES:
+            continue
+        entries += _sm_entries([("pl", _abs(city_path("pl", city.slug))), ("en", _abs(city_path("en", city.slug)))])
+        counts = listings.badge_counts(listings.city_cafes(rows, city.slug))
+        for key in BADGE_LABELS:
+            if counts.get(key, 0) >= listings.MIN_BADGE_CAFES:
+                entries += _sm_entries([
+                    ("pl", _abs(badge_path("pl", city.slug, key))),
+                    ("en", _abs(badge_path("en", city.slug, key))),
+                ])
+
+    cafe_rows = (
+        db.query(Cafe.id, Cafe.slug, CafeSite.published_at, CafeSite.updated_at)
         .join(CafeSite, CafeSite.cafe_id == Cafe.id)
         .filter(CafeSite.is_published.is_(True), Cafe.slug.isnot(None))
         .order_by(Cafe.slug)
         .all()
     )
-    parts = ['<?xml version="1.0" encoding="UTF-8"?>',
-             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-             f"<url><loc>{xml_escape(base + '/')}</loc></url>"]
-    for slug, published_at, updated_at in rows:
+    for cafe_id, slug, published_at, updated_at in cafe_rows:
         dates = [d for d in (updated_at, published_at) if d]
-        lastmod = f"<lastmod>{max(dates).strftime('%Y-%m-%d')}</lastmod>" if dates else ""
-        loc = xml_escape(f"{base}/kawiarnia/{quote(slug, safe='')}")
-        parts.append(f"<url><loc>{loc}</loc>{lastmod}</url>")
-    parts.append("</urlset>")
-    return Response(
-        content="\n".join(parts),
-        media_type="application/xml",
-        headers={"Cache-Control": "public, max-age=300"},
+        lastmod = max(dates).strftime("%Y-%m-%d") if dates else None
+        s = lang_settings(cafe_id, db)
+        alts = [(s.primary_language, _public_url(slug))]
+        if s.secondary_language and get_current_translation(cafe_id, s.secondary_language, db):
+            alts.append((s.secondary_language, _public_url(slug, s.secondary_language)))
+        entries += _sm_entries(alts, lastmod)
+
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+        'xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' + "\n".join(entries) + "\n</urlset>"
     )
+
+
+@router.get("/sitemap.xml", include_in_schema=False)
+def sitemap(db: Session = Depends(get_db)):
+    with _sm_lock:
+        fresh = _sm["xml"] is not None and time.monotonic() - _sm["at"] < SITEMAP_TTL
+        xml = _sm["xml"] if fresh else None
+    if xml is None:
+        xml = _build_sitemap(db)
+        with _sm_lock:
+            _sm["xml"], _sm["at"] = xml, time.monotonic()
+    return Response(content=xml, media_type="application/xml", headers={"Cache-Control": "public, max-age=300"})
 
 
 @router.get("/robots.txt", include_in_schema=False)
