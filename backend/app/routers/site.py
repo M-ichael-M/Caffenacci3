@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
-from app.core.slugs import generate_unique_slug, resolve_slug
+from app.core.slugs import generate_unique_slug, resolve_slug, slugify
 from app.core.page_cache import invalidate_cafe
 from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings
@@ -321,6 +321,19 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
             for p in news_rows
         ]
 
+    # SEO: inne opublikowane kawiarnie w tym samym mieście (maks. 6)
+    nearby_rows = (
+        db.query(Cafe.slug, Cafe.cafe_name)
+        .join(CafeSite, CafeSite.cafe_id == Cafe.id)
+        .filter(
+            CafeSite.is_published.is_(True), Cafe.slug.isnot(None), Cafe.id != cafe.id,
+            func.lower(Cafe.city) == cafe.city.lower(),
+        )
+        .order_by(Cafe.cafe_name)
+        .limit(6)
+        .all()
+    )
+
     return PublicSiteOut(
         cafe_id=cafe.id,
         slug=cafe.slug,
@@ -377,6 +390,8 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
             for b in (profile.badges if profile else [])
         ],
         i18n=build_public_i18n(cafe.id, db),
+        city_slug=slugify(cafe.city),
+        nearby_cafes=[{"slug": s, "cafe_name": n} for s, n in nearby_rows],
     )
 
 

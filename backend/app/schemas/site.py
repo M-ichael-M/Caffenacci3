@@ -181,6 +181,12 @@ class SiteNewsPostOut(BaseModel):
     created_at: datetime
 
 
+class NearbyCafeOut(BaseModel):
+    slug: str
+    cafe_name: str
+    model_config = {"from_attributes": True}
+
+
 class PublicSiteOut(BaseModel):
     cafe_id:   str
     slug:      Optional[str] = None
@@ -234,3 +240,6 @@ class PublicSiteOut(BaseModel):
     news_posts: List[SiteNewsPostOut] = []
     badges: List[PublicBadgeOut] = []
     i18n: Optional[PublicI18nOut] = None
+    # SEO: linkowanie wewnętrzne (breadcrumbs + "Inne kawiarnie w mieście")
+    city_slug: str = ""
+    nearby_cafes: List[NearbyCafeOut] = []

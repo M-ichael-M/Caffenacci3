@@ -3477,3 +3477,20 @@ select.me-input { cursor: pointer; }
 /* RTL: ikony kierunkowe */
 .cp-dir-arrow{display:inline-block}
 [dir='rtl'] .cp-dir-arrow,[dir='rtl'] .cp-lightbox__nav svg{transform:scaleX(-1)}
+
+
+/* ── Breadcrumbs, "Inne kawiarnie", FAB jako link ───────────────── */
+.cp-breadcrumbs { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: -1rem; }
+.cp-breadcrumbs ol { list-style: none; display: flex; flex-wrap: wrap; gap: 0.375rem; padding: 0; margin: 0; }
+.cp-breadcrumbs li + li::before { content: '›'; margin-inline-end: 0.375rem; opacity: 0.6; }
+.cp-breadcrumbs a { color: inherit; text-decoration: none; }
+.cp-breadcrumbs a:hover { color: var(--gold); text-decoration: underline; }
+.cp-breadcrumbs [aria-current='page'] { color: var(--text-body); }
+.cafe-page--magic .cp-breadcrumbs,
+.cafe-page--futuristic .cp-breadcrumbs,
+.cafe-page--magic .cp-breadcrumbs [aria-current='page'],
+.cafe-page--futuristic .cp-breadcrumbs [aria-current='page'] { color: rgba(240,228,204,0.6); }
+
+.cp-nearby { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.625rem 1.25rem; }
+
+a.cp-home-fab { text-decoration: none; }

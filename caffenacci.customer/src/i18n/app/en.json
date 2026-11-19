@@ -97,5 +97,6 @@
   "map.loading": "Loading map…", "map.err": "Couldn't load cafés for the map.",
   "map.empty": "No cafés with a shared location.",
   "map.c_zoom_in": "Zoom in", "map.c_zoom_out": "Zoom out", "map.c_reset": "Reset bearing to north",
-  "map.c_locate": "Show my location", "map.c_unavailable": "Location unavailable"
+  "map.c_locate": "Show my location", "map.c_unavailable": "Location unavailable",
+  "home.cities": "Cafés by city"
 }

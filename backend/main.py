@@ -135,11 +135,6 @@ if settings.CUSTOMER_DIST_DIR:
     if _assets_dir.is_dir():
         app.mount("/assets", StaticFiles(directory=_assets_dir), name="customer-assets")
 
-@app.get("/", tags=["health"])
-def root():
-    return {"status": "ok", "service": "Caffenacci API"}
-
-
 @app.get("/health", tags=["health"])
 def health(db: Session = Depends(get_db)):
     try:

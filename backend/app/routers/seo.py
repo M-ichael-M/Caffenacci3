@@ -15,13 +15,13 @@ from fastapi.responses import PlainTextResponse, RedirectResponse, Response
 from jinja2 import Environment
 from sqlalchemy.orm import Session
 
-from app.core import seo_listings as listings
+from app.core import seo_listenings as listings
 from app.core.config import settings
 from app.core.currency import currency_exponent
 from app.core.database import get_db
 from app.core.images import LOGO_TIERS
 from app.core.page_cache import page_cache
-from app.core.seo_i18n import (
+from app.core.seo_i18 import (
     BADGE_LABELS, badge_label, badge_path, city_path, home_path, site_lang, ui,
 )
 from app.core.slugs import resolve_slug, slugify
@@ -645,7 +645,7 @@ def _build_city(index_html: str, db: Session, lang: str, city_slug: str, badge_k
 
     sections = []
     if badge_key:
-        sections.append({"heading": u["h_cafes"], "links": [
+        sections.append({"heading": city, "links": [
             {"href": city_path(lang, city_slug), "name": u["city_link"].format(city=city), "note": None}]})
     else:
         if eligible:
@@ -653,8 +653,7 @@ def _build_city(index_html: str, db: Session, lang: str, city_slug: str, badge_k
                 {"href": badge_path(lang, city_slug, k), "name": badge_label(k, lang), "note": str(counts[k])}
                 for k in eligible]})
     # Lista kawiarni (po sekcji filtrów, żeby nagłówek "Lista kawiarni" nie dublował się dla plakietki)
-    sections = [s for s in sections if not (badge_key and s["heading"] == u["h_cafes"])] if False else sections
-    sections.append({"heading": u["h_cafes"] if not badge_key else u["h_cafes"], "links": [
+    sections.append({"heading": u["h_cafes"], "links": [
         {"href": _cafe_path(r.slug), "name": r.name,
          "note": f"{r.street} {r.building_number}" + (f" · {r.rating}/5" if r.rating else "")}
         for r in shown]})

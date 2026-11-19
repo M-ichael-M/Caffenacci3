@@ -109,5 +109,8 @@
   "badge.air_conditioning": "Air conditioning",
   "badge.accessible": "Accessible", "badge.accessible.info": "Venue adapted for people with disabilities.",
   "badge.parking": "Parking", "badge.bike_rack": "Bike rack",
-  "badge.adults_only": "18+", "badge.adults_only.info": "Adults only."
+  "badge.adults_only": "18+", "badge.adults_only.info": "Adults only.",
+  "section.nearby": "More cafés in {city}",
+  "footer.all_in_city": "All cafés – {city}",
+  "crumb.aria": "Breadcrumbs"
 }

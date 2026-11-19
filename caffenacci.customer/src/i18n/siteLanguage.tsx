@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { DEFAULT_LANGUAGE, SystemI18nProvider, useI18n } from './I18nProvider'
 import { loadSystem } from './system'
 import type { LanguageInfo } from './localeFormat'
+import { siteLangFromPath, sitePathFor } from '../utils/sitePaths'
 
 export type SiteLang = 'pl' | 'en'
 const STORAGE_KEY = 'caffenacci_site_lang'
@@ -20,6 +21,8 @@ function readSaved(): SiteLang | null {
 
 /** Zapisany wybór → język przeglądarki (pl → pl, cokolwiek innego → en). */
 export function detectSiteLanguage(): SiteLang {
+  const fromPath = siteLangFromPath()
+  if (fromPath) return fromPath
   const saved = readSaved()
   if (saved) return saved
   const first = (navigator.languages && navigator.languages[0]) || navigator.language || ''
@@ -45,7 +48,18 @@ export function SiteLanguageProvider({ children }: { children: ReactNode }) {
     loadSystem(SITE_LANGUAGES[l].code).finally(() => {
       setLangState(l)
       try { localStorage.setItem(STORAGE_KEY, l) } catch { /* ignore */ }
+      const next = sitePathFor(window.location.pathname, l)
+      if (next && next !== window.location.pathname) {
+        window.history.replaceState(window.history.state, '', next + window.location.search)
+      }
     })
+  }, [])
+
+  useEffect(() => {
+    if (window.location.pathname === '/' && readSaved() === 'en') {
+      window.history.replaceState(window.history.state, '', '/en/' + window.location.search)
+      setLangState('en')
+    }
   }, [])
 
   // Strony kawiarni same zarządzają <html lang> (CafeI18nProvider).

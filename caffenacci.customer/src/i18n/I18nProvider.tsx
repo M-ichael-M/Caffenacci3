@@ -73,21 +73,30 @@ const readPref = (k: string) => { try { return localStorage.getItem(prefKey(k)) 
 const writePref = (k: string, v: string) => { try { localStorage.setItem(prefKey(k), v) } catch { /* ignore */ } }
 
 export function CafeI18nProvider(
-  { i18n, cafeKey, fetchTranslations, children }:
-  { i18n: CafeI18nData; cafeKey: string; fetchTranslations: (lang: string) => Promise<Texts>; children: ReactNode },
+  { i18n, cafeKey, fetchTranslations, urlLang = null, onLanguageChange, children }:
+  { i18n: CafeI18nData; cafeKey: string; fetchTranslations: (lang: string) => Promise<Texts>; urlLang?: string | null; onLanguageChange?: (code: string, isPrimary: boolean) => void; children: ReactNode },
 ) {
   const { primary, secondary } = i18n
   const secondaryCode = secondary?.code ?? null
   const version = i18n.translation_version
   const fetchRef = useRef(fetchTranslations); fetchRef.current = fetchTranslations
+  const cbRef = useRef(onLanguageChange); cbRef.current = onLanguageChange
   const cache = useRef(new Map<string, Texts>())
 
   const [dicts, setDicts] = useState<Record<string, SystemDicts>>({})
-  const [desired, setDesired] = useState<Which>(() =>
-    secondaryCode && readPref(cafeKey) === secondaryCode ? 'secondary' : 'primary')
+  const [desired, setDesired] = useState<Which>(() => {
+    if (!secondaryCode) return 'primary'
+    if (urlLang) return urlLang === secondaryCode ? 'secondary' : 'primary'
+    return readPref(cafeKey) === secondaryCode ? 'secondary' : 'primary'
+  })
   const [active, setActive] = useState<Which>('primary')   // pierwszy render zawsze w primary
   const [texts, setTexts] = useState<Texts | null>(null)
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (!secondaryCode) return
+    cbRef.current?.(desired === 'secondary' ? secondaryCode : primary.code, desired === 'primary')
+  }, [desired, secondaryCode, primary.code])
 
   useEffect(() => {
     let off = false

@@ -110,5 +110,8 @@
   "badge.air_conditioning": "Klimatyzacja",
   "badge.accessible": "Przyjazna osobom z niepełnosprawnościami", "badge.accessible.info": "Lokal dostosowany do potrzeb osób z niepełnosprawnościami.",
   "badge.parking": "Parking", "badge.bike_rack": "Stojak na rowery",
-  "badge.adults_only": "18+", "badge.adults_only.info": "Miejsce przeznaczone wyłącznie dla osób pełnoletnich."
+  "badge.adults_only": "18+", "badge.adults_only.info": "Miejsce przeznaczone wyłącznie dla osób pełnoletnich.",
+  "section.nearby": "Inne kawiarnie w mieście {city}",
+  "footer.all_in_city": "Wszystkie kawiarnie – {city}",
+  "crumb.aria": "Ścieżka nawigacji"
 }

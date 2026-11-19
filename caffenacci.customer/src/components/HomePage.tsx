@@ -176,19 +176,21 @@ function Chip({ on, onClick, children, title }: {
 
 // ═════════════════════════════════════════════════════════════════════════
 
-export default function HomePage({ token = null }: { token?: string | null }) {
+export interface HomeInitial { query?: string; country?: string; badges?: string[] }
+
+export default function HomePage({ token = null, initial }: { token?: string | null; initial?: HomeInitial }) {
   const { t, fmt } = useI18n()
   const tRef = useRef(t)
   tRef.current = t
 
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initial?.query ?? '')
   const [countries, setCountries] = useState<string[]>([])
   const [country, setCountry] = useState('')
   const [countryAuto, setCountryAuto] = useState(false)
   const [ready, setReady] = useState(false)
 
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
-  const [panelOpen, setPanelOpen] = useState(false)
+  const [filters, setFilters] = useState<Filters>(() => ({ ...DEFAULT_FILTERS, badges: initial?.badges ?? [] }))
+  const [panelOpen, setPanelOpen] = useState(!!initial?.badges?.length)
   const [view, setView] = useState<'list' | 'map'>('list')
   const [coords, setCoords] = useState<Coords | null>(null)
   const [geoLoading, setGeoLoading] = useState(false)
@@ -224,6 +226,11 @@ export default function HomePage({ token = null }: { token?: string | null }) {
       if (off) return
 
       setCountries(list)
+      if (initial?.country && list.includes(initial.country)) {
+        setCountry(initial.country)
+        setReady(true)
+        return
+      }
       const saved = readSavedCountry()
       if (saved === ALL_COUNTRIES) {
         setCountry('')

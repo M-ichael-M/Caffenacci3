@@ -6,10 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Caffenacci</title>
     <script>
-      // Ustaw język przed pierwszym renderem (strony kawiarni zarządzają nim osobno).
+      // Ustaw język przed pierwszym renderem. Strony kawiarni zarządzają nim osobno;
+      // strona główna i listingi biorą język z URL-a (/en/…), nie z przeglądarki.
       (function () {
         try {
-          if (/^\/(kawiarnia|cafe|preview)\//.test(location.pathname)) return;
+          var p = location.pathname;
+          if (/^\/(kawiarnia|cafe|preview)\//.test(p)) return;
+          if (/^\/en(\/|$)/.test(p)) { document.documentElement.lang = 'en'; return; }
+          if (p === '/' || /^\/kawiarnie\//.test(p)) { document.documentElement.lang = 'pl'; return; }
           var s = localStorage.getItem('caffenacci_site_lang');
           var l = (navigator.languages && navigator.languages[0]) || navigator.language || '';
           document.documentElement.lang = s === 'pl' || s === 'en' ? s : /^pl(-|$)/i.test(l) ? 'pl' : 'en';

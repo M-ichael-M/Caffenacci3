@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import HomePage from './components/HomePage'
+import CityLinks from './components/CityLinks'
 import TopBar from './components/TopBar'
 import CafePage from './components/CafePage/CafePage'
 import { loadClientAuth, saveClientAuth, clearClientAuth } from './authStorage'
@@ -10,6 +11,7 @@ import './index.css'
 import { API_URL, COMPANY_URL } from './config'
 import { useI18n } from './i18n/I18nProvider'
 import { LanguageToggle } from './i18n/siteLanguage'
+import './utils/sitePaths'
 
 const LoginForm        = lazy(() => import('./components/LoginForm'))
 const RegisterForm     = lazy(() => import('./components/RegisterForm'))
@@ -36,6 +38,10 @@ export default function App() {
   const { t } = useI18n()
   const cafeIdFromUrl = getCafeIdFromPath()
   const previewParams = getPreviewParamsFromPath()
+  const listing = window.__LISTING__
+  const homeInitial = listing
+    ? { query: listing.city, country: listing.country, badges: listing.badge ? [listing.badge] : [] }
+    : undefined
 
   const [view, setView] = useState<View>('home')
   const [auth, setAuth] = useState<ClientAuthState | null>(null)
@@ -177,7 +183,8 @@ export default function App() {
         <Suspense fallback={<Spinner />}><AccountDashboard auth={auth as ClientAuthState} /></Suspense>
       ) : (
         <>
-          <HomePage token={auth?.token ?? null} />
+          <HomePage token={auth?.token ?? null} initial={homeInitial} />
+          <CityLinks />
           <p
             className="cross-app-link"
             style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}

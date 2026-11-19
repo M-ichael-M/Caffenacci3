@@ -15,7 +15,8 @@ import { Eye, ExternalLink } from 'lucide-react'
 import { BADGE_CATALOG } from '../../badges'
 import InfoTooltip from './InfoTooltip'
 import { API_URL } from '../../config'
-import { syncCafeSlugInUrl } from '../../utils/slugUrl'
+import { syncCafeSlugInUrl, setCafeLangInUrl } from '../../utils/slugUrl'
+import { homePath, cityPath, cafePath, langFromCafePath } from '../../utils/sitePaths'
 import { loadThemeFonts } from '../../fonts/themeFonts'
 import LazyLocationMap from './LazyLocationMap'
 import LazyOnVisible from '../LazyOnVisible'
@@ -71,6 +72,8 @@ type SiteTemplate =
 interface PublicSiteData {
   cafe_id: string
   slug?: string | null
+  city_slug?: string
+  nearby_cafes?: { slug: string; cafe_name: string }[]
   cafe_name: string
   template: SiteTemplate
   palette: string
@@ -140,17 +143,16 @@ function computeTodayStatus(data: PublicSiteData, t: TFunction, tz: string) {
 
 // ── Pływający przycisk powrotu ─────────────────────────────────────
 function HomeFab() {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   return (
-    <button
-      type="button"
+    <a
       className="cp-home-fab"
-      onClick={() => { window.location.href = '/' }}
+      href={homePath(language.code)}
       title={t('page.back_home_title')}
     >
       <span className="cp-home-fab__icon" aria-hidden="true"><CoffeeIcon size={16} /></span>
       <span className="cp-home-fab__label">Caffenacci</span>
-    </button>
+    </a>
   )
 }
 
@@ -314,7 +316,11 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
   }
 
   return (
-    <CafeI18nProvider i18n={normalizeI18n(data.i18n)} cafeKey={data.cafe_id} fetchTranslations={fetchTranslations}>
+    <CafeI18nProvider
+      i18n={normalizeI18n(data.i18n)} cafeKey={data.cafe_id} fetchTranslations={fetchTranslations}
+      urlLang={isPreview ? null : langFromCafePath()}
+      onLanguageChange={isPreview ? undefined : (code, isPrimary) => setCafeLangInUrl(isPrimary ? null : code)}
+    >
       <CafeContent
         rawData={data}
         isPreview={isPreview}
@@ -356,7 +362,7 @@ function CafeContent({
   onLogout,
   sparkLayerRef,
 }: CafeContentProps) {
-  const { t, tr, fmt } = useI18n()
+  const { t, tr, fmt, language } = useI18n()
   const data = useMemo(() => localizeSite(rawData, tr), [rawData, tr])
 
   // Analityka: tylko strona publiczna (nigdy podgląd właściciela)
@@ -416,6 +422,9 @@ function CafeContent({
   const hasMenu = menuSections.length > 0
 
   const gmapsUrl = hasLocation ? `https://www.google.com/maps?q=${data.latitude},${data.longitude}` : null
+  const listingLang = language.code
+  const citySlug = data.city_slug ?? ''
+  const nearby = data.nearby_cafes ?? []
 
   return (
     <div className={`cafe-page cafe-page--${data.template}`} style={paletteVars as CSSProperties}>
@@ -497,6 +506,15 @@ function CafeContent({
       </header>
 
       <main className="cp-main">
+        {!isPreview && (
+          <nav className="cp-breadcrumbs" aria-label={t('crumb.aria')}>
+            <ol>
+              <li><a href={homePath(listingLang)}>Caffenacci</a></li>
+              {citySlug && <li><a href={cityPath(listingLang, citySlug)}>{data.city}</a></li>}
+              <li aria-current="page">{data.cafe_name}</li>
+            </ol>
+          </nav>
+        )}
         {/* Opis */}
         {data.description && (
           <section>
@@ -705,6 +723,21 @@ function CafeContent({
             previewMode={isPreview}
           />
         </section>
+        {!isPreview && nearby.length > 0 && (
+          <section id="cp-nearby">
+            <h2 className="cp-section__title">{t('section.nearby', { city: data.city })}</h2>
+            <ul className="cp-nearby">
+              {nearby.map(n => (
+                <li key={n.slug}><a className="link" href={cafePath(n.slug)}>{n.cafe_name}</a></li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {!isPreview && citySlug && (
+          <p className="cp-muted-note">
+            <a className="link" href={cityPath(listingLang, citySlug)}>{t('footer.all_in_city', { city: data.city })}</a>
+          </p>
+        )}
       </main>
 
       {/* Modal logowania/rejestracji — nigdy nie renderowany w trybie podglądu */}

@@ -97,5 +97,6 @@
   "map.loading": "Wczytywanie mapy…", "map.err": "Nie udało się pobrać kawiarni na mapę.",
   "map.empty": "Brak kawiarni z udostępnioną lokalizacją.",
   "map.c_zoom_in": "Przybliż", "map.c_zoom_out": "Oddal", "map.c_reset": "Ustaw północ u góry",
-  "map.c_locate": "Pokaż moją lokalizację", "map.c_unavailable": "Lokalizacja niedostępna"
+  "map.c_locate": "Pokaż moją lokalizację", "map.c_unavailable": "Lokalizacja niedostępna",
+  "home.cities": "Kawiarnie według miast"
 }

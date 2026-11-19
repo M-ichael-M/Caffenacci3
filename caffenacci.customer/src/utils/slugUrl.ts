@@ -12,3 +12,12 @@ export function syncCafeSlugInUrl(currentSlug: string | null | undefined) {
     `/kawiarnia/${encodeURIComponent(currentSlug)}${m[3] ?? ''}${window.location.search}${window.location.hash}`,
   )
 }
+
+/** Ustawia segment języka w URL-u kawiarni bez przeładowania: /kawiarnia/{slug}[/{lang}]. null = język główny. */
+export function setCafeLangInUrl(lang: string | null) {
+  const m = window.location.pathname.match(/^\/(?:kawiarnia|cafe)\/([^/]+)/)
+  if (!m) return
+  const next = `/kawiarnia/${m[1]}${lang ? `/${encodeURIComponent(lang)}` : ''}`
+  if (next === window.location.pathname) return
+  window.history.replaceState(window.history.state, '', `${next}${window.location.search}${window.location.hash}`)
+}
