@@ -1,13 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@400;500;600;700;800&display=swap');
-
 /* ── Reset ─────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
 body {
+  background: var(--app-bg);
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+#root > .seo-content {
+  min-height: 100vh;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  color: var(--text-body);
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.6;
+}
+#root > .seo-content h1 { font-family: 'Playfair Display', serif; color: var(--text-dark); }
+#root > .seo-content ul { padding-left: 1.25rem; }
 
 /* ── Tokens — shared with caffenacci.company ─────
    (logo colors: light & dark brown)               */

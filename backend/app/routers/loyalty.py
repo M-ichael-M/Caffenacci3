@@ -147,7 +147,7 @@ def save_settings(
         ))
 
     db.commit()
-    invalidate_cafe(current_cafe.id)
+    invalidate_cafe(current_cafe.id, touch=False)
     purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
     return _get_or_create_settings(current_cafe.id, db)
 

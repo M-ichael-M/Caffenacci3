@@ -60,6 +60,19 @@ def badge_label(key: str, lang: str) -> str:
     return entry.get(site_lang(lang)) or entry.get("en") or key
 
 
+def reviews_label(n: int, lang: str | None) -> str:
+    if site_lang(lang) == "pl":
+        if n == 1:
+            word = "opinia"
+        elif 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
+            word = "opinie"
+        else:
+            word = "opinii"
+    else:
+        word = "review" if n == 1 else "reviews"
+    return f"{n} {word}"
+
+
 # ── Słowniki napisów ────────────────────────────────────────────────────────
 
 UI: dict[str, dict] = {
@@ -72,7 +85,16 @@ UI: dict[str, dict] = {
         "phone": "Telefon", "email": "E-mail",
         "rating_line": "Średnia ocena {avg}/5 ({count})",
         "city_link": "Wszystkie kawiarnie – {city}",
-        "title_cafe": "{name} – kawiarnia {city}, {street} {no} | Caffenacci",
+        "title_cafe": "{name} – kawiarnia w {city} | Menu, godziny, opinie",
+        "title_cafe_short": "{name} – kawiarnia w {city} | Caffenacci",
+        "desc_rating": "Ocena {avg}/5 ({count}).",
+        "desc_amenities": "Udogodnienia: {list}.",
+        "h_amenities": "Udogodnienia", "h_services": "Usługi",
+        "h_news": "Aktualności", "h_gallery": "Galeria",
+        "svc_reservations": "Rezerwacja stolika online",
+        "svc_orders": "Zamówienia online z odbiorem na miejscu",
+        "svc_loyalty": "Program lojalnościowy",
+        "gallery_alt": "{name} – kawiarnia w {city}, zdjęcie {n}",
         "desc_default": "{name} – kawiarnia w {city}, {street} {no}. Menu, godziny otwarcia i opinie gości.",
         # strona główna
         "home_title": "Caffenacci – wyszukiwarka kawiarni | Menu, godziny otwarcia, opinie",
@@ -107,7 +129,16 @@ UI: dict[str, dict] = {
         "phone": "Phone", "email": "Email",
         "rating_line": "Average rating {avg}/5 ({count})",
         "city_link": "All cafés – {city}",
-        "title_cafe": "{name} – café in {city}, {street} {no} | Caffenacci",
+        "title_cafe": "{name} – café in {city} | Menu, hours, reviews",
+        "title_cafe_short": "{name} – café in {city} | Caffenacci",
+        "desc_rating": "Rated {avg}/5 ({count}).",
+        "desc_amenities": "Amenities: {list}.",
+        "h_amenities": "Amenities", "h_services": "Services",
+        "h_news": "News", "h_gallery": "Gallery",
+        "svc_reservations": "Online table reservations",
+        "svc_orders": "Online orders for pickup",
+        "svc_loyalty": "Loyalty programme",
+        "gallery_alt": "{name} – café in {city}, photo {n}",
         "desc_default": "{name} – café in {city}, {street} {no}. Menu, opening hours and guest reviews.",
         "home_title": "Caffenacci – café finder | Menus, opening hours, reviews",
         "home_desc": "Find a café in your city: menus, opening hours, guest reviews, table reservations "

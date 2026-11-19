@@ -14,6 +14,7 @@ from app.core.images import (
     GALLERY_TIERS, LOGO_TIERS, save_image_variants_async, delete_image_files,
     image_response, logo_url as _logo_url_v, gallery_url,
 )
+from app.core.og_image import ensure_og_image, og_file_response
 
 from app.core.database import get_db
 from app.core.cafe_time import cafe_tz, cafe_today
@@ -404,6 +405,14 @@ def get_logo_file(cafe_id: str, request: Request, w: int | None = Query(None),
     if not profile or not profile.logo_path:
         raise HTTPException(404, detail="Logo nie zostało jeszcze dodane.")
     return image_response(request, UPLOAD_DIR, profile.logo_path, w, LOGO_TIERS)
+
+
+@router.get("/og/{cafe_id}", summary="Obraz 1200×630 do podglądów społecznościowych (publiczny)")
+def get_og_image(cafe_id: str, request: Request, db: Session = Depends(get_db)):
+    path = ensure_og_image(cafe_id, db)
+    if path is None:
+        raise HTTPException(404, detail="Brak obrazu do wygenerowania.")
+    return og_file_response(request, path)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

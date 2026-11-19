@@ -6,6 +6,7 @@ import logging
 import re
 import threading
 import time
+from datetime import date as date_cls, timedelta
 from pathlib import Path
 from urllib.parse import quote
 from xml.sax.saxutils import escape as xml_escape
@@ -19,10 +20,10 @@ from app.core import seo_listenings as listings
 from app.core.config import settings
 from app.core.currency import currency_exponent
 from app.core.database import get_db
-from app.core.images import LOGO_TIERS
+from app.core.images import LOGO_TIERS, logo_url as _logo_url_v, gallery_url
 from app.core.page_cache import page_cache
 from app.core.seo_i18 import (
-    BADGE_LABELS, badge_label, badge_path, city_path, home_path, site_lang, ui,
+    BADGE_LABELS, badge_label, badge_path, city_path, home_path, reviews_label, site_lang, ui,
 )
 from app.core.slugs import resolve_slug, slugify
 from app.core.translations import (
@@ -30,6 +31,8 @@ from app.core.translations import (
 )
 from app.models.cafe import Cafe
 from app.models.site import CafeSite
+from app.models.cafe_profile import CafeProfile
+from app.models.gallery import CafeGalleryImage
 from app.routers.site import _build_public_site, PUBLIC_REVIEWS_PAGE
 from app.schemas.badges import ALLOWED_BADGE_KEYS
 from app.schemas.site import PublicSiteOut
@@ -45,6 +48,10 @@ CACHE_CONTROL = f"public, max-age=60, s-maxage={settings.PUBLIC_CACHE_S_MAXAGE},
 DAYS_SCHEMA = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 HOME_LIST_LIMIT = 12
+ROBOTS_INDEX = "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"
+TITLE_MAX = 70
+DESC_MAX = 160
+LD_MAX_MENU_ITEMS = 200
 
 
 # ── Szablon: zbudowany index.html klienta (przeładowywany po zmianie mtime) ─
@@ -110,8 +117,16 @@ _HEAD_TPL = _env.from_string("""\
 {% endfor %}<meta property="og:title" content="{{ title }}">
 <meta property="og:description" content="{{ description }}">
 {% if image %}<meta property="og:image" content="{{ image }}">
-{% endif %}{% if logo_srcset %}<link rel="preload" as="image" imagesrcset="{{ logo_srcset }}" imagesizes="112px" fetchpriority="high">
-{% endif %}<meta name="twitter:card" content="summary">
+{% if image_type %}<meta property="og:image:type" content="{{ image_type }}">
+{% endif %}{% if image_w and image_h %}<meta property="og:image:width" content="{{ image_w }}">
+<meta property="og:image:height" content="{{ image_h }}">
+{% endif %}{% if image_alt %}<meta property="og:image:alt" content="{{ image_alt }}">
+{% endif %}<meta name="twitter:image" content="{{ image }}">
+{% if image_alt %}<meta name="twitter:image:alt" content="{{ image_alt }}">
+{% endif %}{% endif %}{% if logo_srcset %}<link rel="preload" as="image" imagesrcset="{{ logo_srcset }}" imagesizes="112px" fetchpriority="high">
+{% endif %}<meta name="twitter:card" content="{{ 'summary_large_image' if image_large else 'summary' }}">
+<meta name="twitter:title" content="{{ title }}">
+<meta name="twitter:description" content="{{ description }}">
 {% for j in jsonld_list %}<script type="application/ld+json">{{ j|safe }}</script>
 {% endfor %}""")
 
@@ -123,14 +138,26 @@ _CAFE_BODY_TPL = _env.from_string("""\
 {% if c.phone %}<p>{{ c.u.phone }}: {{ c.phone }}</p>{% endif %}
 {% if c.email %}<p>{{ c.u.email }}: {{ c.email }}</p>{% endif %}
 {% if c.description %}<p>{{ c.description }}</p>{% endif %}
-{% if c.hours %}<section><h2>{{ c.u.h_hours }}</h2><ul>
-{% for h in c.hours %}<li>{{ h.day }}: {{ h.text }}</li>
-{% endfor %}</ul></section>{% endif %}
+{% if c.news %}<section><h2>{{ c.u.h_news }}</h2>
+{% for n in c.news %}<div><h3>{{ n.title }}</h3><p>{{ n.date }}</p><p>{{ n.content }}</p></div>
+{% endfor %}</section>{% endif %}
 {% if c.menu %}<section><h2>{{ c.u.h_menu }}</h2>
 {% for s in c.menu %}<h3>{{ s.name }}</h3><ul>
 {% for i in s.dishes %}<li><strong>{{ i.name }}</strong> – {{ i.price }}{% if i.description %}. {{ i.description }}{% endif %}</li>
 {% endfor %}</ul>
 {% endfor %}</section>{% endif %}
+{% if c.services %}<section><h2>{{ c.u.h_services }}</h2><ul>
+{% for s in c.services %}<li>{{ s }}</li>
+{% endfor %}</ul></section>{% endif %}
+{% if c.gallery %}<section><h2>{{ c.u.h_gallery }}</h2>
+{% for g in c.gallery %}<img src="{{ g.src }}" alt="{{ g.alt }}"{% if g.w and g.h %} width="{{ g.w }}" height="{{ g.h }}"{% endif %} loading="lazy">
+{% endfor %}</section>{% endif %}
+{% if c.amenities %}<section><h2>{{ c.u.h_amenities }}</h2><ul>
+{% for a in c.amenities %}<li>{{ a }}</li>
+{% endfor %}</ul></section>{% endif %}
+{% if c.hours %}<section><h2>{{ c.u.h_hours }}</h2><ul>
+{% for h in c.hours %}<li>{{ h.day }}: {{ h.text }}</li>
+{% endfor %}</ul></section>{% endif %}
 {% if c.reviews %}<section><h2>{{ c.u.h_reviews }}</h2>
 {% if c.rating_line %}<p>{{ c.rating_line }}</p>{% endif %}
 <ul>{% for r in c.reviews %}<li>{{ r.nick }} – {{ r.rating }}/5{% if r.comment %}: {{ r.comment }}{% endif %} ({{ r.date }})</li>
@@ -155,8 +182,9 @@ _LIST_TPL = _env.from_string("""\
 
 def _head(**kw) -> str:
     base = dict(
-        robots="index,follow", canonical=None, alternates=[], og_locale=None, og_alternates=[],
-        image=None, logo_srcset=None, jsonld_list=[],
+        robots=ROBOTS_INDEX, canonical=None, alternates=[], og_locale=None, og_alternates=[],
+        image=None, image_type=None, image_w=None, image_h=None, image_alt=None,
+        image_large=False, logo_srcset=None, jsonld_list=[],
     )
     base.update(kw)
     return _HEAD_TPL.render(**base)
@@ -179,6 +207,36 @@ def _public_url(slug: str, lang_code: str | None = None) -> str:
 
 def _abs_api(path: str | None) -> str | None:
     return f"{settings.API_PUBLIC_URL.rstrip('/')}{path}" if path else None
+
+
+def _clip(text: str | None, limit: int) -> str:
+    text = re.sub(r"\s+", " ", text or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rsplit(" ", 1)[0].rstrip(",.;:–- ") + "…"
+
+
+def _num(v: float, lang: str) -> str:
+    s = f"{v:.1f}"
+    return s.replace(".", ",") if lang in _COMMA_DECIMAL else s
+
+
+def _with_w(url: str, w: int) -> str:
+    return f"{url}{'&' if '?' in url else '?'}w={w}"
+
+
+def _badge_keys(site: PublicSiteOut) -> list[str]:
+    """Wyróżnione plakietki najpierw (sort jest stabilny)."""
+    return [b.key for b in sorted(site.badges, key=lambda b: not b.featured)]
+
+
+def _og_image_url(site: PublicSiteOut) -> str | None:
+    """Obraz 1200×630 generowany po stronie API (galeria → logo). None = nie ma z czego."""
+    first = site.gallery_images[0].url if site.gallery_images else ""
+    if not (first or site.logo_url):
+        return None
+    v = hashlib.sha1(f"{first}|{site.logo_url or ''}".encode()).hexdigest()[:8]
+    return _abs_api(f"/profile/og/{site.cafe_id}?v={v}")
 
 
 # Języki z przecinkiem dziesiętnym (SEO-owy HTML nie ma Intl, więc formatujemy ręcznie).
@@ -277,7 +335,7 @@ def _breadcrumb_ld(items: list[tuple[str, str]]) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _localize(site: PublicSiteOut, entries: dict[str, str]) -> PublicSiteOut:
-    """Lustro localizeSite.ts: tłumaczy tylko teksty kawiarni (opis, menu)."""
+    """Lustro localizeSite.ts: tłumaczy tylko teksty kawiarni (opis, menu, aktualności)."""
     def tr(s):
         return entries.get(normalize_text(s), s) if s else s
 
@@ -289,28 +347,43 @@ def _localize(site: PublicSiteOut, entries: dict[str, str]) -> PublicSiteOut:
         })
         for sec in site.menu_sections
     ]
-    return site.model_copy(update={"description": tr(site.description), "menu_sections": sections})
+    news = [p.model_copy(update={"title": tr(p.title), "content": tr(p.content)})
+            for p in site.news_posts]
+    return site.model_copy(update={
+        "description": tr(site.description), "menu_sections": sections, "news_posts": news,
+    })
 
 
 def _title(site: PublicSiteOut, u: dict) -> str:
-    return u["title_cafe"].format(
+    kw = dict(name=site.cafe_name, city=site.city)
+    full = u["title_cafe"].format(**kw)
+    return full if len(full) <= TITLE_MAX else u["title_cafe_short"].format(**kw)
+
+
+def _meta_description(site: PublicSiteOut, u: dict, lang: str) -> str:
+    extras: list[str] = []
+    if site.reviews_count:
+        extras.append(u["desc_rating"].format(
+            avg=_num(site.reviews_average, lang), count=reviews_label(site.reviews_count, lang)))
+    labels = [badge_label(k, lang) for k in _badge_keys(site)[:3]]
+    if labels:
+        extras.append(u["desc_amenities"].format(list=", ".join(labels)))
+    tail = " ".join(extras)
+    lead = site.description or u["desc_default"].format(
         name=site.cafe_name, city=site.city, street=site.street, no=site.building_number)
+    budget = max(DESC_MAX - len(tail) - 1, 70) if tail else DESC_MAX
+    return _clip(f"{_clip(lead, budget)} {tail}".strip(), DESC_MAX)
 
 
-def _meta_description(site: PublicSiteOut, u: dict) -> str:
-    if site.description:
-        text = re.sub(r"\s+", " ", site.description).strip()
-        if len(text) > 160:
-            text = text[:157].rsplit(" ", 1)[0].rstrip(",.;:") + "…"
-        return text
-    return u["desc_default"].format(
-        name=site.cafe_name, city=site.city, street=site.street, no=site.building_number)
-
-
-def _json_ld(site: PublicSiteOut, url: str, lang_code: str) -> dict:
+def _json_ld(site: PublicSiteOut, url: str, base_url: str, lang_code: str,
+             u: dict, og_url: str | None) -> dict:
+    cur = site.i18n.currency if site.i18n else "PLN"
+    exp = currency_exponent(cur)
+    ui_code = site_lang(lang_code)
     data: dict = {
         "@context": "https://schema.org",
         "@type": "CafeOrCoffeeShop",
+        "@id": f"{base_url}#cafe",
         "name": site.cafe_name,
         "url": url,
         "inLanguage": lang_code,
@@ -321,19 +394,27 @@ def _json_ld(site: PublicSiteOut, url: str, lang_code: str) -> dict:
             "postalCode": site.postal_code,
             "addressCountry": site.country,
         },
+        "currenciesAccepted": cur,
+        "acceptsReservations": f"{url}#cp-reservations" if site.reservations_enabled else False,
     }
+    images: list[str] = []
+    if og_url:
+        images.append(og_url)
+    images += [_abs_api(_with_w(g.url, 1600)) for g in site.gallery_images]
     logo = _abs_api(site.logo_url)
     if logo:
-        data["image"] = logo
+        images.append(logo)
         data["logo"] = logo
+    if images:
+        data["image"] = images
     if site.contact_phone:
         data["telephone"] = site.contact_phone
     if site.contact_email:
         data["email"] = site.contact_email
-    if site.i18n:
-        data["currenciesAccepted"] = site.i18n.currency
     if site.latitude is not None and site.longitude is not None:
         data["geo"] = {"@type": "GeoCoordinates", "latitude": site.latitude, "longitude": site.longitude}
+        if site.location_show_gmaps_link:
+            data["hasMap"] = f"https://www.google.com/maps?q={site.latitude},{site.longitude}"
 
     specs = []
     for h in sorted(site.weekly_hours, key=lambda x: x.day_of_week):
@@ -346,6 +427,57 @@ def _json_ld(site: PublicSiteOut, url: str, lang_code: str) -> dict:
             })
     if specs:
         data["openingHoursSpecification"] = specs
+
+    cutoff = (date_cls.today() - timedelta(days=1)).isoformat()
+    special = []
+    for e in sorted(site.hour_exceptions, key=lambda x: x.date):
+        if e.date < cutoff:
+            continue
+        ok = (not e.is_closed) and e.open_time and e.close_time
+        special.append({
+            "@type": "OpeningHoursSpecification", "validFrom": e.date, "validThrough": e.date,
+            "opens": e.open_time if ok else "00:00", "closes": e.close_time if ok else "00:00",
+        })
+    if special:
+        data["specialOpeningHoursSpecification"] = special
+
+    sections, count, prices, has_vege = [], 0, [], False
+    for s in site.menu_sections:
+        items = []
+        for i in s.items:
+            if count >= LD_MAX_MENU_ITEMS:
+                break
+            count += 1
+            item: dict = {"@type": "MenuItem", "name": i.name}
+            if i.description:
+                item["description"] = i.description
+            item["offers"] = {
+                "@type": "Offer", "price": f"{i.price:.{exp}f}", "priceCurrency": cur,
+                "availability": "https://schema.org/OutOfStock" if i.is_unavailable
+                                else "https://schema.org/InStock",
+            }
+            if i.is_vege:
+                item["suitableForDiet"] = "https://schema.org/VegetarianDiet"
+                has_vege = True
+            if i.price > 0 and not i.is_unavailable:
+                prices.append(i.price)
+            items.append(item)
+        if items:
+            sections.append({"@type": "MenuSection", "name": s.name, "hasMenuItem": items})
+    if sections:
+        data["hasMenu"] = {
+            "@type": "Menu", "name": u["h_menu"], "inLanguage": lang_code,
+            "url": f"{url}#cp-menu", "hasMenuSection": sections,
+        }
+    if prices:
+        data["priceRange"] = f"{min(prices):.{exp}f}-{max(prices):.{exp}f} {cur}"
+    data["servesCuisine"] = ["Coffee", "Vegetarian"] if has_vege else ["Coffee"]
+    keys = _badge_keys(site)
+    if keys:
+        data["amenityFeature"] = [
+            {"@type": "LocationFeatureSpecification", "name": badge_label(k, ui_code), "value": True}
+            for k in keys
+        ]
 
     if site.reviews_count > 0:
         data["aggregateRating"] = {
@@ -390,6 +522,30 @@ def _body_context(site: PublicSiteOut, u: dict, lang_code: str) -> dict:
         {"nick": r.nick, "rating": r.rating, "comment": r.comment, "date": r.created_at.strftime("%Y-%m-%d")}
         for r in site.reviews[:PUBLIC_REVIEWS_PAGE]
     ]
+
+    services = []
+    if site.reservations_enabled:
+        services.append(u["svc_reservations"])
+    if site.orders_enabled:
+        services.append(u["svc_orders"])
+    if site.loyalty_enabled:
+        services.append(u["svc_loyalty"])
+
+    gallery = []
+    for n, g in enumerate(site.gallery_images, 1):
+        w = min(g.width, 960) if g.width else None
+        h = round(g.height * w / g.width) if (w and g.height) else None
+        gallery.append({
+            "src": _abs_api(_with_w(g.url, 960)),
+            "alt": u["gallery_alt"].format(name=site.cafe_name, city=site.city, n=n),
+            "w": w, "h": h,
+        })
+
+    news = [
+        {"title": p.title, "content": p.content, "date": p.created_at.strftime("%Y-%m-%d")}
+        for p in site.news_posts
+    ] if site.news_enabled else []
+
     return {
         "u": u,
         "crumbs": _cafe_crumbs(site, u, lang_code),
@@ -398,11 +554,17 @@ def _body_context(site: PublicSiteOut, u: dict, lang_code: str) -> dict:
         "phone": site.contact_phone,
         "email": site.contact_email,
         "description": site.description,
+        "news": news,
+        "services": services,
+        "gallery": gallery,
+        "amenities": [badge_label(k, lang_code) for k in _badge_keys(site)],
         "hours": hours,
         "menu": menu,
         "reviews": reviews,
         "rating_line": (
-            u["rating_line"].format(avg=f"{site.reviews_average:.1f}", count=site.reviews_count)
+            u["rating_line"].format(
+                avg=_num(site.reviews_average, lang_code),
+                count=reviews_label(site.reviews_count, lang_code))
             if site.reviews_count else None
         ),
         "nearby_heading": u["h_nearby"].format(city=site.city),
@@ -422,29 +584,34 @@ def _render_cafe(index_html: str, site: PublicSiteOut, lang_code: str | None,
 
     ui_code = site_lang(active.code)
     u = ui(ui_code)
+    base_url = _public_url(site.slug or "")
     url = _public_url(site.slug or "", lang_code)
 
     alternates: list[tuple[str, str]] = []
     og_alternates: list[str] = []
     if secondary:
-        p_url = _public_url(site.slug or "")
-        alternates = [(primary.code, p_url), (secondary.code, _public_url(site.slug or "", secondary.code)),
-                      ("x-default", p_url)]
+        alternates = [(primary.code, base_url), (secondary.code, _public_url(site.slug or "", secondary.code)),
+                      ("x-default", base_url)]
         other = primary if active is secondary else secondary
         if _OG_LOCALES.get(other.code):
             og_alternates = [_OG_LOCALES[other.code]]
 
+    og = _og_image_url(site)
+    logo = _abs_api(site.logo_url)
     crumbs = _cafe_crumbs(view, u, ui_code)
     ld = [
-        _json_ld(view, url, active.code),
+        _json_ld(view, url, base_url, active.code, u, og),
         _breadcrumb_ld([(c["name"], _abs(c["href"]) if c["href"] else url) for c in crumbs]),
     ]
-    logo = _abs_api(site.logo_url)
     logo_srcset = ", ".join(f"{logo}&w={w} {w}w" for w in LOGO_TIERS) if logo else None
     head = _head(
-        title=_title(view, u), description=_meta_description(view, u), canonical=url,
+        title=_title(view, u), description=_meta_description(view, u, ui_code), canonical=url,
         alternates=alternates, og_locale=_OG_LOCALES.get(active.code), og_alternates=og_alternates,
-        image=logo, logo_srcset=logo_srcset, jsonld_list=[_safe_json(x) for x in ld],
+        image=og or logo, image_large=bool(og),
+        image_type="image/jpeg" if og else None,
+        image_w=1200 if og else None, image_h=630 if og else None,
+        image_alt=f"{view.cafe_name} – {view.city}",
+        logo_srcset=logo_srcset, jsonld_list=[_safe_json(x) for x in ld],
     )
     body = _CAFE_BODY_TPL.render(c=_body_context(view, u, ui_code))
     # Klient dostaje dane ORYGINALNE (to on tłumaczy je przez localizeSite).
@@ -454,18 +621,18 @@ def _render_cafe(index_html: str, site: PublicSiteOut, lang_code: str | None,
 
 # ── Endpointy: kawiarnia ────────────────────────────────────────────────────
 
-def _not_found_response() -> Response:
+def _not_found_response(status_code: int = 404) -> Response:
     loaded = _load_index()
     if loaded is None:
         return _no_template()
     index_html, _ = loaded
     head = _head(
-        title="Nie znaleziono strony | Caffenacci",
+        title=("Strona wycofana" if status_code == 410 else "Nie znaleziono strony") + " | Caffenacci",
         description="Ta strona nie jest dostępna.", robots="noindex",
     )
     return Response(
         content=_inject(index_html, head, ""),
-        status_code=404,
+        status_code=status_code,
         media_type="text/html; charset=utf-8",
         headers={"Cache-Control": "public, max-age=30"},
     )
@@ -492,11 +659,21 @@ def _resolve_published(slug: str, db: Session) -> tuple[Cafe | None, bool]:
     return (cafe, is_current) if published else (None, False)
 
 
+def _was_published(slug: str, db: Session) -> bool:
+    cafe, _ = resolve_slug(slug, db)
+    if cafe is None:
+        return False
+    site = db.query(CafeSite).filter(CafeSite.cafe_id == cafe.id).first()
+    return bool(site and site.published_at and not site.is_published)
+
+
 def _serve_cafe(slug: str, lang: str | None, request: Request, db: Session) -> Response:
+    if slug != slug.lower():
+        return _redirect(_cafe_path(slug.lower(), lang))
     # Publikacja sprawdzana przy każdym żądaniu — cache nie przedłuża życia wycofanej strony.
     cafe, is_current = _resolve_published(slug, db)
     if cafe is None:
-        return _not_found_response()
+        return _not_found_response(410 if _was_published(slug, db) else 404)
     if not is_current:
         return _redirect(_cafe_path(cafe.slug, lang))
 
@@ -520,6 +697,21 @@ def _serve_cafe(slug: str, lang: str | None, request: Request, db: Session) -> R
 
     # page_cache.drop_cafe() czyści wszystkie klucze zaczynające się od cafe.id
     return _html_response(request, (cafe.id, mtime, lang or ""), build)
+
+
+@router.get("/kawiarnia", include_in_schema=False)
+@router.get("/kawiarnia/", include_in_schema=False)
+@router.get("/cafe", include_in_schema=False)
+@router.get("/kawiarnie", include_in_schema=False)
+@router.get("/kawiarnie/", include_in_schema=False)
+def bare_listing_redirect():
+    return _redirect("/")
+
+
+@router.get("/en/cafes", include_in_schema=False)
+@router.get("/en/cafes/", include_in_schema=False)
+def bare_listing_redirect_en():
+    return _redirect("/en/")
 
 
 @router.get("/kawiarnia/{slug}", include_in_schema=False)
@@ -745,54 +937,82 @@ _sm: dict = {"at": 0.0, "xml": None}
 SITEMAP_TTL = 600.0     # budowa sprawdza aktualność tłumaczeń każdej kawiarni — nie robimy tego na każde żądanie
 
 
-def _sm_entries(alts: list[tuple[str, str]], lastmod: str | None = None) -> list[str]:
+def _sm_entries(alts: list[tuple[str, str]], lastmod: str | None = None, images=()) -> list[str]:
     """Każdy wariant językowy to osobny <url> z kompletem xhtml:link (wymóg Google)."""
     lm = f"<lastmod>{lastmod}</lastmod>" if lastmod else ""
+    imgs = "".join(
+        f"<image:image><image:loc>{xml_escape(u)}</image:loc></image:image>" for u in images
+    )
     links = ""
     if len(alts) > 1:
         links = "".join(
             f'<xhtml:link rel="alternate" hreflang="{xml_escape(c)}" href="{xml_escape(h)}"/>' for c, h in alts
         ) + f'<xhtml:link rel="alternate" hreflang="x-default" href="{xml_escape(alts[0][1])}"/>'
-    return [f"<url><loc>{xml_escape(h)}</loc>{lm}{links}</url>" for _, h in alts]
+    return [f"<url><loc>{xml_escape(h)}</loc>{lm}{links}{imgs}</url>" for _, h in alts]
+
+
+def _sitemap_images(db: Session, cafe_ids: list[str]) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {cid: [] for cid in cafe_ids}
+    if not cafe_ids:
+        return out
+    for cid, logo in (db.query(CafeProfile.cafe_id, CafeProfile.logo_path)
+                      .filter(CafeProfile.cafe_id.in_(cafe_ids), CafeProfile.logo_path.isnot(None))):
+        out[cid].append(_abs_api(f"{_logo_url_v(cid, logo)}&w={LOGO_TIERS[-1]}"))
+    q = (db.query(CafeGalleryImage.cafe_id, CafeGalleryImage.id, CafeGalleryImage.image_path)
+         .join(CafeProfile, CafeProfile.cafe_id == CafeGalleryImage.cafe_id)
+         .filter(CafeProfile.gallery_visible.is_(True), CafeGalleryImage.cafe_id.in_(cafe_ids))
+         .order_by(CafeGalleryImage.cafe_id, CafeGalleryImage.position))
+    for cid, iid, path in q:
+        out[cid].append(_abs_api(f"{gallery_url(cid, iid, path)}&w=1600"))
+    return out
 
 
 def _build_sitemap(db: Session) -> str:
-    entries: list[str] = []
-    entries += _sm_entries([("pl", _abs("/")), ("en", _abs("/en/"))])
-
     rows = listings.load_cafes(db)
+    cafe_rows = (
+        db.query(Cafe.id, Cafe.slug, CafeSite.published_at, CafeSite.updated_at)
+        .join(CafeSite, CafeSite.cafe_id == Cafe.id)
+        .filter(CafeSite.is_published.is_(True), Cafe.slug.isnot(None))
+        .order_by(Cafe.slug).all()
+    )
+    lm: dict[str, str | None] = {}
+    for _, slug, pub, upd in cafe_rows:
+        d = max((x for x in (upd, pub) if x), default=None)
+        lm[slug] = d.strftime("%Y-%m-%d") if d else None
+
+    def newest(slugs):
+        vals = [lm[s] for s in slugs if lm.get(s)]
+        return max(vals) if vals else None
+
+    entries: list[str] = []
+    entries += _sm_entries([("pl", _abs("/")), ("en", _abs("/en/"))], newest(lm))
     for city in listings.cities(rows):
         if city.count < listings.MIN_CITY_CAFES:
             continue
-        entries += _sm_entries([("pl", _abs(city_path("pl", city.slug))), ("en", _abs(city_path("en", city.slug)))])
-        counts = listings.badge_counts(listings.city_cafes(rows, city.slug))
+        city_rows = listings.city_cafes(rows, city.slug)
+        entries += _sm_entries([("pl", _abs(city_path("pl", city.slug))), ("en", _abs(city_path("en", city.slug)))],
+                               newest(r.slug for r in city_rows))
+        counts = listings.badge_counts(city_rows)
         for key in BADGE_LABELS:
             if counts.get(key, 0) >= listings.MIN_BADGE_CAFES:
                 entries += _sm_entries([
                     ("pl", _abs(badge_path("pl", city.slug, key))),
                     ("en", _abs(badge_path("en", city.slug, key))),
-                ])
+                ], newest(r.slug for r in city_rows if key in r.badges))
 
-    cafe_rows = (
-        db.query(Cafe.id, Cafe.slug, CafeSite.published_at, CafeSite.updated_at)
-        .join(CafeSite, CafeSite.cafe_id == Cafe.id)
-        .filter(CafeSite.is_published.is_(True), Cafe.slug.isnot(None))
-        .order_by(Cafe.slug)
-        .all()
-    )
-    for cafe_id, slug, published_at, updated_at in cafe_rows:
-        dates = [d for d in (updated_at, published_at) if d]
-        lastmod = max(dates).strftime("%Y-%m-%d") if dates else None
+    images = _sitemap_images(db, [c[0] for c in cafe_rows])
+    for cafe_id, slug, _, _ in cafe_rows:
         s = lang_settings(cafe_id, db)
         alts = [(s.primary_language, _public_url(slug))]
         if s.secondary_language and get_current_translation(cafe_id, s.secondary_language, db):
             alts.append((s.secondary_language, _public_url(slug, s.secondary_language)))
-        entries += _sm_entries(alts, lastmod)
+        entries += _sm_entries(alts, lm[slug], images.get(cafe_id, ()))
 
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
-        'xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' + "\n".join(entries) + "\n</urlset>"
+        'xmlns:xhtml="http://www.w3.org/1999/xhtml" '
+        'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' + "\n".join(entries) + "\n</urlset>"
     )
 
 

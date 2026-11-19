@@ -72,7 +72,7 @@
   "loyalty.reward_ready": "reward ready to collect!", "loyalty.login_cta": "Log in to see your balance",
   "loading": "Loading…",
   "news.badge": "News", "news.read_more": "Read more",
-  "gallery.alt": "Gallery photo {n}", "gallery.alt_big": "Enlarged gallery photo {n}",
+  "gallery.alt": "{name}, {city} – photo {n}", "gallery.alt_big": "{name}, {city} – enlarged photo {n}",
   "gallery.prev": "Previous photo", "gallery.next": "Next photo",
   "auth.eyebrow": "Guest account", "auth.title_login": "Log in", "auth.title_register": "Create account",
   "auth.note": "Reservations, orders and reviews are available to logged-in guests only.",

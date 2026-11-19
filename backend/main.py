@@ -65,10 +65,14 @@ async def lifespan(app: FastAPI):
 if settings.ENV == "development" and engine.dialect.name == "sqlite":
     Base.metadata.create_all(bind=engine)
 
+_dev = not settings.is_production
 app = FastAPI(
     title="Caffenacci API",
     description="Backend dla aplikacji webowej kawiarni Caffenacci.",
     version="1.0.0",
+    docs_url="/docs" if _dev else None,
+    redoc_url="/redoc" if _dev else None,
+    openapi_url="/openapi.json" if _dev else None,
     lifespan=lifespan,
 )
 
@@ -87,6 +91,9 @@ app.add_middleware(
 @app.middleware("http")
 async def auth_no_store(request: Request, call_next):
     response = await call_next(request)
+    noindex_prefixes = ("/docs", "/redoc", "/openapi.json", "/site/preview/", "/konto")
+    if request.url.path.startswith(noindex_prefixes) or "application/json" in response.headers.get("content-type", ""):
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
     if request.url.path.startswith("/site/preview/"):
         response.headers["Cache-Control"] = "private, no-store"
         return response

@@ -2,7 +2,7 @@ import re
 from starlette.middleware.gzip import GZipMiddleware
 
 # Pliki obrazów są już skompresowane (WebP/JPEG) — gzip tylko marnuje CPU.
-_SKIP = re.compile(r"^/(profile/(logo|gallery)|news/image|uploads)/")
+_SKIP = re.compile(r"^/(profile/(logo|gallery|og)|news/image|uploads)/")
 
 
 class SelectiveGZipMiddleware:

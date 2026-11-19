@@ -195,7 +195,7 @@ def save_settings(
     s.enabled = payload.enabled
     db.commit()
     db.refresh(s)
-    invalidate_cafe(current_cafe.id)
+    invalidate_cafe(current_cafe.id, touch=False)
     purge_urls(cafe_page_urls(current_cafe.slug, settings.PUBLIC_SITE_URL))
     return s
 

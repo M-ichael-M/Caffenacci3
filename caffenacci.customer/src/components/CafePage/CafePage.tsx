@@ -591,7 +591,7 @@ function CafeContent({
         {hasGallery && (
           <section id="cp-gallery">
             <h2 className="cp-section__title">{t('section.gallery')}</h2>
-            <Gallery images={data.gallery_images} />
+            <Gallery images={data.gallery_images} cafeName={data.cafe_name} city={data.city} />
           </section>
         )}
 

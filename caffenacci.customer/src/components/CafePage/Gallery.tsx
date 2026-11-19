@@ -11,9 +11,11 @@ interface GalleryImageItem {
 
 interface Props {
   images: GalleryImageItem[]
+  cafeName: string
+  city: string
 }
 
-export default function Gallery({ images }: Props) {
+export default function Gallery({ images, cafeName, city }: Props) {
   const { t } = useI18n()
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
@@ -47,7 +49,7 @@ export default function Gallery({ images }: Props) {
             >
               <ResponsiveImage
                 src={img.url}
-                alt={t('gallery.alt', { n: i + 1 })}
+                alt={t('gallery.alt', { n: i + 1, name: cafeName, city })}
                 sizes="(max-width: 700px) 200px, 260px"
                 width={img.width}
                 height={img.height}
@@ -79,7 +81,7 @@ export default function Gallery({ images }: Props) {
             src={imageUrl(images[lightboxIndex].url, 1600)}
             width={images[lightboxIndex].width ?? undefined}
             height={images[lightboxIndex].height ?? undefined}
-            alt={t('gallery.alt_big', { n: lightboxIndex + 1 })}
+            alt={t('gallery.alt_big', { n: lightboxIndex + 1, name: cafeName, city })}
             onClick={e => e.stopPropagation()}
           />
 

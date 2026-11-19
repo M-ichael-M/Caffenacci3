@@ -73,7 +73,7 @@
   "loyalty.reward_ready": "nagroda gotowa do odebrania!", "loyalty.login_cta": "Zaloguj się, aby zobaczyć swój stan",
   "loading": "Ładowanie…",
   "news.badge": "Aktualność", "news.read_more": "Czytaj więcej",
-  "gallery.alt": "Zdjęcie z galerii {n}", "gallery.alt_big": "Powiększone zdjęcie z galerii {n}",
+  "gallery.alt": "{name}, {city} – zdjęcie {n}", "gallery.alt_big": "{name}, {city} – powiększone zdjęcie {n}",
   "gallery.prev": "Poprzednie zdjęcie", "gallery.next": "Następne zdjęcie",
   "auth.eyebrow": "Konto gościa", "auth.title_login": "Zaloguj się", "auth.title_register": "Załóż konto",
   "auth.note": "Rezerwacje, zamówienia i opinie są dostępne wyłącznie dla zalogowanych gości.",
