@@ -1229,6 +1229,33 @@ select.me-input { cursor: pointer; }
   font-size: 0.8125rem;
 }
 
+/* Pasek koszyka: bez zaokrągleń, w stylu reszty motywu */
+.cafe-page--usa80s .cp-cart-bar {
+  border-radius: 0;
+  border: 3px solid var(--espresso);
+  box-shadow: 6px 6px 0 var(--gold);
+  padding: 0.75rem 0.875rem 0.75rem 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 800;
+}
+
+/* Przycisk w pasku: bez własnego cienia, który wystawał poza ramkę */
+.cafe-page--usa80s .cp-cart-bar .btn--primary {
+  margin-top: 0;
+  box-shadow: none;
+  border: 3px solid var(--gold);
+}
+.cafe-page--usa80s .cp-cart-bar .btn--primary:hover {
+  transform: none;
+  box-shadow: none;
+  background: var(--gold-hover);
+}
+.cafe-page--usa80s .cp-cart-bar .btn--primary:active {
+  transform: none;
+  box-shadow: none;
+}
+
 .cafe-page--usa80s .cp-add-btn { border-radius: 0; border-width: 2px; font-weight: 700; text-transform: uppercase; }
 .cafe-page--usa80s .cp-qty-stepper { border-radius: 0; border-width: 2px; }
 .cafe-page--usa80s .cp-qty-stepper button { border-radius: 0; }
