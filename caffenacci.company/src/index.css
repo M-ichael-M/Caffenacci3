@@ -2331,3 +2331,46 @@ css
 .lang-switch--dark .lang-switch__btn--active { background: var(--gold-soft); color: var(--espresso); }
 
 .sidebar__lang { padding: 0 1.375rem 0.875rem; }
+
+/* ════════════════════════════════════════════════
+   LOGO CROPPER (prefiks lc-)
+   ════════════════════════════════════════════════ */
+.lc-overlay {
+  position: fixed; inset: 0; z-index: 200; padding: 1rem;
+  background: rgba(17, 10, 4, 0.55); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+}
+.lc-modal {
+  width: 100%; max-width: 440px; max-height: 100%; overflow-y: auto;
+  background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop);
+}
+.lc-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 1.25rem 1.5rem; background: var(--sidebar-bg);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.lc-eyebrow {
+  font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--gold-soft); margin-bottom: 0.25rem;
+}
+.lc-title { font-family: 'Playfair Display', serif; font-size: 1.375rem; font-weight: 600; color: var(--parchment); }
+.lc-body { padding: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+.lc-viewport {
+  position: relative; overflow: hidden; max-width: 100%;
+  background: #1a1a1a; border-radius: var(--radius-sm);
+  cursor: grab; touch-action: none; user-select: none;
+}
+.lc-viewport:active { cursor: grabbing; }
+.lc-viewport img { max-width: none; pointer-events: none; user-select: none; }
+.lc-mask {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 999px rgba(17, 10, 4, 0.55);
+}
+.lc-zoom { display: flex; align-items: center; gap: 0.75rem; width: 100%; max-width: 288px; color: var(--text-muted); }
+.lc-zoom input[type='range'] { flex: 1; accent-color: var(--gold); cursor: pointer; }
+.lc-hint { font-size: 0.75rem; color: var(--text-muted); text-align: center; line-height: 1.5; max-width: 34ch; }
+.lc-footer {
+  display: flex; justify-content: flex-end; gap: 0.75rem;
+  padding: 1rem 1.5rem 1.25rem; border-top: 1px solid var(--border-soft);
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import LocationPicker from './LocationPicker'
+import LogoCropper from './LogoCropper'
 import RegionCard from './RegionCard'
 import { Coffee, AlertTriangle, X, Star } from 'lucide-react'
 import { BADGE_CATALOG, MAX_FEATURED_BADGES } from '../badges'
@@ -294,6 +295,7 @@ export default function ProfileTab({ token }: Props) {
   const [logoUrl, setLogoUrl]           = useState<string | null>(null)
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoError, setLogoError]       = useState<string | null>(null)
+  const [logoCropFile, setLogoCropFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [exceptions, setExceptions]     = useState<HourException[]>([])
@@ -379,14 +381,24 @@ export default function ProfileTab({ token }: Props) {
 
   // ── Logo upload ─────────────────────────────────────────────────────────
 
-  const handleLogoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    if (fileInputRef.current) fileInputRef.current.value = ''
     if (!file) return
+    setLogoError(null)
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      setLogoError(tApi('Dozwolone formaty: PNG, JPEG, WEBP.'))
+      return
+    }
+    setLogoCropFile(file)
+  }
+
+  const uploadCroppedLogo = async (blob: Blob) => {
     setLogoError(null)
     setLogoUploading(true)
     try {
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', new File([blob], 'logo.png', { type: 'image/png' }))
       const res = await fetch(`${API_URL}/profile/logo`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -403,7 +415,7 @@ export default function ProfileTab({ token }: Props) {
       setLogoError(err instanceof Error ? err.message : t('common.genericError'))
     } finally {
       setLogoUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
+      setLogoCropFile(null)
     }
   }
 
@@ -1308,6 +1320,14 @@ export default function ProfileTab({ token }: Props) {
           {saving ? t('common.saving') : t('profile.save')}
         </button>
       </div>
+      {logoCropFile && (
+        <LogoCropper
+          file={logoCropFile}
+          busy={logoUploading}
+          onCancel={() => setLogoCropFile(null)}
+          onConfirm={uploadCroppedLogo}
+        />
+      )}
     </div>
   )
 }
