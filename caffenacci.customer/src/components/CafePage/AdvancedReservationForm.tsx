@@ -352,7 +352,7 @@ export default function AdvancedReservationForm({ cafeId, requireLogin, authToke
           </p>
         ) : (
           <>
-            {dateException && !dateException.is_closed && (
+            {dateException && !dateException.is_closed && dateException.open_time && dateException.close_time && (
               <p style={{ fontSize: '0.75rem', color: 'var(--gold)', fontWeight: 600, marginTop: '0.5rem', marginBottom: 0 }}>
                 {t('res.special_hours', { open: dateException.open_time, close: dateException.close_time })}
               </p>

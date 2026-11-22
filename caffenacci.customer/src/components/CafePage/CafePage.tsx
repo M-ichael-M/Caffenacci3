@@ -28,6 +28,7 @@ import { weekdayName } from '../../i18n/localeFormat'
 import LanguageSwitcher from './LanguageSwitcher'
 import type { TFunction } from '../../i18n/system'
 import { nowInTz, todayInTz, addDays, dowOf, fromMinutes, hoursOn, sessionsFor, offsetLabel, differsFromBrowser } from '../../utils/cafeTime'
+import { useCafeHead } from '../../seo/useCafeHead'
 
 const LoyaltyWidget = lazy(() => import('./LoyaltyWidget'))
 const AuthModal     = lazy(() => import('./AuthModal'))
@@ -83,6 +84,10 @@ interface PublicSiteData {
   contact_phone: string | null
   description: string | null
   logo_url: string | null
+  google_maps_url?: string | null
+  price_range?: string | null
+  serves_cuisine?: string[] | null
+  payment_methods?: string[] | null
   latitude: number | null
   longitude: number | null
   location_show_map: boolean
@@ -422,6 +427,7 @@ function CafeContent({
   const hasMenu = menuSections.length > 0
 
   const gmapsUrl = hasLocation ? `https://www.google.com/maps?q=${data.latitude},${data.longitude}` : null
+  useCafeHead(rawData, !isPreview, gmapsUrl)
   const listingLang = language.code
   const citySlug = data.city_slug ?? ''
   const nearby = data.nearby_cafes ?? []
@@ -436,6 +442,7 @@ function CafeContent({
       )}
       {/* Sticky nav */}
       <nav className="cp-nav">
+        <div className="cp-nav__links">
         <button className="cp-nav__link" data-track="nav_click:menu" onClick={() => document.getElementById('cp-menu')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.menu')}</button>
         {data.reservations_enabled && (
           <button className="cp-nav__link" data-track="nav_click:reservations" onClick={() => document.getElementById('cp-reservations')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.reservations')}</button>
@@ -457,7 +464,8 @@ function CafeContent({
           <button className="cp-nav__link" data-track="nav_click:contact" onClick={() => document.getElementById('cp-info')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.contact')}</button>
         )}
         <button className="cp-nav__link" data-track="nav_click:reviews" onClick={() => document.getElementById('cp-reviews')?.scrollIntoView({ behavior: 'smooth' })}>{t('nav.reviews')}</button>
-        <div style={{ flex: 1 }} />
+        </div>
+        <div className="cp-nav__spacer" style={{ flex: 1 }} />
         <LanguageSwitcher />
         <div className="cp-account" onPointerEnter={prefetchAuthModal} onFocusCapture={prefetchAuthModal}>
           {isPreview ? (
@@ -471,8 +479,9 @@ function CafeContent({
             </span>
           ) : auth ? (
             <>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('nav.hello', { nick: auth.nick })}</span>
-              <button className="btn btn--outline-dark btn--sm" onClick={onLogout}>{t('nav.logout')}</button>
+              <span className="cp-account__hello" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{t('nav.hello', { nick: auth.nick })}</span>
+              <a className="btn btn--outline-dark btn--sm" href={`${homePath(language.code)}?konto=1`}>{t('nav.profile')}</a>
+              <button className="btn btn--outline-dark btn--sm cp-account__logout" onClick={onLogout}>{t('nav.logout')}</button>
             </>
           ) : (
             <>
@@ -506,15 +515,6 @@ function CafeContent({
       </header>
 
       <main className="cp-main">
-        {!isPreview && (
-          <nav className="cp-breadcrumbs" aria-label={t('crumb.aria')}>
-            <ol>
-              <li><a href={homePath(listingLang)}>Caffenacci</a></li>
-              {citySlug && <li><a href={cityPath(listingLang, citySlug)}>{data.city}</a></li>}
-              <li aria-current="page">{data.cafe_name}</li>
-            </ol>
-          </nav>
-        )}
         {/* Opis */}
         {data.description && (
           <section>
@@ -732,11 +732,6 @@ function CafeContent({
               ))}
             </ul>
           </section>
-        )}
-        {!isPreview && citySlug && (
-          <p className="cp-muted-note">
-            <a className="link" href={cityPath(listingLang, citySlug)}>{t('footer.all_in_city', { city: data.city })}</a>
-          </p>
         )}
       </main>
 

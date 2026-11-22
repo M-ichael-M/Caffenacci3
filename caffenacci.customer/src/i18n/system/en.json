@@ -3,7 +3,7 @@
   "lang.label": "Language", "site_lang.aria": "Site language",
   "nav.menu": "Menu", "nav.reservations": "Reservations", "nav.loyalty": "Loyalty", "nav.gallery": "Gallery",
   "nav.amenities": "Amenities", "nav.contact": "Contact", "nav.reviews": "Reviews",
-  "nav.hello": "Hi, {nick}", "nav.logout": "Log out", "nav.login": "Log in", "nav.register": "Sign up", "nav.preview": "Preview",
+  "nav.hello": "Hi, {nick}", "nav.profile": "My profile", "nav.logout": "Log out", "nav.login": "Log in", "nav.register": "Sign up", "nav.preview": "Preview",
   "preview.banner": "Owner preview — appearance only, no login or server actions.",
   "preview.unavailable": "Not available in preview mode.",
   "page.not_found": "This café could not be found.",
@@ -111,6 +111,5 @@
   "badge.parking": "Parking", "badge.bike_rack": "Bike rack",
   "badge.adults_only": "18+", "badge.adults_only.info": "Adults only.",
   "section.nearby": "More cafés in {city}",
-  "footer.all_in_city": "All cafés – {city}",
-  "crumb.aria": "Breadcrumbs"
+  "footer.all_in_city": "All cafés – {city}"
 }

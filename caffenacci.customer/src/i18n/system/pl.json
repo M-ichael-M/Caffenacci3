@@ -3,7 +3,7 @@
   "lang.label": "Język", "site_lang.aria": "Język witryny",
   "nav.menu": "Menu", "nav.reservations": "Rezerwacje", "nav.loyalty": "Lojalność", "nav.gallery": "Galeria",
   "nav.amenities": "Udogodnienia", "nav.contact": "Kontakt", "nav.reviews": "Opinie",
-  "nav.hello": "Cześć, {nick}", "nav.logout": "Wyloguj", "nav.login": "Zaloguj się", "nav.register": "Zarejestruj się", "nav.preview": "Podgląd",
+  "nav.hello": "Cześć, {nick}", "nav.profile": "Mój profil", "nav.logout": "Wyloguj", "nav.login": "Zaloguj się", "nav.register": "Zarejestruj się", "nav.preview": "Podgląd",
   "preview.banner": "Podgląd właściciela — tylko wygląd, bez logowania i akcji na serwerze.",
   "preview.unavailable": "Niedostępne w trybie podglądu.",
   "page.not_found": "Nie znaleziono takiej kawiarni.",
@@ -112,6 +112,5 @@
   "badge.parking": "Parking", "badge.bike_rack": "Stojak na rowery",
   "badge.adults_only": "18+", "badge.adults_only.info": "Miejsce przeznaczone wyłącznie dla osób pełnoletnich.",
   "section.nearby": "Inne kawiarnie w mieście {city}",
-  "footer.all_in_city": "Wszystkie kawiarnie – {city}",
-  "crumb.aria": "Ścieżka nawigacji"
+  "footer.all_in_city": "Wszystkie kawiarnie – {city}"
 }

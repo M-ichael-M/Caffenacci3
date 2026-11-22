@@ -1,6 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './fonts/baseFonts'
+import { loadSiteFonts } from './fonts/themeFonts'
+if (!/^\/(kawiarnia|cafe|preview)\//.test(window.location.pathname)) void loadSiteFonts()
 import './index.css'
 import App from './App.tsx'
 import { SiteLanguageProvider, SITE_LANGUAGES, detectSiteLanguage } from './i18n/siteLanguage'

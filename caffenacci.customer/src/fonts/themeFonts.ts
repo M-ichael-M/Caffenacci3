@@ -4,6 +4,17 @@ const inter800: Loader[] = [
   () => import('@fontsource/inter/latin-800.css'),
   () => import('@fontsource/inter/latin-ext-800.css'),
 ]
+export const playfair: Loader[] = [
+  () => import('@fontsource/playfair-display/latin-600.css'),
+  () => import('@fontsource/playfair-display/latin-ext-600.css'),
+  () => import('@fontsource/playfair-display/latin-700.css'),
+  () => import('@fontsource/playfair-display/latin-ext-700.css'),
+  () => import('@fontsource/playfair-display/latin-600-italic.css'),
+  () => import('@fontsource/playfair-display/latin-ext-600-italic.css'),
+]
+export function loadSiteFonts() {
+  return Promise.all(playfair.map(l => l().catch(() => undefined)))
+}
 const cinzel: Loader[] = [
   () => import('@fontsource/cinzel/latin-700.css'),
   () => import('@fontsource/cinzel/latin-ext-700.css'),
@@ -44,9 +55,9 @@ const outfit: Loader[] = [
 ]
 const orbitron: Loader[] = [() => import('@fontsource/orbitron/700.css')]
 
-// Klucze = SiteTemplate z CafePage.tsx. Inter + Playfair są w baseFonts.ts.
+// Klucze = SiteTemplate z CafePage.tsx. Inter jest w baseFonts.ts.
 export const THEME_FONTS: Record<string, Loader[]> = {
-  classic:    [],
+  classic:    playfair,
   modern:     inter800,
   magic:      cinzel,
   usa80s:     bungee,

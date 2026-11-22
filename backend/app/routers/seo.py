@@ -24,6 +24,7 @@ from app.core.images import LOGO_TIERS, logo_url as _logo_url_v, gallery_url
 from app.core.page_cache import page_cache
 from app.core.seo_i18 import (
     BADGE_LABELS, badge_label, badge_path, city_path, home_path, reviews_label, site_lang, ui,
+    cuisine_label, payment_label,
 )
 from app.core.slugs import resolve_slug, slugify
 from app.core.translations import (
@@ -111,7 +112,9 @@ _HEAD_TPL = _env.from_string("""\
 <meta property="og:url" content="{{ canonical }}">
 {% endif %}{% for code, href in alternates %}<link rel="alternate" hreflang="{{ code }}" href="{{ href }}">
 {% endfor %}<meta property="og:type" content="website">
-<meta property="og:site_name" content="Caffenacci">
+<meta property="og:site_name" content="{{ site_name }}">
+{% if icon %}<link rel="icon" href="{{ icon }}">
+{% endif %}
 {% if og_locale %}<meta property="og:locale" content="{{ og_locale }}">
 {% endif %}{% for loc in og_alternates %}<meta property="og:locale:alternate" content="{{ loc }}">
 {% endfor %}<meta property="og:title" content="{{ title }}">
@@ -185,6 +188,7 @@ def _head(**kw) -> str:
         robots=ROBOTS_INDEX, canonical=None, alternates=[], og_locale=None, og_alternates=[],
         image=None, image_type=None, image_w=None, image_h=None, image_alt=None,
         image_large=False, logo_srcset=None, jsonld_list=[],
+        site_name="Caffenacci", icon=None,
     )
     base.update(kw)
     return _HEAD_TPL.render(**base)
@@ -355,9 +359,7 @@ def _localize(site: PublicSiteOut, entries: dict[str, str]) -> PublicSiteOut:
 
 
 def _title(site: PublicSiteOut, u: dict) -> str:
-    kw = dict(name=site.cafe_name, city=site.city)
-    full = u["title_cafe"].format(**kw)
-    return full if len(full) <= TITLE_MAX else u["title_cafe_short"].format(**kw)
+    return site.cafe_name
 
 
 def _meta_description(site: PublicSiteOut, u: dict, lang: str) -> str:
@@ -469,9 +471,16 @@ def _json_ld(site: PublicSiteOut, url: str, base_url: str, lang_code: str,
             "@type": "Menu", "name": u["h_menu"], "inLanguage": lang_code,
             "url": f"{url}#cp-menu", "hasMenuSection": sections,
         }
-    if prices:
+    if site.price_range:
+        data["priceRange"] = site.price_range
+    elif prices:
         data["priceRange"] = f"{min(prices):.{exp}f}-{max(prices):.{exp}f} {cur}"
-    data["servesCuisine"] = ["Coffee", "Vegetarian"] if has_vege else ["Coffee"]
+    if site.serves_cuisine:
+        data["servesCuisine"] = [cuisine_label(k, ui_code) for k in site.serves_cuisine]
+    else:
+        data["servesCuisine"] = ["Coffee", "Vegetarian"] if has_vege else ["Coffee"]
+    if site.payment_methods:
+        data["paymentAccepted"] = ", ".join(payment_label(k, ui_code) for k in site.payment_methods)
     keys = _badge_keys(site)
     if keys:
         data["amenityFeature"] = [
@@ -485,9 +494,12 @@ def _json_ld(site: PublicSiteOut, url: str, base_url: str, lang_code: str,
             "ratingValue": site.reviews_average,
             "reviewCount": site.reviews_count,
         }
-    same_as = [s.url for s in site.social_links if s.url.lower().startswith(("http://", "https://"))]
+    same_as = []
+    if site.google_maps_url:
+        same_as.append(site.google_maps_url)
+    same_as += [s.url for s in site.social_links if s.url.lower().startswith(("http://", "https://"))]
     if same_as:
-        data["sameAs"] = same_as
+        data["sameAs"] = list(dict.fromkeys(same_as))
     return data
 
 
@@ -612,6 +624,7 @@ def _render_cafe(index_html: str, site: PublicSiteOut, lang_code: str | None,
         image_w=1200 if og else None, image_h=630 if og else None,
         image_alt=f"{view.cafe_name} – {view.city}",
         logo_srcset=logo_srcset, jsonld_list=[_safe_json(x) for x in ld],
+        site_name=site.cafe_name, icon=site.icon_url,
     )
     body = _CAFE_BODY_TPL.render(c=_body_context(view, u, ui_code))
     # Klient dostaje dane ORYGINALNE (to on tłumaczy je przez localizeSite).

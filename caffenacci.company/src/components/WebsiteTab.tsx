@@ -3,6 +3,7 @@ import {
   Palette, SwatchBook, Link as LinkIcon, ExternalLink, Settings, Check, Coffee,
   LayoutDashboard, Sparkles, Clock, Flame, Crown, Factory, GlassWater, Rocket,
   Grid3X3, Wand2, Image as ImageIcon, Loader2, Eye, Lock,
+  Smartphone, Tablet, Monitor,
 } from 'lucide-react'
 import { PALETTES } from '../palettes'
 import { extractPaletteFromImageUrl } from '../utils/paletteFromImage'
@@ -39,6 +40,14 @@ const TEMPLATE_KEYS: SiteTemplate[] = [
   'premium', 'industrial', 'glass', 'futuristic', 'tiles',
 ]
 
+type Viewport = 'mobile' | 'tablet' | 'desktop'
+
+const VIEWPORTS: { id: Viewport; width: number | null; icon: React.ReactNode }[] = [
+  { id: 'mobile', width: 375, icon: <Smartphone size={16} /> },
+  { id: 'tablet', width: 768, icon: <Tablet size={16} /> },
+  { id: 'desktop', width: null, icon: <Monitor size={16} /> },
+]
+
 interface PublishInfo {
   slug: string | null
   is_published: boolean
@@ -49,6 +58,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
   const { t, tApi } = useI18n()
   const [template, setTemplate] = useState<SiteTemplate>('classic')
   const [palette, setPalette]   = useState('espresso-gold')
+  const [viewport, setViewport] = useState<Viewport>('desktop')
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
   const [saveMsg, setSaveMsg]   = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -211,8 +221,40 @@ export default function WebsiteTab({ token, cafeId }: Props) {
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
             {t('website.preview.text')}
           </p>
-          <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-            <iframe src={previewUrl} title={t('website.preview.iframe')} style={{ width: '100%', height: 720, border: 'none', display: 'block' }} />
+          <div
+            role="group"
+            aria-label={t('website.preview.viewport')}
+            style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}
+          >
+            {VIEWPORTS.map(v => (
+              <button
+                key={v.id}
+                type="button"
+                className={`res-mode-btn${viewport === v.id ? ' res-mode-btn--active' : ''}`}
+                aria-pressed={viewport === v.id}
+                onClick={() => setViewport(v.id)}
+              >
+                {v.icon}
+                {t(`website.preview.vp.${v.id}`)}
+              </button>
+            ))}
+          </div>
+
+          <div style={{
+            border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+            overflowX: 'auto', background: 'var(--surface-2)',
+          }}>
+            <iframe
+              src={previewUrl}
+              title={t('website.preview.iframe')}
+              style={{
+                width: VIEWPORTS.find(v => v.id === viewport)?.width ?? '100%',
+                height: 720, border: 'none', display: 'block',
+                margin: '0 auto', background: '#fff',
+                boxShadow: viewport === 'desktop' ? 'none' : 'var(--shadow-card)',
+                transition: 'width 0.25s ease',
+              }}
+            />
           </div>
           <button
             type="button"

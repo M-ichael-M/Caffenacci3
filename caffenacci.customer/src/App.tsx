@@ -1,9 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
-import HomePage from './components/HomePage'
 import CityLinks from './components/CityLinks'
 import TopBar from './components/TopBar'
-import CafePage from './components/CafePage/CafePage'
 import { loadClientAuth, saveClientAuth, clearClientAuth } from './authStorage'
 import type { ClientAuthState } from './authStorage'
 import logoCircle from './assets/logo/logo_circle.png'
@@ -16,8 +14,11 @@ import './utils/sitePaths'
 const LoginForm        = lazy(() => import('./components/LoginForm'))
 const RegisterForm     = lazy(() => import('./components/RegisterForm'))
 const AccountDashboard = lazy(() => import('./components/AccountDashboard'))
+const HomePage         = lazy(() => import('./components/HomePage'))
+const CafePage         = lazy(() => import('./components/CafePage/CafePage'))
 
 const Spinner = () => <div className="session-check"><div className="loading-spinner" /></div>
+const PageSpinner = () => <div className="loading-state" style={{ minHeight: '60vh' }}><div className="loading-spinner" /></div>
 
 type View = 'home' | 'login' | 'register' | 'account'
 
@@ -43,7 +44,8 @@ export default function App() {
     ? { query: listing.city, country: listing.country, badges: listing.badge ? [listing.badge] : [] }
     : undefined
 
-  const [view, setView] = useState<View>('home')
+  const [view, setView] = useState<View>(() =>
+    new URLSearchParams(window.location.search).get('konto') === '1' ? 'account' : 'home')
   const [auth, setAuth] = useState<ClientAuthState | null>(null)
   const [registerSuccess, setRegisterSuccess] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
@@ -89,10 +91,10 @@ export default function App() {
   }
 
   if (previewParams) {
-    return <CafePage identifier={previewParams.cafeId} mode="preview" previewToken={previewParams.token} />
+    return <Suspense fallback={<Spinner />}><CafePage identifier={previewParams.cafeId} mode="preview" previewToken={previewParams.token} /></Suspense>
   }
   if (cafeIdFromUrl) {
-    return <CafePage identifier={cafeIdFromUrl} mode="public" />
+    return <Suspense fallback={<Spinner />}><CafePage identifier={cafeIdFromUrl} mode="public" /></Suspense>
   }
   if (checkingSession) {
     return <div className="session-check"><div className="loading-spinner" /></div>
@@ -183,7 +185,9 @@ export default function App() {
         <Suspense fallback={<Spinner />}><AccountDashboard auth={auth as ClientAuthState} /></Suspense>
       ) : (
         <>
-          <HomePage token={auth?.token ?? null} initial={homeInitial} />
+          <Suspense fallback={<PageSpinner />}>
+            <HomePage token={auth?.token ?? null} initial={homeInitial} />
+          </Suspense>
           <CityLinks />
           <p
             className="cross-app-link"

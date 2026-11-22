@@ -5,6 +5,10 @@ from datetime import datetime
 
 from app.schemas.gallery import GalleryImageOut, PublicGalleryImageOut
 from app.schemas.badges import ALLOWED_BADGE_KEYS, MAX_FEATURED_BADGES
+from app.schemas.business_meta import (
+    ALLOWED_PRICE_RANGES, ALLOWED_CUISINE_KEYS, ALLOWED_PAYMENT_KEYS,
+    GOOGLE_PLACE_ID_RE, GOOGLE_CID_RE,
+)
 
 
 # ── Stałe ──────────────────────────────────────────────────────────────────
@@ -172,6 +176,62 @@ class CafeProfileIn(BaseModel):
     # Backend odrzuci True, jeśli galeria jest pusta (patrz routers/cafe_profile.py).
     gallery_visible: bool = False
 
+    # ── SEO / Schema.org ─────────────────────────────────────────────────
+    google_place_id: Optional[str] = Field(None, max_length=255)
+    google_maps_cid: Optional[str] = Field(None, max_length=20)
+    price_range: Optional[str] = Field(None, max_length=4)
+    serves_cuisine: List[str] = []
+    payment_methods: List[str] = []
+
+    @field_validator("google_place_id", "google_maps_cid", "price_range", mode="before")
+    @classmethod
+    def _blank_to_none(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+            return v or None
+        return v
+
+    @field_validator("google_place_id")
+    @classmethod
+    def _place_id(cls, v):
+        if v is not None and not GOOGLE_PLACE_ID_RE.match(v):
+            raise ValueError("Nieprawidłowy Google Place ID.")
+        return v
+
+    @field_validator("google_maps_cid")
+    @classmethod
+    def _cid(cls, v):
+        if v is not None and not GOOGLE_CID_RE.match(v):
+            raise ValueError("Google Maps CID musi być liczbą (same cyfry).")
+        return v
+
+    @field_validator("price_range")
+    @classmethod
+    def _price_range(cls, v):
+        if v is not None and v not in ALLOWED_PRICE_RANGES:
+            raise ValueError("Przedział cen musi być jednym z: $, $$, $$$, $$$$.")
+        return v
+
+    @field_validator("serves_cuisine")
+    @classmethod
+    def _cuisine(cls, v: List[str]) -> List[str]:
+        if len(v) != len(set(v)):
+            raise ValueError("Każdy rodzaj kuchni można wybrać tylko raz.")
+        bad = [k for k in v if k not in ALLOWED_CUISINE_KEYS]
+        if bad:
+            raise ValueError(f"Nieznany rodzaj kuchni: {', '.join(bad)}")
+        return v
+
+    @field_validator("payment_methods")
+    @classmethod
+    def _payments(cls, v: List[str]) -> List[str]:
+        if len(v) != len(set(v)):
+            raise ValueError("Każdą metodę płatności można wybrać tylko raz.")
+        bad = [k for k in v if k not in ALLOWED_PAYMENT_KEYS]
+        if bad:
+            raise ValueError(f"Nieznana metoda płatności: {', '.join(bad)}")
+        return v
+
     @field_validator("longitude")
     @classmethod
     def validate_lat_lng_pair(cls, v, info):
@@ -251,6 +311,12 @@ class CafeProfileOut(BaseModel):
 
     gallery_visible: bool
     gallery_images:  List[GalleryImageOut] = []
+    google_place_id: Optional[str] = None
+    google_maps_cid: Optional[str] = None
+    google_maps_url: Optional[str] = None
+    price_range: Optional[str] = None
+    serves_cuisine: List[str] = []
+    payment_methods: List[str] = []
 
     profile_complete: bool   # True jeśli logo + godziny są uzupełnione (wymogi obowiązkowe)
 

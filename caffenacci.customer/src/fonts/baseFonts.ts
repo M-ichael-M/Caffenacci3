@@ -7,9 +7,3 @@ import '@fontsource/inter/latin-ext-600.css'
 import '@fontsource/inter/latin-700.css'
 import '@fontsource/inter/latin-ext-700.css'
 
-import '@fontsource/playfair-display/latin-600.css'
-import '@fontsource/playfair-display/latin-ext-600.css'
-import '@fontsource/playfair-display/latin-700.css'
-import '@fontsource/playfair-display/latin-ext-700.css'
-import '@fontsource/playfair-display/latin-600-italic.css'   // hero classic: italic 600
-import '@fontsource/playfair-display/latin-ext-600-italic.css'

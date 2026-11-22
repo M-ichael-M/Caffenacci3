@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
+import type { Feature, FeatureCollection, Point } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n/I18nProvider'
@@ -24,12 +25,13 @@ function statusOf(c: MapCafe, t: TFunction): { text: string; open: number } {
   return { text: t('map.no_hours'), open: -1 }
 }
 
-function toGeoJSON(cafes: MapCafe[], t: TFunction): GeoJSON.FeatureCollection<GeoJSON.Point, PinProps> {
-  return { type: 'FeatureCollection', features: cafes.map(c => {
+function toGeoJSON(cafes: MapCafe[], t: TFunction): FeatureCollection<Point, PinProps> {
+  const features = cafes.map((c): Feature<Point, PinProps> => {
     const s = statusOf(c, t)
     return { type: 'Feature', geometry: { type: 'Point', coordinates: [c.longitude, c.latitude] },
       properties: { slug: c.slug, name: c.cafe_name, status: s.text, open: s.open } }
-  }) }
+  })
+  return { type: 'FeatureCollection', features }
 }
 
 function h(tag: string, className?: string, text?: string): HTMLElement {
@@ -98,21 +100,21 @@ export default function CafesMap({ query, country }: Props) {
         const f = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })[0]
         if (!f) return
         const clusterId = f.properties?.cluster_id as number
-        const center = (f.geometry as GeoJSON.Point).coordinates as [number, number]
+        const center = (f.geometry as Point).coordinates as [number, number]
         const src = map.getSource(SOURCE) as maplibregl.GeoJSONSource
         try {
           const zoom = await src.getClusterExpansionZoom(clusterId)
           if (zoom <= CLUSTER_MAX_ZOOM) { map.easeTo({ center, zoom: zoom + 0.3 }); return }
           const leaves = await src.getClusterLeaves(clusterId, 100, 0)
-          const [x0, y0] = (leaves[0].geometry as GeoJSON.Point).coordinates
-          if (leaves.every(l => { const [x, y] = (l.geometry as GeoJSON.Point).coordinates; return x === x0 && y === y0 }))
+          const [x0, y0] = (leaves[0].geometry as Point).coordinates
+          if (leaves.every(l => { const [x, y] = (l.geometry as Point).coordinates; return x === x0 && y === y0 }))
             openPopup(center, cafeList(leaves.map(l => l.properties as PinProps), tRef.current))
           else map.easeTo({ center, zoom: CLUSTER_MAX_ZOOM + 1.5 })
         } catch { /* ignoruj błędy klastra */ }
       })
       map.on('click', 'pins', e => {
         const f = e.features?.[0]
-        if (f) openPopup((f.geometry as GeoJSON.Point).coordinates as [number, number], cafeCard(f.properties as unknown as PinProps, tRef.current))
+        if (f) openPopup((f.geometry as Point).coordinates as [number, number], cafeCard(f.properties as unknown as PinProps, tRef.current))
       })
       for (const layer of ['clusters', 'pins']) {
         map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer' })

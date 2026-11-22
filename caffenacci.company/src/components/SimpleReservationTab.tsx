@@ -222,7 +222,6 @@ function PendingCard({
   onDecide: (r: ReservationOut, action: 'confirmed' | 'cancelled') => void
 }) {
   const { t, locale } = useI18n()
-  const { timeZone } = useCafeSettings()
   return (
     <div style={{
       background: 'var(--surface)',
@@ -350,7 +349,6 @@ function PendingCard({
 
 function HistoryCard({ r, onDelete }: { r: ReservationOut; onDelete: (id: string) => void }) {
   const { t, locale } = useI18n()
-  const { timeZone } = useCafeSettings()
   const isConfirmed = r.status === 'confirmed'
 
   return (

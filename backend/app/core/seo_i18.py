@@ -60,6 +60,39 @@ def badge_label(key: str, lang: str) -> str:
     return entry.get(site_lang(lang)) or entry.get("en") or key
 
 
+CUISINE_LABELS: dict[str, dict[str, str]] = {
+    "specialty_coffee": {"pl": "Kawa specialty", "en": "Specialty coffee"},
+    "breakfast": {"pl": "Śniadania", "en": "Breakfast"},
+    "brunch": {"pl": "Brunch", "en": "Brunch"},
+    "pastries": {"pl": "Wypieki", "en": "Pastries"},
+    "desserts": {"pl": "Desery", "en": "Desserts"},
+    "lunch": {"pl": "Obiady", "en": "Lunch"},
+    "vegan": {"pl": "Opcje wegańskie", "en": "Vegan options"},
+    "tea": {"pl": "Herbata", "en": "Tea"},
+}
+
+PAYMENT_LABELS: dict[str, dict[str, str]] = {
+    "cash": {"pl": "Gotówka", "en": "Cash"},
+    "card": {"pl": "Karta", "en": "Card"},
+    "contactless": {"pl": "Płatności zbliżeniowe", "en": "Contactless"},
+    "blik": {"pl": "BLIK", "en": "BLIK"},
+    "mobile_wallet": {"pl": "Portfel mobilny", "en": "Mobile wallet"},
+}
+
+
+def _label(table: dict, key: str, lang: str | None) -> str:
+    entry = table.get(key, {})
+    return entry.get(site_lang(lang)) or entry.get("en") or key
+
+
+def cuisine_label(key: str, lang: str | None) -> str:
+    return _label(CUISINE_LABELS, key, lang)
+
+
+def payment_label(key: str, lang: str | None) -> str:
+    return _label(PAYMENT_LABELS, key, lang)
+
+
 def reviews_label(n: int, lang: str | None) -> str:
     if site_lang(lang) == "pl":
         if n == 1:

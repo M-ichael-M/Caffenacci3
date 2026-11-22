@@ -14,6 +14,7 @@ from app.core.slugs import generate_unique_slug, resolve_slug, slugify
 from app.core.page_cache import invalidate_cafe
 from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings
+from app.schemas.business_meta import google_maps_url, load_keys
 from app.core.images import logo_url as _logo_url_v, gallery_url, news_image_url
 from app.core.translations import build_public_i18n
 from app.models.cafe import Cafe
@@ -334,6 +335,11 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
         .all()
     )
 
+    logo_rel = _logo_url(cafe.id, profile)
+    icon_url = (
+        f"{settings.API_PUBLIC_URL.rstrip('/')}{logo_rel}&w=128" if logo_rel else None
+    )  # logo_url zawiera już ?v=, więc używamy &w=
+
     return PublicSiteOut(
         cafe_id=cafe.id,
         slug=cafe.slug,
@@ -390,6 +396,15 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
             for b in (profile.badges if profile else [])
         ],
         i18n=build_public_i18n(cafe.id, db),
+        og_site_name=cafe.cafe_name,
+        icon_url=icon_url,
+        google_maps_url=google_maps_url(
+            profile.google_maps_cid if profile else None,
+            profile.google_place_id if profile else None,
+        ),
+        price_range=(profile.price_range if profile else None),
+        serves_cuisine=load_keys(profile.serves_cuisine if profile else None),
+        payment_methods=load_keys(profile.payment_methods if profile else None),
         city_slug=slugify(cafe.city),
         nearby_cafes=[{"slug": s, "cafe_name": n} for s, n in nearby_rows],
     )
