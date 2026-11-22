@@ -92,11 +92,6 @@ interface CafeProfileData {
   badges: ProfileBadge[]
   gallery_visible: boolean
   gallery_images: GalleryImage[]
-  google_place_id: string | null
-  google_maps_cid: string | null
-  price_range: string | null
-  serves_cuisine: string[]
-  payment_methods: string[]
   profile_complete: boolean
   updated_at: string | null
 }
@@ -116,8 +111,6 @@ const PLATFORM_OPTIONS: { value: string; label?: string }[] = [
 ]
 const MAX_EXCEPTION_DAYS_AHEAD = 21
 const MAX_GALLERY_IMAGES = 10
-const CUISINE_OPTIONS = ['specialty_coffee', 'breakfast', 'brunch', 'pastries', 'desserts', 'lunch', 'vegan', 'tea'] as const
-const PAYMENT_OPTIONS = ['cash', 'card', 'contactless', 'blik', 'mobile_wallet'] as const
 
 function weekdayNames(locale: string): string[] {
   return [0, 1, 2, 3, 4, 5, 6].map(i => {
@@ -315,13 +308,6 @@ export default function ProfileTab({ token }: Props) {
   const [locationShowMap, setLocationShowMap]             = useState(true)
   const [locationShowGmapsLink, setLocationShowGmapsLink] = useState(true)
 
-  // Dane strukturalne Schema.org
-  const [googlePlaceId, setGooglePlaceId] = useState('')
-  const [googleMapsCid, setGoogleMapsCid] = useState('')
-  const [priceRange, setPriceRange] = useState('')
-  const [servesCuisine, setServesCuisine] = useState<string[]>([])
-  const [paymentMethods, setPaymentMethods] = useState<string[]>([])
-
   // Galeria zdjęć
   const [galleryVisible, setGalleryVisible]   = useState(false)
   const [galleryImages, setGalleryImages]     = useState<GalleryImage[]>([])
@@ -380,11 +366,6 @@ export default function ProfileTab({ token }: Props) {
         setLocationVisible(data.location_visible)
         setLocationShowMap(data.location_show_map)
         setLocationShowGmapsLink(data.location_show_gmaps_link)
-        setGooglePlaceId(data.google_place_id ?? '')
-        setGoogleMapsCid(data.google_maps_cid ?? '')
-        setPriceRange(data.price_range ?? '')
-        setServesCuisine(data.serves_cuisine ?? [])
-        setPaymentMethods(data.payment_methods ?? [])
         setGalleryVisible(data.gallery_visible)
         setGalleryImages(data.gallery_images ?? [])
       } else {
@@ -692,11 +673,6 @@ export default function ProfileTab({ token }: Props) {
         location_visible: locationVisible,
         location_show_map: locationShowMap,
         location_show_gmaps_link: locationShowGmapsLink,
-        google_place_id: googlePlaceId.trim() || null,
-        google_maps_cid: googleMapsCid.trim() || null,
-        price_range: priceRange || null,
-        serves_cuisine: servesCuisine,
-        payment_methods: paymentMethods,
         gallery_visible: galleryVisible,
         weekly_hours: weeklyHours,
         social_links: socialLinks
@@ -744,11 +720,6 @@ export default function ProfileTab({ token }: Props) {
       setLocationVisible(data.location_visible)
       setLocationShowMap(data.location_show_map)
       setLocationShowGmapsLink(data.location_show_gmaps_link)
-      setGooglePlaceId(data.google_place_id ?? '')
-      setGoogleMapsCid(data.google_maps_cid ?? '')
-      setPriceRange(data.price_range ?? '')
-      setServesCuisine(data.serves_cuisine ?? [])
-      setPaymentMethods(data.payment_methods ?? [])
       setGalleryVisible(data.gallery_visible)
       setGalleryImages(data.gallery_images)
       setSaveMsg({ type: 'ok', text: t('profile.saved') })
@@ -1094,62 +1065,6 @@ export default function ProfileTab({ token }: Props) {
             })}
           </div>
         </div>
-      </div>
-
-      {/* ── SEO / Schema.org ────────────────────────────────────────────── */}
-      <div style={{ gridColumn: '1 / -1' }}>
-        <SectionCard eyebrow={t('profile.eyebrow.newOptional')} title={t('profile.seo.title')}>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-0.25rem', lineHeight: 1.6 }}>
-            {t('profile.seo.intro')}
-          </p>
-          <div className="field-row">
-            <div className="field field--grow">
-              <label className="field__label" htmlFor="google-place-id">{t('profile.seo.placeId')}</label>
-              <input id="google-place-id" className="field__input" value={googlePlaceId}
-                onChange={e => setGooglePlaceId(e.target.value)} placeholder="ChIJ…" maxLength={255} />
-            </div>
-            <div className="field field--grow">
-              <label className="field__label" htmlFor="google-maps-cid">{t('profile.seo.cid')}</label>
-              <input id="google-maps-cid" className="field__input" inputMode="numeric" value={googleMapsCid}
-                onChange={e => setGoogleMapsCid(e.target.value)} placeholder="12345678901234567890" maxLength={20} />
-            </div>
-          </div>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-0.5rem', lineHeight: 1.5 }}>
-            {t('profile.seo.googleHint')}
-          </p>
-          <div className="field">
-            <label className="field__label" htmlFor="profile-price-range">{t('profile.seo.priceRange')}</label>
-            <select id="profile-price-range" className="field__input" value={priceRange}
-              onChange={e => setPriceRange(e.target.value)}>
-              <option value="">{t('profile.seo.notSet')}</option>
-              {['$', '$$', '$$$', '$$$$'].map(value => <option key={value} value={value}>{value}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <span className="field__label">{t('profile.seo.cuisine')}</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem 1.25rem' }}>
-              {CUISINE_OPTIONS.map(key => (
-                <label key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem' }}>
-                  <input type="checkbox" checked={servesCuisine.includes(key)}
-                    onChange={e => setServesCuisine(prev => e.target.checked ? [...prev, key] : prev.filter(x => x !== key))} />
-                  {t(`profile.seo.cuisine.${key}`)}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div className="field">
-            <span className="field__label">{t('profile.seo.payments')}</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem 1.25rem' }}>
-              {PAYMENT_OPTIONS.map(key => (
-                <label key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem' }}>
-                  <input type="checkbox" checked={paymentMethods.includes(key)}
-                    onChange={e => setPaymentMethods(prev => e.target.checked ? [...prev, key] : prev.filter(x => x !== key))} />
-                  {t(`profile.seo.payment.${key}`)}
-                </label>
-              ))}
-            </div>
-          </div>
-        </SectionCard>
       </div>
 
       {/* ── Lokalizacja na mapie (pełna szerokość) ──────────────────────── */}

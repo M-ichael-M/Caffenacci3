@@ -243,10 +243,6 @@ class PublicSiteOut(BaseModel):
     # SEO / dane dla SSR i klienta
     og_site_name: str = ""
     icon_url: Optional[str] = None
-    google_maps_url: Optional[str] = None
-    price_range: Optional[str] = None
-    serves_cuisine: List[str] = []
-    payment_methods: List[str] = []
     # SEO: linkowanie wewnętrzne (breadcrumbs + "Inne kawiarnie w mieście")
     city_slug: str = ""
     nearby_cafes: List[NearbyCafeOut] = []

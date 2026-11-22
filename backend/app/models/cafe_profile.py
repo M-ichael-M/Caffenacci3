@@ -78,15 +78,6 @@ class CafeProfile(Base):
     # tylko globalny przełącznik widoczności galerii na wizytówce/stronie.
     gallery_visible = Column(Boolean, nullable=False, default=False)
 
-    # ── Dane SEO / Schema.org ────────────────────────────────────────────
-    # Publiczne z natury (trafiają do JSON-LD), więc bez flag widoczności.
-    # serves_cuisine / payment_methods: JSON z listą kluczy.
-    google_place_id = Column(String(255), nullable=True)
-    google_maps_cid = Column(String(20), nullable=True)
-    price_range = Column(String(4), nullable=True)
-    serves_cuisine = Column(Text, nullable=True)
-    payment_methods = Column(Text, nullable=True)
-
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=True, onupdate=datetime.utcnow)
 

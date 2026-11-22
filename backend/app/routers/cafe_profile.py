@@ -39,7 +39,6 @@ from app.schemas.gallery import (
     GalleryImageOut, PublicGalleryImageOut,
     MAX_GALLERY_IMAGES, MAX_GALLERY_IMAGE_BYTES, ALLOWED_GALLERY_CONTENT_TYPES,
 )
-from app.schemas.business_meta import dump_keys, load_keys, google_maps_url
 
 router = APIRouter(prefix="/profile", tags=["cafe-profile"])
 bearer_scheme = HTTPBearer()
@@ -190,12 +189,6 @@ def _profile_to_out(cafe: Cafe, profile: CafeProfile, db: Session) -> CafeProfil
         badges=profile.badges,
         gallery_visible=profile.gallery_visible,
         gallery_images=gallery_images,
-        google_place_id=profile.google_place_id,
-        google_maps_cid=profile.google_maps_cid,
-        google_maps_url=google_maps_url(profile.google_maps_cid, profile.google_place_id),
-        price_range=profile.price_range,
-        serves_cuisine=load_keys(profile.serves_cuisine),
-        payment_methods=load_keys(profile.payment_methods),
         profile_complete=logo_complete and hours_complete,
         updated_at=profile.updated_at,
     )
@@ -268,13 +261,6 @@ def save_profile(
                 detail="Aby włączyć widoczność galerii, dodaj najpierw co najmniej jedno zdjęcie.",
             )
     profile.gallery_visible = payload.gallery_visible
-
-    # SEO / Schema.org
-    profile.google_place_id = payload.google_place_id
-    profile.google_maps_cid = payload.google_maps_cid
-    profile.price_range = payload.price_range
-    profile.serves_cuisine = dump_keys(payload.serves_cuisine)
-    profile.payment_methods = dump_keys(payload.payment_methods)
 
     profile.updated_at            = datetime.utcnow()
 
