@@ -470,7 +470,7 @@ export const pl = {
   'billing.sub.noneText': 'Nie masz jeszcze aktywnej subskrypcji. Aktywuj ją (symulacja), aby móc opublikować stronę kawiarni.',
   'billing.sub.activate': 'Aktywuj subskrypcję (symulacja)',
   'billing.promo.question': 'Masz kod promocyjny?',
-  'billing.promo.placeholder': 'np. DEMO14',
+  'billing.promo.placeholder': 'np. CAFE7',
   'billing.promo.activate': 'Aktywuj kod',
   'billing.label.promoCode': 'Kod promocyjny',
   'billing.label.kind': 'Rodzaj',

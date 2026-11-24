@@ -11,6 +11,7 @@ from sqlalchemy import and_, func, literal, or_, select, union
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
+from app.core.access import live_cafe_ids
 from app.core.cafe_time import zone, cafe_now
 from app.core.opening_hours import day_of_week, sessions_for
 from app.core.languages import DEFAULT_TIME_ZONE
@@ -192,7 +193,7 @@ def search_meta(request: Request, response: Response, db: Session = Depends(get_
     rows = (
         db.query(Cafe.country, func.count(Cafe.id))
         .join(CafeSite, CafeSite.cafe_id == Cafe.id)
-        .filter(CafeSite.is_published.is_(True))
+        .filter(Cafe.id.in_(live_cafe_ids()))
         .group_by(Cafe.country)
         .order_by(func.count(Cafe.id).desc(), Cafe.country)
         .all()
@@ -218,7 +219,7 @@ def map_cafes(
         .join(CafeProfile, CafeProfile.cafe_id == Cafe.id)
         .options(selectinload(CafeProfile.weekly_hours), selectinload(CafeProfile.hour_exceptions))
         .filter(
-            CafeSite.is_published.is_(True), CafeProfile.location_visible.is_(True),
+            Cafe.id.in_(live_cafe_ids()), CafeProfile.location_visible.is_(True),
             CafeProfile.latitude.isnot(None), CafeProfile.longitude.isnot(None),
         )
     )
@@ -313,7 +314,7 @@ def search_cafes(
         .join(CafeSite, CafeSite.cafe_id == Cafe.id)
         .outerjoin(rating_sq, rating_sq.c.cafe_id == Cafe.id)
         .outerjoin(CafeProfile, CafeProfile.cafe_id == Cafe.id)
-        .filter(CafeSite.is_published.is_(True))
+        .filter(Cafe.id.in_(live_cafe_ids()))
     )
 
     # ── Tekst ──

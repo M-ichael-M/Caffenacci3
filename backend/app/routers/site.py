@@ -9,6 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
+from app.core.access import is_site_live, live_cafe_ids
 from app.core.security import decode_access_token
 from app.core.slugs import generate_unique_slug, resolve_slug, slugify
 from app.core.page_cache import invalidate_cafe
@@ -326,7 +327,7 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
         db.query(Cafe.slug, Cafe.cafe_name)
         .join(CafeSite, CafeSite.cafe_id == Cafe.id)
         .filter(
-            CafeSite.is_published.is_(True), Cafe.slug.isnot(None), Cafe.id != cafe.id,
+            Cafe.id.in_(live_cafe_ids()), Cafe.slug.isnot(None), Cafe.id != cafe.id,
             func.lower(Cafe.city) == cafe.city.lower(),
         )
         .order_by(Cafe.cafe_name)
@@ -403,25 +404,23 @@ def _build_public_site(cafe: Cafe, db: Session) -> PublicSiteOut:
 
 
 @router.get("/public/by-slug/{slug}", response_model=PublicSiteOut,
-            summary="Publiczna strona kawiarni po adresie (slug) — wymaga publikacji")
+            summary="Publiczna strona kawiarni po adresie (slug) — wymaga publikacji i ważnego dostępu")
 def get_public_site_by_slug(slug: str, db: Session = Depends(get_db)):
     cafe, _is_current = resolve_slug(slug, db)
     if not cafe:
         raise HTTPException(404, detail="Kawiarnia nie istnieje.")
-    site = db.query(CafeSite).filter(CafeSite.cafe_id == cafe.id).first()
-    if not site or not site.is_published:
+    if not is_site_live(cafe.id, db):
         raise HTTPException(404, detail="Ta strona nie jest obecnie publicznie dostępna.")
     return _build_public_site(cafe, db)
 
 
 @router.get("/public/{cafe_id}", response_model=PublicSiteOut,
-            summary="Publiczna strona kawiarni po ID — wymaga publikacji")
+            summary="Publiczna strona kawiarni po ID — wymaga publikacji i ważnego dostępu")
 def get_public_site(cafe_id: str, db: Session = Depends(get_db)):
     cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
     if not cafe:
         raise HTTPException(404, detail="Kawiarnia nie istnieje.")
-    site = db.query(CafeSite).filter(CafeSite.cafe_id == cafe.id).first()
-    if not site or not site.is_published:
+    if not is_site_live(cafe.id, db):
         raise HTTPException(404, detail="Ta strona nie jest obecnie publicznie dostępna.")
     return _build_public_site(cafe, db)
 

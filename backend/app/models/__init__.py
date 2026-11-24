@@ -10,6 +10,7 @@ from app.models.gallery import CafeGalleryImage
 from app.models.loyalty import LoyaltySettings, LoyaltyReward, ClientLoyalty, LoyaltyTransaction
 from app.models.menu import MenuSection, MenuItem
 from app.models.news import NewsSettings, NewsPost
+from app.models.promo import PromoCode, PromoRedemption
 from app.models.order import OrderSettings, Order, OrderItem, OrderStatus
 from app.models.reservation import (
     ReservationSettings, DayHours, CafeTable, Reservation,

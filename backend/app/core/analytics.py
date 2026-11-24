@@ -18,6 +18,7 @@ from sqlalchemy import delete, distinct, func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.access import is_site_live
 from app.core.currency import round_money
 from app.core.languages import DEFAULT_TIME_ZONE
 from app.models.analytics import AnalyticsDaily, AnalyticsVisitorDay
@@ -70,9 +71,7 @@ def cafe_timezone(db: Session, cafe_id: str) -> str | None:
     hit = _CTX.get(cafe_id)
     if hit and hit[0] > now:
         return hit[1]
-    published = db.query(CafeSite.id).filter(
-        CafeSite.cafe_id == cafe_id, CafeSite.is_published.is_(True)
-    ).first() is not None
+    published = is_site_live(cafe_id, db)
     tz_name = None
     if published:
         row = db.query(CafeLanguageSettings.time_zone).filter(CafeLanguageSettings.cafe_id == cafe_id).first()

@@ -17,6 +17,7 @@ from jinja2 import Environment
 from sqlalchemy.orm import Session
 
 from app.core import seo_listenings as listings
+from app.core.access import is_site_live, live_cafe_ids
 from app.core.config import settings
 from app.core.currency import currency_exponent
 from app.core.database import get_db
@@ -648,18 +649,12 @@ def _redirect(path: str) -> RedirectResponse:
 
 
 def _resolve_published(slug: str, db: Session) -> tuple[Cafe | None, bool]:
-    """(cafe, is_current) tylko dla OPUBLIKOWANEJ kawiarni. Nieopublikowana
-    => None, więc stary slug nie przekierowuje na 404 (brak łańcucha)."""
+    """(cafe, is_current) tylko dla kawiarni z widoczną stroną. Inaczej
+    None, więc stary slug nie przekierowuje na 404 (brak łańcucha)."""
     cafe, is_current = resolve_slug(slug, db)
     if cafe is None or not cafe.slug:
         return None, False
-    published = (
-        db.query(CafeSite.id)
-        .filter(CafeSite.cafe_id == cafe.id, CafeSite.is_published.is_(True))
-        .first()
-        is not None
-    )
-    return (cafe, is_current) if published else (None, False)
+    return (cafe, is_current) if is_site_live(cafe.id, db) else (None, False)
 
 
 def _was_published(slug: str, db: Session) -> bool:
@@ -975,7 +970,7 @@ def _build_sitemap(db: Session) -> str:
     cafe_rows = (
         db.query(Cafe.id, Cafe.slug, CafeSite.published_at, CafeSite.updated_at)
         .join(CafeSite, CafeSite.cafe_id == Cafe.id)
-        .filter(CafeSite.is_published.is_(True), Cafe.slug.isnot(None))
+        .filter(Cafe.id.in_(live_cafe_ids()), Cafe.slug.isnot(None))
         .order_by(Cafe.slug).all()
     )
     lm: dict[str, str | None] = {}

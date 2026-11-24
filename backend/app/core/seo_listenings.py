@@ -11,6 +11,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.slugs import slugify
+from app.core.access import live_cafe_ids
 from app.models.cafe import Cafe
 from app.models.cafe_profile import CafeProfile
 from app.models.review import Review
@@ -68,7 +69,7 @@ def load_cafes(db: Session) -> list[IdxCafe]:
         db.query(Cafe, rating_sq.c.avg, rating_sq.c.cnt)
         .join(CafeSite, CafeSite.cafe_id == Cafe.id)
         .outerjoin(rating_sq, rating_sq.c.cafe_id == Cafe.id)
-        .filter(CafeSite.is_published.is_(True), Cafe.slug.isnot(None))
+        .filter(Cafe.id.in_(live_cafe_ids()), Cafe.slug.isnot(None))
         .order_by(Cafe.cafe_name)
         .all()
     )

@@ -59,9 +59,9 @@ class LoyaltyLookupOut(BaseModel):
 
 class LoyaltyEarnIn(BaseModel):
     loyalty_code: str   = Field(..., min_length=8, max_length=8)
-    # With the maximum supported earning rule (100,000 points per unit), this
-    # cap keeps the rounded amount and resulting points within SQL Integer.
-    amount:       float = Field(..., gt=0, le=21_474)
+    # No amount ceiling: currencies such as VND/IDR/KHR use large denominations.
+    # The router validates that the resulting points fit in SQL Integer.
+    amount:       float = Field(..., gt=0, allow_inf_nan=False)
 
 
 class LoyaltyRedeemIn(BaseModel):

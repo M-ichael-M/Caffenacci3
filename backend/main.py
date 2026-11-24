@@ -29,6 +29,7 @@ from app.models import slug_history # noqa: F401
 from app.models import billing      # noqa: F401
 from app.models import translation  # noqa: F401
 from app.models import analytics   # noqa: F401
+from app.models import promo        # noqa: F401
 from app.routers import auth, me
 from app.routers import menu as menu_router
 from app.routers import reservation as reservation_router

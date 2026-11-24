@@ -5,12 +5,15 @@ from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import or_, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.cafe import Cafe
 from app.models.billing import Subscription
+from app.models.promo import PromoCode, PromoRedemption
 from app.core.billing_prices import BILLING_PRICES_MINOR, default_billing_currency
 from app.schemas.billing import SubscriptionStatusOut, PromoRedeemIn, BillingCurrencyIn
 from app.routers.employee_auth import ensure_staff_code
@@ -20,14 +23,6 @@ bearer_scheme = HTTPBearer()
 
 SUBSCRIPTION_PERIOD_DAYS = 30
 CANCEL_CUTOFF = timedelta(days=1)  # trzeba anulować najpóźniej dzień przed odnowieniem
-
-# Kody promocyjne na potrzeby demo — zanim podłączymy prawdziwe płatności.
-PROMO_CODES: dict[str, int] = {
-    "CAFFENACCI7":  7,
-    "CAFFENACCI30": 30,
-    "DEMO14":       14,
-}
-
 
 def get_current_cafe(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
@@ -234,14 +229,38 @@ def redeem_promo(
     db:           Session = Depends(get_db),
 ):
     code = payload.code.strip().upper()
-    days = PROMO_CODES.get(code)
-    if not days:
-        raise HTTPException(400, detail="Nieprawidłowy lub nieaktywny kod promocyjny.")
-
     existing = _get_effective_subscription(current_cafe.id, db, sync=True)
     now = datetime.utcnow()
     if existing and now < existing.period_end:
         raise HTTPException(400, detail="Masz już aktywny dostęp — nie można aktywować kodu promocyjnego.")
+
+    promo = db.query(PromoCode).filter(PromoCode.code == code).first()
+    if not promo or not promo.is_active or (promo.expires_at and promo.expires_at <= now):
+        raise HTTPException(400, detail="Nieprawidłowy lub nieaktywny kod promocyjny.")
+
+    already = db.query(PromoRedemption.id).filter(
+        PromoRedemption.cafe_id == current_cafe.id, PromoRedemption.promo_id == promo.id,
+    ).first()
+    if already:
+        raise HTTPException(400, detail="Ten kod promocyjny został już wykorzystany przez Twoją kawiarnię.")
+
+    # Atomowe zajęcie jednego użycia: warunki limitu/ważności są w samym UPDATE,
+    # więc dwa równoległe żądania nie przekroczą max_uses.
+    claimed = db.execute(
+        update(PromoCode)
+        .where(
+            PromoCode.id == promo.id,
+            PromoCode.is_active.is_(True),
+            or_(PromoCode.max_uses.is_(None), PromoCode.uses_count < PromoCode.max_uses),
+            or_(PromoCode.expires_at.is_(None), PromoCode.expires_at > now),
+        )
+        .values(uses_count=PromoCode.uses_count + 1)
+    )
+    if claimed.rowcount != 1:
+        db.rollback()
+        raise HTTPException(400, detail="Limit użyć tego kodu promocyjnego został wyczerpany.")
+
+    db.add(PromoRedemption(promo_id=promo.id, cafe_id=current_cafe.id, redeemed_at=now))
 
     if existing:
         existing.kind = "promo"
@@ -249,12 +268,10 @@ def redeem_promo(
         if not _has_paid(existing):
             existing.billing_currency = _chosen_currency(current_cafe)
         existing.period_start = now
-        existing.period_end = now + timedelta(days=days)
+        existing.period_end = now + timedelta(days=promo.days)
         existing.cancel_at_period_end = False
         existing.cancelled_at = None
         existing.updated_at = now
-        db.commit()
-        db.refresh(existing)
         sub = existing
     else:
         sub = Subscription(
@@ -263,11 +280,16 @@ def redeem_promo(
             promo_code=code,
             billing_currency=_chosen_currency(current_cafe),
             period_start=now,
-            period_end=now + timedelta(days=days),
+            period_end=now + timedelta(days=promo.days),
         )
         db.add(sub)
-        db.commit()
-        db.refresh(sub)
+
+    try:
+        db.commit()           # użycie, wpis w redemptions i subskrypcja zapisują się razem
+    except IntegrityError:    # wyścig dwóch żądań tej samej kawiarni → uq_promo_redemption_cafe_promo
+        db.rollback()
+        raise HTTPException(409, detail="Ten kod promocyjny został już wykorzystany przez Twoją kawiarnię.")
+    db.refresh(sub)
 
     return _to_status_out(sub, current_cafe)
 

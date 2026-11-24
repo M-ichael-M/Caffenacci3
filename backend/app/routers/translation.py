@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.cache_purge import cafe_page_urls, purge_urls
 from app.core.config import settings as app_settings
 from app.core.database import get_db
+from app.core.access import is_site_live
 from app.core.languages import CURRENCIES, DEFAULT_PRIMARY_LANGUAGE, LANGUAGES
 from app.core.loyalty_rules import default_unit
 from app.core.page_cache import invalidate_cafe
@@ -19,7 +20,6 @@ from app.core.translations import (
     package_file, source_hash,
 )
 from app.models.cafe import Cafe
-from app.models.site import CafeSite
 from app.models.translation import CafeLanguageSettings, TranslationPackage
 from app.models.loyalty import LoyaltySettings
 from app.routers.employee_auth import get_current_cafe_owner
@@ -156,8 +156,7 @@ def _translation_response(cafe: Cafe, language: str, db: Session) -> PublicTrans
 
 
 def _require_published(cafe: Cafe, db: Session) -> None:
-    site = db.query(CafeSite).filter(CafeSite.cafe_id == cafe.id).first()
-    if not site or not site.is_published:
+    if not is_site_live(cafe.id, db):
         raise HTTPException(404, detail="Ta strona nie jest obecnie publicznie dostępna.")
 
 

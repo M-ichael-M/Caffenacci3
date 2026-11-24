@@ -30,6 +30,8 @@ from app.schemas.loyalty import (
     ClientLoyaltyBalanceOut,
 )
 
+SQL_INT_MAX = 2_147_483_647   # upper bound for Integer columns (points, points_delta)
+
 router = APIRouter(prefix="/loyalty", tags=["loyalty"])
 bearer_scheme = HTTPBearer()
 
@@ -203,12 +205,19 @@ def earn_points(
         raise HTTPException(400, detail="Ta kawiarnia nie korzysta z punktowego programu lojalnościowego.")
 
     client = _find_client_by_code(payload.loyalty_code, db)
-    amount = round_decimal(payload.amount, currency)
-    earned = compute_points(amount, currency, settings.points_per_amount, settings.points_amount_unit)
+    try:
+        amount = round_decimal(payload.amount, currency)
+        earned = compute_points(amount, currency, settings.points_per_amount, settings.points_amount_unit)
+    except ArithmeticError:   # decimal.InvalidOperation: absurdly large amount
+        raise HTTPException(400, detail="Kwota jest zbyt duża.")
     if earned == 0:
         raise HTTPException(400, detail="Kwota jest zbyt niska, aby naliczyć punkty.")
 
     cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
+
+    # Validate points, not the amount: each transaction and the balance must fit in Integer.
+    if earned > SQL_INT_MAX or cl.points + earned > SQL_INT_MAX:
+        raise HTTPException(400, detail="Przyznanie tylu punktów przekroczyłoby maksymalne saldo klienta.")
 
     cl.points     += earned
     cl.updated_at  = datetime.utcnow()
