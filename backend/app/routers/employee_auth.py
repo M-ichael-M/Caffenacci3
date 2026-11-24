@@ -9,6 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.cafe_time import cafe_tz_name
 from app.core.currency import cafe_currency
 from app.core.security import create_access_token, decode_access_token
@@ -145,7 +146,10 @@ def employee_login(payload: EmployeeLoginIn, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(employee)
 
-    token = create_access_token(data={"sub": employee.id, "role": "employee"})
+    token = create_access_token(
+        data={"sub": employee.id, "role": "employee"},
+        expires_minutes=settings.EMPLOYEE_TOKEN_EXPIRE_MINUTES,
+    )
     return EmployeeLoginOut(
         access_token=token,
         employee_id=employee.id,

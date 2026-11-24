@@ -58,6 +58,19 @@ def get_current_client(
     return client
 
 
+@router.post("/refresh", response_model=ClientTokenOut, summary="Odnów token klienta")
+def refresh(current_client: Client = Depends(get_current_client)):
+    token = create_access_token(
+        data={"sub": current_client.id, "email": current_client.email, "role": "client"}
+    )
+    return ClientTokenOut(
+        access_token=token,
+        user_id=current_client.id,
+        nick=current_client.nick,
+        full_name=current_client.full_name,
+    )
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SPRAWDZENIE DOSTĘPNOŚCI NICKU (na żywo w formularzu rejestracji)
 # ══════════════════════════════════════════════════════════════════════════════

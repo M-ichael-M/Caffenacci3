@@ -20,6 +20,7 @@ export const pl = {
   'login.noAccount': 'Nie masz jeszcze konta?',
   'login.registerLink': 'Zarejestruj kawiarnię',
   'login.error': 'Nieprawidłowy e-mail lub hasło.',
+  'login.sessionExpired': 'Twoja sesja wygasła. Zaloguj się ponownie.',
 
   // Rejestracja
   'register.title': 'Zarejestruj kawiarnię',

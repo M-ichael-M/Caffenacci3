@@ -81,6 +81,7 @@
   "login.email": "E-mail address", "login.password": "Password", "login.submit": "Log in", "login.submitting": "Logging in…",
   "login.no_account": "Don't have an account yet?", "login.create": "Create account",
   "login.err_credentials": "Incorrect e-mail or password.", "login.err_unexpected": "Something went wrong. Please try again.",
+  "login.session_expired": "Your session has expired. Please log in again.",
   "reg.title": "Create account", "reg.subtitle": "Join Caffenacci as a guest and enjoy your favourite cafés",
   "reg.section_basic": "Basic details", "reg.full_name": "Full name", "reg.nick": "Nickname",
   "reg.nick_checking": "Checking availability…", "reg.nick_ok": "Nickname available", "reg.nick_taken": "This nickname is already taken",

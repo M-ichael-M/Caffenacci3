@@ -5,6 +5,8 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
@@ -85,17 +87,27 @@ def _get_or_create_settings(cafe_id: str, db: Session, *, create: bool = True) -
 
 
 def _get_or_create_client_loyalty(cafe_id: str, client_id: str, db: Session) -> ClientLoyalty:
-    cl = (
-        db.query(ClientLoyalty)
-        .filter(ClientLoyalty.cafe_id == cafe_id, ClientLoyalty.client_id == client_id)
-        .first()
-    )
+    q = db.query(ClientLoyalty).filter(
+        ClientLoyalty.cafe_id == cafe_id, ClientLoyalty.client_id == client_id)
+    cl = q.first()
     if not cl:
-        cl = ClientLoyalty(cafe_id=cafe_id, client_id=client_id)
-        db.add(cl)
-        db.commit()
-        db.refresh(cl)
-    return cl
+        db.add(ClientLoyalty(cafe_id=cafe_id, client_id=client_id))
+        try:
+            db.commit()
+        except IntegrityError:  # uq_client_loyalty_cafe_client — ktoś był szybszy
+            db.rollback()
+    return q.first()
+
+
+def _apply(db: Session, cl: ClientLoyalty, *, guard, **values) -> bool:
+    """Atomowa zmiana salda: guard jest sprawdzany w samym UPDATE."""
+    res = db.execute(
+        update(ClientLoyalty)
+        .where(ClientLoyalty.id == cl.id, guard)
+        .values(updated_at=datetime.utcnow(), **values)
+        .execution_options(synchronize_session=False)
+    )
+    return res.rowcount == 1
 
 
 def _find_client_by_code(code: str, db: Session) -> Client:
@@ -216,11 +228,14 @@ def earn_points(
     cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
 
     # Validate points, not the amount: each transaction and the balance must fit in Integer.
-    if earned > SQL_INT_MAX or cl.points + earned > SQL_INT_MAX:
+    if earned > SQL_INT_MAX or not _apply(
+        db, cl,
+        guard=ClientLoyalty.points <= SQL_INT_MAX - earned,
+        points=ClientLoyalty.points + earned,
+    ):
+        db.rollback()
         raise HTTPException(400, detail="Przyznanie tylu punktów przekroczyłoby maksymalne saldo klienta.")
 
-    cl.points     += earned
-    cl.updated_at  = datetime.utcnow()
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="earn_points",
         description=f"{amount} {currency}",
@@ -254,14 +269,18 @@ def redeem_reward(
     client = _find_client_by_code(payload.loyalty_code, db)
     cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
 
-    if cl.points < reward.cost_points:
+    if not _apply(
+        db, cl,
+        guard=ClientLoyalty.points >= reward.cost_points,
+        points=ClientLoyalty.points - reward.cost_points,
+    ):
+        db.rollback()
+        db.refresh(cl)
         raise HTTPException(
             400,
             detail=f"Za mało punktów — potrzeba {reward.cost_points}, dostępne {cl.points}.",
         )
 
-    cl.points    -= reward.cost_points
-    cl.updated_at = datetime.utcnow()
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="redeem_points",
         description=reward.name,
@@ -295,11 +314,14 @@ def add_stamp(
     client = _find_client_by_code(payload.loyalty_code, db)
     cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
 
-    if cl.stamps >= settings.stamps_max:
+    if not _apply(
+        db, cl,
+        guard=ClientLoyalty.stamps < settings.stamps_max,
+        stamps=ClientLoyalty.stamps + 1,
+    ):
+        db.rollback()
         raise HTTPException(400, detail="Karta jest już zapełniona — użyj opcji „Zeruj”.")
 
-    cl.stamps    += 1
-    cl.updated_at = datetime.utcnow()
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="add_stamp",
         stamps_delta=1, currency=currency,
@@ -328,11 +350,14 @@ def reset_stamps(
     client = _find_client_by_code(payload.loyalty_code, db)
     cl = _get_or_create_client_loyalty(cafe_id, client.id, db)
 
-    if cl.stamps < settings.stamps_max:
+    if not _apply(
+        db, cl,
+        guard=ClientLoyalty.stamps >= settings.stamps_max,
+        stamps=0,
+    ):
+        db.rollback()
         raise HTTPException(400, detail="Karta nie jest jeszcze zapełniona.")
 
-    cl.stamps    = 0
-    cl.updated_at = datetime.utcnow()
     db.add(LoyaltyTransaction(
         cafe_id=cafe_id, client_id=client.id, kind="reset_stamps",
         currency=currency,

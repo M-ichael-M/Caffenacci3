@@ -29,7 +29,7 @@ from app.models.translation import CafeLanguageSettings
 from app.schemas.badges import ALLOWED_BADGE_KEYS
 from app.schemas.cafe_search import (
     CafeSearchResultOut, CafeSearchListOut, CafeSearchMetaOut, TodayHoursOut,
-    CafeListItemOut, CafeListOut, CafeMapPointOut, CafeMapOut,
+    CafeMapPointOut, CafeMapOut,
 )
 
 router = APIRouter(prefix="/cafes", tags=["cafe-search"])
@@ -81,23 +81,6 @@ def _visited_subquery(client_id: str, db: Session):
             LoyaltyTransaction.client_id == client_id,
             LoyaltyTransaction.kind.in_(("earn_points", "redeem_points", "add_stamp"))),
     ).subquery()
-
-
-@router.get(
-    "/all",
-    response_model=CafeListOut,
-    summary="Pobierz wszystkie zarejestrowane kawiarnie (bez filtra publikacji)",
-)
-def list_all_cafes(db: Session = Depends(get_db)):
-    cafes = db.query(Cafe).order_by(Cafe.cafe_name).all()
-    items = [
-        CafeListItemOut(
-            id=c.id, cafe_name=c.cafe_name, city=c.city, street=c.street,
-            building_number=c.building_number, slug=c.slug,
-        )
-        for c in cafes
-    ]
-    return CafeListOut(cafes=items, count=len(items))
 
 
 # ── Czas / godziny ──────────────────────────────────────────────────────────

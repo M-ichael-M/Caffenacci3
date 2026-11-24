@@ -8,6 +8,8 @@ import {
 import { PALETTES } from '../palettes'
 import { extractPaletteFromImageUrl } from '../utils/paletteFromImage'
 import { API_URL, CUSTOMER_URL } from '../config'
+import { loadAuth } from '../authStorage'
+import { SESSION_TOKEN_UPDATED_EVENT } from '../sessionGuard'
 import LanguagesCard from './LanguagesCard'
 import { useI18n } from '../i18n'
 
@@ -67,6 +69,13 @@ export default function WebsiteTab({ token, cafeId }: Props) {
   const [customPaletteVars, setCustomPaletteVars] = useState<Record<string, string> | null>(null)
   const [generatingPalette, setGeneratingPalette] = useState(false)
   const [paletteGenError, setPaletteGenError]     = useState<string | null>(null)
+  const [, refreshPreviewToken] = useState(0)
+
+  useEffect(() => {
+    const updatePreview = () => refreshPreviewToken(value => value + 1)
+    window.addEventListener(SESSION_TOKEN_UPDATED_EVENT, updatePreview)
+    return () => window.removeEventListener(SESSION_TOKEN_UPDATED_EVENT, updatePreview)
+  }, [])
 
   const [publishInfo, setPublishInfo] = useState<PublishInfo | null>(null)
 
@@ -152,7 +161,7 @@ export default function WebsiteTab({ token, cafeId }: Props) {
     } finally { setSaving(false) }
   }
 
-  const previewUrl = `${CUSTOMER_URL}/preview/${cafeId}?token=${encodeURIComponent(token)}`
+  const previewUrl = `${CUSTOMER_URL}/preview/${cafeId}?token=${encodeURIComponent(loadAuth()?.token ?? token)}`
   const liveUrl = publishInfo?.slug ? `${CUSTOMER_URL}/kawiarnia/${publishInfo.slug}` : null
 
   if (loading) {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { loadClientAuth, saveClientAuth, clearClientAuth } from '../../authStorage'
+import { SESSION_EXPIRED_EVENT } from '../../sessionGuard'
 import { trackPageview, trackEvent } from '../../analytics'
 import type { ClientAuthState } from '../../authStorage'
 import { getPaletteVars } from './palettes'
@@ -190,6 +191,12 @@ export default function CafePage({ identifier, mode = 'public', previewToken }: 
   const [auth, setAuth] = useState<ClientAuthState | null>(() => (isPreview ? null : loadClientAuth()))
   const [authModal, setAuthModal] = useState<null | 'login' | 'register'>(null)
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
+
+  useEffect(() => {
+    const onExpired = () => setAuth(null)
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired)
+  }, [])
 
   const sparkLayerRef = useRef<HTMLDivElement>(null)
 
@@ -427,7 +434,7 @@ function CafeContent({
   const hasMenu = menuSections.length > 0
 
   const gmapsUrl = hasLocation ? `https://www.google.com/maps?q=${data.latitude},${data.longitude}` : null
-  useCafeHead(rawData, !isPreview, gmapsUrl)
+  useCafeHead(rawData, !isPreview)
   const listingLang = language.code
   const citySlug = data.city_slug ?? ''
   const nearby = data.nearby_cafes ?? []

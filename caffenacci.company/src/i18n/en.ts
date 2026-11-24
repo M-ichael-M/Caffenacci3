@@ -22,6 +22,7 @@ export const en: Record<Exclude<keyof typeof pl, PolishOnlyPlural>, string> = {
   'login.noAccount': "Don't have an account yet?",
   'login.registerLink': 'Register your café',
   'login.error': 'Invalid email or password.',
+  'login.sessionExpired': 'Your session has expired. Please log in again.',
 
   'register.title': 'Register your café',
   'register.subtitle': 'Join Caffenacci and start managing your venue',

@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    EMPLOYEE_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30
 
     # Lista po przecinku: https://a.pl,https://b.pl (puste = wartości z URL-i poniżej / dev)
     CORS_ORIGINS: str = ""

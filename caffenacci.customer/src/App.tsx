@@ -1,9 +1,10 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import CityLinks from './components/CityLinks'
 import TopBar from './components/TopBar'
 import { loadClientAuth, saveClientAuth, clearClientAuth } from './authStorage'
 import type { ClientAuthState } from './authStorage'
+import { SESSION_EXPIRED_EVENT } from './sessionGuard'
 import logoCircle from './assets/logo/logo_circle.png'
 import './index.css'
 import { API_URL, COMPANY_URL } from './config'
@@ -46,9 +47,25 @@ export default function App() {
 
   const [view, setView] = useState<View>(() =>
     new URLSearchParams(window.location.search).get('konto') === '1' ? 'account' : 'home')
+  const viewRef = useRef(view)
   const [auth, setAuth] = useState<ClientAuthState | null>(null)
   const [registerSuccess, setRegisterSuccess] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
+  const [sessionExpired, setSessionExpired] = useState(false)
+
+  useEffect(() => { viewRef.current = view }, [view])
+
+  useEffect(() => {
+    const onExpired = () => {
+      setAuth(null)
+      if (viewRef.current === 'account') {
+        setSessionExpired(true)
+        setView('login')
+      }
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired)
+  }, [])
 
   useEffect(() => {
     if (cafeIdFromUrl || previewParams) {
@@ -75,6 +92,7 @@ export default function App() {
       token: data.access_token, user_id: data.user_id, nick: data.nick, full_name: data.full_name,
     }
     saveClientAuth(state)
+    setSessionExpired(false)
     setAuth(state)
     setView('account')
   }
@@ -140,6 +158,7 @@ export default function App() {
                 onSuccess={handleLoginSuccess}
                 onSwitchToRegister={() => { setRegisterSuccess(false); setView('register') }}
                 registerSuccess={registerSuccess}
+                sessionExpired={sessionExpired}
               />
             </Suspense>
             {backHome}

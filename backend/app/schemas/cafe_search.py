@@ -44,22 +44,6 @@ class CafeSearchMetaOut(BaseModel):
     detected_country_code: Optional[str] = None   # ISO 3166-1 alpha-2 z CDN, jeśli dostępny
 
 
-# ── Lista wszystkich zarejestrowanych kawiarni (bez filtra publikacji) ────
-
-class CafeListItemOut(BaseModel):
-    id: str
-    cafe_name: str
-    city: str
-    street: str
-    building_number: str
-    slug: Optional[str] = None
-
-
-class CafeListOut(BaseModel):
-    cafes: List[CafeListItemOut]
-    count: int
-
-
 # ── Punkty na mapie ───────────────────────────────────────────────────────
 
 class CafeMapPointOut(BaseModel):

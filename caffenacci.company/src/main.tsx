@@ -3,6 +3,21 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { I18nProvider } from './i18n'
+import { installSessionGuard, SESSION_TOKEN_UPDATED_EVENT } from './sessionGuard'
+import { loadAuth, saveAuth, clearAuth } from './authStorage'
+
+installSessionGuard({
+  refreshPath: '/auth/refresh',
+  load: loadAuth,
+  setToken: token => {
+    const auth = loadAuth()
+    if (auth) {
+      saveAuth({ ...auth, token })
+      window.dispatchEvent(new Event(SESSION_TOKEN_UPDATED_EVENT))
+    }
+  },
+  clear: clearAuth,
+})
 
 // Google Translate w Chrome opakowuje teksty w <font>, przez co React rzuca
 // błędami removeChild/insertBefore. Znana łatka: ignorujemy operacje na

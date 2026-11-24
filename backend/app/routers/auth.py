@@ -9,8 +9,20 @@ from app.core.slugs import generate_unique_slug
 from app.models.cafe import Cafe
 from app.models.translation import CafeLanguageSettings
 from app.schemas.cafe import LoginIn, RegisterIn, RegisterOut, TokenOut
+from app.routers.me import get_current_cafe
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/refresh", response_model=TokenOut, summary="Odnów token właściciela")
+def refresh(current_cafe: Cafe = Depends(get_current_cafe)):
+    token = create_access_token(data={"sub": current_cafe.id, "email": current_cafe.email})
+    return TokenOut(
+        access_token=token,
+        cafe_id=current_cafe.id,
+        cafe_name=current_cafe.cafe_name,
+        owner_name=current_cafe.owner_name,
+    )
 
 
 @router.post(

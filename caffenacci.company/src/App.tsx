@@ -9,44 +9,12 @@ import { ArrowRight } from 'lucide-react'
 import { API_URL, CUSTOMER_URL } from './config'
 import { useI18n } from './i18n'
 import { CafeSettingsProvider } from './components/CafeSettingsContext'
+import { loadAuth, saveAuth, clearAuth, type AuthState } from './authStorage'
+import { SESSION_EXPIRED_EVENT } from './sessionGuard'
 
 type View = 'login' | 'register' | 'dashboard'
 
-export interface AuthState {
-  token: string
-  cafe_id: string
-  cafe_name: string
-  owner_name: string
-}
-
-const STORAGE_KEYS = {
-  token:      'caffenacci_token',
-  cafe_id:    'caffenacci_cafe_id',
-  cafe_name:  'caffenacci_cafe_name',
-  owner_name: 'caffenacci_owner_name',
-} as const
-
-function saveAuth(data: AuthState) {
-  localStorage.setItem(STORAGE_KEYS.token,      data.token)
-  localStorage.setItem(STORAGE_KEYS.cafe_id,    data.cafe_id)
-  localStorage.setItem(STORAGE_KEYS.cafe_name,  data.cafe_name)
-  localStorage.setItem(STORAGE_KEYS.owner_name, data.owner_name)
-}
-
-function clearAuth() {
-  Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k))
-}
-
-function loadAuth(): AuthState | null {
-  const token      = localStorage.getItem(STORAGE_KEYS.token)
-  const cafe_id    = localStorage.getItem(STORAGE_KEYS.cafe_id)
-  const cafe_name  = localStorage.getItem(STORAGE_KEYS.cafe_name)
-  const owner_name = localStorage.getItem(STORAGE_KEYS.owner_name)
-  if (token && cafe_id && cafe_name && owner_name) {
-    return { token, cafe_id, cafe_name, owner_name }
-  }
-  return null
-}
+export type { AuthState } from './authStorage'
 
 export default function App() {
   const { t } = useI18n()
@@ -55,6 +23,18 @@ export default function App() {
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null)
   const [loadingProfile, setLoadingProfile] = useState(false)
   const [registerSuccess, setRegisterSuccess] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState(false)
+
+  useEffect(() => {
+    const onExpired = () => {
+      setAuth(null)
+      setProfile(null)
+      setView('login')
+      setSessionExpired(true)
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired)
+  }, [])
 
   // Restore session on mount
   useEffect(() => {
@@ -98,6 +78,7 @@ export default function App() {
       owner_name: data.owner_name,
     }
     saveAuth(state)
+    setSessionExpired(false)
     setAuth(state)
     setView('dashboard')
     fetchProfile(data.access_token)
@@ -155,6 +136,7 @@ export default function App() {
               onSuccess={handleLoginSuccess}
               onSwitchToRegister={() => { setRegisterSuccess(false); setView('register') }}
               registerSuccess={registerSuccess}
+              sessionExpired={sessionExpired}
             />
           ) : (
             <RegisterForm

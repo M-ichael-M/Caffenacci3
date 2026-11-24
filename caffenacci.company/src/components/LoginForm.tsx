@@ -14,9 +14,10 @@ interface Props {
   onSuccess: (data: LoginResponse) => void
   onSwitchToRegister: () => void
   registerSuccess?: boolean
+  sessionExpired?: boolean
 }
 
-export default function LoginForm({ onSuccess, onSwitchToRegister, registerSuccess }: Props) {
+export default function LoginForm({ onSuccess, onSwitchToRegister, registerSuccess, sessionExpired }: Props) {
   const { t, tApi } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -58,6 +59,10 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, registerSucce
         <div className="form-success" role="status">
           {t('login.registered')}
         </div>
+      )}
+
+      {sessionExpired && (
+        <div className="form-error" role="alert">{t('login.sessionExpired')}</div>
       )}
 
       <form onSubmit={handleSubmit} className="form" noValidate>

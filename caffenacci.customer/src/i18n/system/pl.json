@@ -82,6 +82,7 @@
   "login.email": "Adres e-mail", "login.password": "Hasło", "login.submit": "Zaloguj się", "login.submitting": "Logowanie…",
   "login.no_account": "Nie masz jeszcze konta?", "login.create": "Załóż konto",
   "login.err_credentials": "Nieprawidłowy e-mail lub hasło.", "login.err_unexpected": "Wystąpił błąd. Spróbuj ponownie.",
+  "login.session_expired": "Twoja sesja wygasła. Zaloguj się ponownie.",
   "reg.title": "Załóż konto", "reg.subtitle": "Dołącz do Caffenacci jako gość i korzystaj z ulubionych kawiarni",
   "reg.section_basic": "Dane podstawowe", "reg.full_name": "Imię i nazwisko", "reg.nick": "Nick",
   "reg.nick_checking": "Sprawdzanie dostępności…", "reg.nick_ok": "Nick dostępny", "reg.nick_taken": "Ten nick jest już zajęty",

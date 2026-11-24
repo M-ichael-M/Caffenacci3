@@ -496,7 +496,7 @@ def create_advanced_reservation_as_client(
     table = db.query(CafeTable).filter(
         CafeTable.id == payload.table_id,
         CafeTable.settings_id == s.id,
-    ).first()
+    ).with_for_update().first()
     if not table:
         raise HTTPException(404, detail="Wybrany stolik nie istnieje.")
 
@@ -698,7 +698,7 @@ def create_reservation(
     table = db.query(CafeTable).filter(
         CafeTable.id == payload.table_id,
         CafeTable.settings_id == s.id,
-    ).first()
+    ).with_for_update().first()
     if not table:
         raise HTTPException(404, detail="Stolik nie istnieje.")
 
