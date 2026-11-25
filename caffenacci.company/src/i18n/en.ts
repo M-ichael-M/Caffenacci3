@@ -197,6 +197,10 @@ export const en: Record<Exclude<keyof typeof pl, PolishOnlyPlural>, string> = {
   'orders.modal.errLength': 'The loyalty code has exactly 8 characters.',
   'orders.modal.submit': 'Complete order',
   'orders.modal.checking': 'Checking…',
+  'orders.modal.submitPoints': 'Complete and award points',
+  'orders.modal.pointsUnavailable': 'Awarding points is unavailable — enable the points-based loyalty program in the “Loyalty” tab.',
+  'orders.msg.pointsAwarded': 'Order completed. Points awarded: {count}.',
+  'orders.msg.completed': 'Order completed.',
   'orders.err.generic': 'Failed to save.',
 
   'reviews.title': 'Café reviews',

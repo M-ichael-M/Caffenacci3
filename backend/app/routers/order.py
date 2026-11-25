@@ -16,11 +16,17 @@ from app.core.config import settings
 from app.core.currency import cafe_currency, round_decimal
 from app.core.security import decode_access_token
 from app.core.employee_access import get_current_cafe_id
+from app.core.loyalty_rules import compute_points
 from app.models.cafe import Cafe
 from app.models.client import Client
 from app.models.menu import MenuItem, MenuSection
 from app.models.order import Order, OrderItem, OrderSettings, OrderStatus
+from app.models.loyalty import ClientLoyalty, LoyaltyTransaction
 from app.routers.client_auth import get_current_client
+from app.routers.loyalty import (
+    _get_or_create_settings as _get_loyalty_settings,
+    _get_or_create_client_loyalty, _apply, SQL_INT_MAX,
+)
 from app.schemas.order import (
     OrderSettingsIn, OrderSettingsOut,
     PublicOrderCancelIn, ClientOrderIn,
@@ -409,9 +415,46 @@ def update_order_status(
         if not client or client.id != order.client_id:
             raise HTTPException(400, detail="Podany kod nie należy do klienta, który złożył to zamówienie.")
 
+    points_awarded: int | None = None
+    if payload.status == OrderStatusEnum.completed and payload.award_points:
+        if not order.client_id:
+            raise HTTPException(400, detail="To zamówienie nie jest powiązane z kontem klienta — nie można naliczyć punktów.")
+
+        loyalty_settings = _get_loyalty_settings(cafe_id, db, create=False)
+        if not loyalty_settings.enabled or loyalty_settings.mode != "points":
+            raise HTTPException(400, detail="Ta kawiarnia nie korzysta z punktowego programu lojalnościowego.")
+
+        # Reguła punktów jest w walucie kawiarni — po zmianie waluty stare zamówienie
+        # (w starej walucie) nie może być przeliczone tą regułą.
+        if order.currency != cafe_currency(cafe_id, db):
+            raise HTTPException(400, detail="Zamówienie jest w innej walucie niż obecna waluta kawiarni — nie można naliczyć punktów.")
+
+        earned = compute_points(
+            order.total_value, order.currency,
+            loyalty_settings.points_per_amount, loyalty_settings.points_amount_unit,
+        )
+        if earned > 0:
+            cl = _get_or_create_client_loyalty(cafe_id, order.client_id, db)
+            if earned > SQL_INT_MAX or not _apply(
+                db, cl,
+                guard=ClientLoyalty.points <= SQL_INT_MAX - earned,
+                points=ClientLoyalty.points + earned,
+            ):
+                db.rollback()
+                raise HTTPException(400, detail="Przyznanie tylu punktów przekroczyłoby maksymalne saldo klienta.")
+            db.add(LoyaltyTransaction(
+                cafe_id=cafe_id, client_id=order.client_id, kind="earn_points",
+                description=f"Zamówienie: {order.total_value} {order.currency}",
+                points_delta=earned, currency=order.currency,
+            ))
+        points_awarded = earned
+
     order.status = payload.status
     order.cancelled_by = "owner" if payload.status == OrderStatusEnum.cancelled else None
     order.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(order)
-    return order
+
+    out = OrderOut.model_validate(order)
+    out.points_awarded = points_awarded
+    return out

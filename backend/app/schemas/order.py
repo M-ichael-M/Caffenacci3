@@ -65,8 +65,9 @@ class ClientOrderIn(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
     status: OrderStatusEnum  # completed | cancelled
-    # Wymagany przy "completed" — kod lojalnościowy klienta, który złożył zamówienie
     loyalty_code: Optional[str] = Field(None, max_length=8)
+    # True = przy realizacji dolicz też punkty lojalnościowe za to zamówienie
+    award_points: bool = False
 
 
 # ── Output ─────────────────────────────────────────────────────────────────
@@ -86,6 +87,7 @@ class OrderOut(BaseModel):
     status:       OrderStatusEnum
     cancelled_by: Optional[str]
     created_at:   Optional[datetime]
+    points_awarded: Optional[int] = None   # ustawiane tylko w odpowiedzi na "zrealizuj i nalicz punkty"
     model_config = {"from_attributes": True}
 
 

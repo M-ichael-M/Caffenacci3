@@ -208,6 +208,10 @@ export const pl = {
   'orders.modal.errLength': 'Kod lojalnościowy ma dokładnie 8 znaków.',
   'orders.modal.submit': 'Zrealizuj zamówienie',
   'orders.modal.checking': 'Sprawdzanie…',
+  'orders.modal.submitPoints': 'Zrealizuj i nalicz punkty',
+  'orders.modal.pointsUnavailable': 'Naliczanie punktów jest niedostępne — włącz punktowy program lojalnościowy w zakładce „Lojalność”.',
+  'orders.msg.pointsAwarded': 'Zamówienie zrealizowane. Naliczone punkty: {count}.',
+  'orders.msg.completed': 'Zamówienie zrealizowane.',
   'orders.err.generic': 'Błąd zapisu.',
 
   // Opinie

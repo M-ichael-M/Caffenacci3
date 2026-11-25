@@ -30,6 +30,7 @@ interface OrderOut {
   status: OrderStatusType
   cancelled_by: string | null
   created_at: string | null
+  points_awarded?: number | null
 }
 
 interface OrderSettingsOut {
@@ -252,22 +253,23 @@ function HistoryOrderCard({ o }: { o: OrderOut }) {
 
 // ── Modal: potwierdzenie realizacji kodem klienta ──────────────────────
 
-function CompleteOrderModal({ order, onClose, onSubmit }: {
+function CompleteOrderModal({ order, pointsAvailable, onClose, onSubmit }: {
   order: OrderOut
+  pointsAvailable: boolean
   onClose: () => void
-  onSubmit: (code: string) => Promise<string | null>
+  onSubmit: (code: string, awardPoints: boolean) => Promise<string | null>
 }) {
   const { t } = useI18n()
   const [code, setCode] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<null | 'plain' | 'points'>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async () => {
+  const submit = async (awardPoints: boolean) => {
     setError(null)
     if (code.length !== 8) { setError(t('orders.modal.errLength')); return }
-    setBusy(true)
-    const err = await onSubmit(code)
-    setBusy(false)
+    setBusy(awardPoints ? 'points' : 'plain')
+    const err = await onSubmit(code, awardPoints)
+    setBusy(null)
     if (err) setError(err)
   }
 
@@ -291,21 +293,28 @@ function CompleteOrderModal({ order, onClose, onSubmit }: {
               className="me-input"
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
-              onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
+              onKeyDown={e => { if (e.key === 'Enter') submit(pointsAvailable) }}
               maxLength={8}
               placeholder={t('orders.modal.codePlaceholder')}
               autoFocus
               style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'monospace' }}
             />
           </div>
+          {!pointsAvailable && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('orders.modal.pointsUnavailable')}</p>
+          )}
           {error && <div className="form-error" role="alert">{error}</div>}
         </div>
         <div className="me-footer">
-          <div className="me-footer-actions">
-            <button type="button" className="btn btn--outline-dark" onClick={onClose} disabled={busy}>{t('common.cancel')}</button>
-            <button type="button" className="btn btn--primary" style={{ width: 'auto', minWidth: 160 }}
-              onClick={handleSubmit} disabled={busy || code.length !== 8}>
-              {busy ? t('orders.modal.checking') : t('orders.modal.submit')}
+          <div className="me-footer-actions" style={{ flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn--outline-dark" onClick={onClose} disabled={!!busy}>{t('common.cancel')}</button>
+            <button type="button" className="btn btn--outline-dark" style={{ width: 'auto' }}
+              onClick={() => submit(false)} disabled={!!busy || code.length !== 8}>
+              {busy === 'plain' ? t('orders.modal.checking') : t('orders.modal.submit')}
+            </button>
+            <button type="button" className="btn btn--primary" style={{ width: 'auto', marginTop: 0 }}
+              onClick={() => submit(true)} disabled={!!busy || code.length !== 8 || !pointsAvailable}>
+              {busy === 'points' ? t('orders.modal.checking') : t('orders.modal.submitPoints')}
             </button>
           </div>
         </div>
@@ -329,6 +338,8 @@ export default function OrdersTab({ token }: Props) {
   const [saving, setSaving]     = useState<string | null>(null)  // id zamówienia w trakcie zapisu
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
   const [completing, setCompleting] = useState<OrderOut | null>(null)
+  const [pointsAvailable, setPointsAvailable] = useState(false)
+  const [doneMsg, setDoneMsg] = useState<string | null>(null)
 
   // ── Fetch ───────────────────────────────────────────────────────────────
 
@@ -357,7 +368,17 @@ export default function OrdersTab({ token }: Props) {
     finally { setLoading(false) }
   }, [token])
 
-  useEffect(() => { fetchSettings(); fetchOrders() }, [fetchSettings, fetchOrders])
+  const fetchLoyalty = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/loyalty/settings`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) {
+        const d = await res.json()
+        setPointsAvailable(!!d.enabled && d.mode === 'points')
+      }
+    } catch { /* ignore */ }
+  }, [token])
+
+  useEffect(() => { fetchSettings(); fetchOrders(); fetchLoyalty() }, [fetchSettings, fetchOrders, fetchLoyalty])
 
   // ── Toggle ustawień ───────────────────────────────────────────────────
 
@@ -392,14 +413,14 @@ export default function OrdersTab({ token }: Props) {
     finally { setSaving(null) }
   }
 
-  const handleComplete = async (code: string): Promise<string | null> => {
+  const handleComplete = async (code: string, awardPoints: boolean): Promise<string | null> => {
     if (!completing) return null
     setSaving(completing.id)
     try {
       const res = await fetch(`${API_URL}/orders/${completing.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: 'completed', loyalty_code: code }),
+        body: JSON.stringify({ status: 'completed', loyalty_code: code, award_points: awardPoints }),
       })
       const data = await res.json()
       if (!res.ok) return tApi(data.detail, 'orders.err.generic')
@@ -407,6 +428,10 @@ export default function OrdersTab({ token }: Props) {
       setPending(prev => prev.filter(x => x.id !== updated.id))
       setHistory(prev => [updated, ...prev])
       setCompleting(null)
+      setDoneMsg(awardPoints
+        ? t('orders.msg.pointsAwarded', { count: updated.points_awarded ?? 0 })
+        : t('orders.msg.completed'))
+      setTimeout(() => setDoneMsg(null), 6000)
       return null
     } catch {
       return t('common.genericError')
@@ -433,7 +458,8 @@ export default function OrdersTab({ token }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
       {completing && (
-        <CompleteOrderModal order={completing} onClose={() => setCompleting(null)} onSubmit={handleComplete} />
+        <CompleteOrderModal order={completing} pointsAvailable={pointsAvailable}
+          onClose={() => setCompleting(null)} onSubmit={handleComplete} />
       )}
 
       {/* ── Nagłówek ──────────────────────────────────────────────────── */}
@@ -451,6 +477,8 @@ export default function OrdersTab({ token }: Props) {
           {t('common.refresh')}
         </button>
       </div>
+
+      {doneMsg && <div className="form-success" role="status">{doneMsg}</div>}
 
       {/* ── Toggle: przyjmowanie zamówień ────────────────────────────── */}
       <div className="res-settings-block" style={{ margin: 0 }}>
