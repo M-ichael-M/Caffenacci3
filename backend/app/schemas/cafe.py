@@ -1,27 +1,47 @@
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.core.validators import (
+    normalize_phone, validate_password, validate_owner_name, validate_cafe_name,
+    validate_street, validate_building_number, validate_postal_code,
+    validate_city, validate_country,
+)
 
-# ---------- Rejestracja ----------
 
 class AddressIn(BaseModel):
-    country: str = Field(..., min_length=2, max_length=100, examples=["Polska"])
-    city: str = Field(..., min_length=2, max_length=100, examples=["Warszawa"])
-    street: str = Field(..., min_length=2, max_length=150, examples=["Marszałkowska"])
-    building_number: str = Field(..., min_length=1, max_length=20, examples=["12A"])
-    postal_code: str = Field(..., min_length=3, max_length=20, examples=["00-001"])
+    country: str = Field(..., examples=["Polska"])
+    city: str = Field(..., examples=["Warszawa"])
+    street: str = Field(..., examples=["Marszałkowska"])
+    building_number: str = Field(..., examples=["12A"])
+    postal_code: str = Field(..., examples=["00-001"])
+
+    _country = field_validator("country")(classmethod(lambda cls, v: validate_country(v)))
+    _city = field_validator("city")(classmethod(lambda cls, v: validate_city(v)))
+    _street = field_validator("street")(classmethod(lambda cls, v: validate_street(v)))
+    _building = field_validator("building_number")(classmethod(lambda cls, v: validate_building_number(v)))
+    _postal = field_validator("postal_code")(classmethod(lambda cls, v: validate_postal_code(v)))
 
 
 class RegisterIn(BaseModel):
-    owner_name: str = Field(..., min_length=2, max_length=100, examples=["Jan Kowalski"])
-    cafe_name: str = Field(..., min_length=2, max_length=150, examples=["Kawiarnia Pod Lipą"])
+    owner_name: str = Field(..., examples=["Jan Kowalski"])
+    cafe_name: str = Field(..., examples=["Kawiarnia Pod Lipą"])
     email: EmailStr
-    phone: str = Field(..., min_length=7, max_length=30, examples=["+48 123 456 789"])
-    password: str = Field(..., min_length=8, examples=["Mocne#Haslo1"])
+    phone: str = Field(..., examples=["+48123456789"])
+    password: str = Field(..., examples=["Mocne#Haslo1"])
     address: AddressIn
     # Strefa z przeglądarki (Intl) — tylko sugestia; backend waliduje i w razie błędu bierze domyślną.
     time_zone: Optional[str] = Field(None, max_length=64, examples=["Asia/Phnom_Penh"])
+
+    _owner = field_validator("owner_name")(classmethod(lambda cls, v: validate_owner_name(v)))
+    _cafe = field_validator("cafe_name")(classmethod(lambda cls, v: validate_cafe_name(v)))
+    _phone = field_validator("phone")(classmethod(lambda cls, v: normalize_phone(v.strip())))
+    _pwd = field_validator("password")(classmethod(lambda cls, v: validate_password(v)))
+
+    @field_validator("email")
+    @classmethod
+    def lower_email(cls, v: str) -> str:
+        return v.lower()
 
 
 class RegisterOut(BaseModel):
@@ -30,8 +50,6 @@ class RegisterOut(BaseModel):
     email: EmailStr
     message: str = "Konto zostało pomyślnie utworzone."
 
-
-# ---------- Logowanie ----------
 
 class LoginIn(BaseModel):
     email: EmailStr
@@ -46,8 +64,6 @@ class TokenOut(BaseModel):
     owner_name: str
 
 
-# ---------- Profil (opcjonalnie do użycia w chronionych endpointach) ----------
-
 class CafeProfile(BaseModel):
     id: str
     owner_name: str
@@ -61,3 +77,8 @@ class CafeProfile(BaseModel):
     postal_code: str
 
     model_config = {"from_attributes": True}
+
+
+class EmailAvailabilityOut(BaseModel):
+    email: str
+    available: bool

@@ -1,15 +1,28 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Check, X } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
 import { browserTimeZone, detectCountryName } from '../utils/regionDefaults'
+import PhoneField from './PhoneField'
+import { buildPhone, detectRegion } from '../utils/phone'
+import {
+  PASSWORD_RULES, checkPassword, isPasswordValid, isPasswordTooLong, normalizeSpaces,
+  isValidEmail, isValidOwnerName, isValidCafeName, isValidStreet, isValidBuildingNumber,
+  isValidPostalCode, isValidCity, isValidCountry,
+} from '../utils/validation'
 
 const COUNTRY_CODES = `AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW`.split(' ')
+
+const PL_REGION_NAMES = new Intl.DisplayNames(['pl'], { type: 'region' })
+/** Wartość selecta kraju to polska nazwa — odwracamy ją na kod ISO (do domyślnego kierunkowego). */
+const countryCodeFromName = (name: string) => COUNTRY_CODES.find(c => PL_REGION_NAMES.of(c) === name) ?? null
 
 interface FormData {
   owner_name: string
   cafe_name: string
   email: string
   phone: string
+  phone_country: string
   password: string
   country: string
   city: string
@@ -32,6 +45,7 @@ const INITIAL: FormData = {
   cafe_name: '',
   email: '',
   phone: '',
+  phone_country: 'PL',
   password: '',
   country: '',
   city: '',
@@ -42,19 +56,36 @@ const INITIAL: FormData = {
   marketing: false,
 }
 
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
 export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
-  const { t, tApi, lang } = useI18n()
-  const [form, setForm] = useState<FormData>(() => ({ ...INITIAL, country: detectCountryName() }))
+  const { t, tApi, lang, locale } = useI18n()
+  const [form, setForm] = useState<FormData>(() => {
+    const country = detectCountryName()
+    return { ...INITIAL, country, phone_country: countryCodeFromName(country) ?? detectRegion() }
+  })
+  const [phoneCountryTouched, setPhoneCountryTouched] = useState(false)
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle')
+  const pwChecks = checkPassword(form.password)
   const timeZone = browserTimeZone()
   const countryNames = new Intl.DisplayNames([lang === 'pl' ? 'pl' : 'en'], { type: 'region' })
   const polishCountryNames = new Intl.DisplayNames(['pl'], { type: 'region' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+
+  useEffect(() => {
+    const email = form.email.trim().toLowerCase()
+    if (!isValidEmail(email)) { setEmailStatus('idle'); return }
+    setEmailStatus('checking')
+    const ctrl = new AbortController()
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_URL}/auth/email-available?email=${encodeURIComponent(email)}`, { signal: ctrl.signal })
+        if (!res.ok) throw new Error()
+        setEmailStatus((await res.json()).available ? 'available' : 'taken')
+      } catch (err) { if ((err as Error).name !== 'AbortError') setEmailStatus('error') }
+    }, 450)
+    return () => { clearTimeout(timer); ctrl.abort() }
+  }, [form.email])
 
   function set<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -65,17 +96,21 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
   // dzięki temu zmiana języka od razu zmienia też widoczne błędy.
   const validate = (): boolean => {
     const e: FieldErrors = {}
-    if (!form.owner_name.trim())         e.owner_name       = 'register.err.ownerName'
-    if (!form.cafe_name.trim())          e.cafe_name        = 'register.err.cafeName'
-    if (!isValidEmail(form.email))       e.email            = 'register.err.email'
-    if (!form.phone.trim())              e.phone            = 'register.err.phone'
-    if (form.password.length < 8)        e.password         = 'register.err.password'
-    if (!form.street.trim())             e.street           = 'register.err.street'
-    if (!form.building_number.trim())    e.building_number  = 'register.err.number'
-    if (!form.postal_code.trim())        e.postal_code      = 'register.err.postalCode'
-    if (!form.city.trim())               e.city             = 'register.err.city'
-    if (!form.country.trim())            e.country          = 'register.err.country'
-    if (!form.terms)                     e.terms            = 'register.err.terms'
+    const n = normalizeSpaces
+    if (!isValidOwnerName(n(form.owner_name))) e.owner_name = 'register.err.ownerName'
+    if (!isValidCafeName(n(form.cafe_name))) e.cafe_name = 'register.err.cafeName'
+    if (!isValidEmail(form.email.trim())) e.email = 'register.err.email'
+    else if (emailStatus === 'taken') e.email = 'register.err.emailTaken'
+    if (!form.phone) e.phone = 'register.err.phone'
+    else if (!buildPhone(form.phone_country, form.phone)) e.phone = 'register.err.phoneInvalid'
+    if (isPasswordTooLong(form.password)) e.password = 'register.err.passwordLong'
+    else if (!isPasswordValid(form.password)) e.password = 'register.err.passwordWeak'
+    if (!isValidStreet(n(form.street))) e.street = 'register.err.streetInvalid'
+    if (!isValidBuildingNumber(n(form.building_number))) e.building_number = 'register.err.numberInvalid'
+    if (!isValidPostalCode(n(form.postal_code))) e.postal_code = 'register.err.postalInvalid'
+    if (!isValidCity(n(form.city))) e.city = 'register.err.cityInvalid'
+    if (!isValidCountry(n(form.country))) e.country = 'register.err.country'
+    if (!form.terms) e.terms = 'register.err.terms'
     setFieldErrors(e)
     return Object.keys(e).length === 0
   }
@@ -87,28 +122,29 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
     setLoading(true)
 
     try {
+      const n = normalizeSpaces
       const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          owner_name: form.owner_name,
-          cafe_name: form.cafe_name,
-          email: form.email,
-          phone: form.phone,
+          owner_name: n(form.owner_name),
+          cafe_name: n(form.cafe_name),
+          email: form.email.trim().toLowerCase(),
+          phone: buildPhone(form.phone_country, form.phone),
           password: form.password,
           address: {
-            country: form.country.trim(),
-            city: form.city,
-            street: form.street,
-            building_number: form.building_number,
-            postal_code: form.postal_code,
+            country: n(form.country),
+            city: n(form.city),
+            street: n(form.street),
+            building_number: n(form.building_number),
+            postal_code: n(form.postal_code),
           },
           time_zone: timeZone || null,
         }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
       if (!res.ok) {
-        setError(tApi(data.detail, 'register.err.generic'))
+        setError(tApi(data?.detail, 'register.err.generic'))
         return
       }
       onSuccess()
@@ -145,39 +181,45 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
               onChange={e => set('owner_name', e.target.value)}
               placeholder={t('register.ownerNamePlaceholder')}
               autoComplete="name"
+              maxLength={100}
             />
             {err('owner_name')}
           </div>
 
-          <div className="field-row">
-            <div className="field field--grow">
-              <label className="field__label" htmlFor="reg-email">{t('register.email')}</label>
-              <input
-                id="reg-email"
-                type="email"
-                className={`field__input${fe.email ? ' field__input--error' : ''}`}
-                value={form.email}
-                onChange={e => set('email', e.target.value)}
-                placeholder={t('register.emailPlaceholder')}
-                autoComplete="email"
-              />
-              {err('email')}
-            </div>
-
-            <div className="field">
-              <label className="field__label" htmlFor="reg-phone">{t('register.phone')}</label>
-              <input
-                id="reg-phone"
-                type="tel"
-                className={`field__input${fe.phone ? ' field__input--error' : ''}`}
-                value={form.phone}
-                onChange={e => set('phone', e.target.value)}
-                placeholder="+48 123 456 789"
-                autoComplete="tel"
-              />
-              {err('phone')}
-            </div>
+          <div className="field">
+            <label className="field__label" htmlFor="reg-email">{t('register.email')}</label>
+            <input
+              id="reg-email"
+              type="email"
+              className={`field__input${fe.email ? ' field__input--error' : ''}`}
+              value={form.email}
+              onChange={e => set('email', e.target.value)}
+              placeholder={t('register.emailPlaceholder')}
+              autoComplete="email"
+              maxLength={254}
+            />
+            {fe.email ? err('email')
+              : emailStatus === 'checking' ? <span className="field__hint">{t('register.emailChecking')}</span>
+              : emailStatus === 'available' ? <span className="field__hint field__hint--ok"><Check size={13} /> {t('register.emailOk')}</span>
+              : emailStatus === 'taken' ? <span className="field__error">{t('register.err.emailTaken')}</span>
+              : null}
           </div>
+
+          <PhoneField
+            id="reg-phone"
+            label={t('register.phone')}
+            country={form.phone_country}
+            national={form.phone}
+            locale={locale}
+            labels={{ country: t('register.phone.country'), search: t('register.phone.search'), noResults: t('register.phone.none') }}
+            placeholder={t('register.phone.placeholder')}
+            error={fe.phone ? t(fe.phone) : undefined}
+            onChange={(country, national) => {
+              if (country !== form.phone_country) setPhoneCountryTouched(true)
+              setForm(prev => ({ ...prev, phone_country: country, phone: national }))
+              setFieldErrors(prev => ({ ...prev, phone: undefined }))
+            }}
+          />
 
           <div className="field">
             <label className="field__label" htmlFor="reg-password">{t('register.password')}</label>
@@ -191,6 +233,13 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
               autoComplete="new-password"
             />
             {err('password')}
+            <ul className="pw-rules" aria-live="polite">
+              {PASSWORD_RULES.map(r => (
+                <li key={r} className={`pw-rules__item${pwChecks[r] ? ' pw-rules__item--ok' : ''}`}>
+                  {pwChecks[r] ? <Check size={12} /> : <X size={12} />} {t(`register.pw.${r}`)}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
@@ -207,6 +256,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
               value={form.cafe_name}
               onChange={e => set('cafe_name', e.target.value)}
               placeholder={t('register.cafeNamePlaceholder')}
+              maxLength={150}
             />
             {err('cafe_name')}
           </div>
@@ -227,6 +277,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
                 onChange={e => set('street', e.target.value)}
                 placeholder="Marszałkowska"
                 autoComplete="street-address"
+                maxLength={150}
               />
               {err('street')}
             </div>
@@ -240,6 +291,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
                 value={form.building_number}
                 onChange={e => set('building_number', e.target.value)}
                 placeholder="12A"
+                maxLength={20}
               />
               {err('building_number')}
             </div>
@@ -256,6 +308,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
                 onChange={e => set('postal_code', e.target.value)}
                 placeholder="00-001"
                 autoComplete="postal-code"
+                maxLength={20}
               />
               {err('postal_code')}
             </div>
@@ -270,6 +323,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
                 onChange={e => set('city', e.target.value)}
                 placeholder="Warszawa"
                 autoComplete="address-level2"
+                maxLength={100}
               />
               {err('city')}
             </div>
@@ -281,7 +335,12 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
               id="reg-country"
               className={`field__input${fe.country ? ' field__input--error' : ''}`}
               value={form.country}
-              onChange={e => set('country', e.target.value)}
+              onChange={e => {
+                const value = e.target.value
+                set('country', value)
+                const code = countryCodeFromName(value)
+                if (!phoneCountryTouched && code) set('phone_country', code)
+              }}
               autoComplete="country-name"
             >
               <option value="">{lang === 'pl' ? 'Wybierz kraj' : 'Select a country'}</option>

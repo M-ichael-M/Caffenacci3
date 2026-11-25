@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.core.database import get_db          # ← tego brakowało
 from app.core.languages import DEFAULT_PRIMARY_LANGUAGE
@@ -8,10 +9,17 @@ from app.core.security import create_access_token, hash_password, verify_passwor
 from app.core.slugs import generate_unique_slug
 from app.models.cafe import Cafe
 from app.models.translation import CafeLanguageSettings
-from app.schemas.cafe import LoginIn, RegisterIn, RegisterOut, TokenOut
+from app.schemas.cafe import LoginIn, RegisterIn, RegisterOut, TokenOut, EmailAvailabilityOut
 from app.routers.me import get_current_cafe
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.get("/email-available", response_model=EmailAvailabilityOut,
+            summary="Sprawdź czy adres e-mail jest wolny")
+def check_email(email: str = Query(..., max_length=254), db: Session = Depends(get_db)):
+    exists = db.query(Cafe.id).filter(func.lower(Cafe.email) == email.strip().lower()).first()
+    return EmailAvailabilityOut(email=email, available=exists is None)
 
 
 @router.post("/refresh", response_model=TokenOut, summary="Odnów token właściciela")
@@ -33,7 +41,7 @@ def refresh(current_cafe: Cafe = Depends(get_current_cafe)):
 )
 def register(payload: RegisterIn, db: Session = Depends(get_db)):
     # Sprawdź unikalność emaila
-    existing = db.query(Cafe).filter(Cafe.email == payload.email).first()
+    existing = db.query(Cafe).filter(func.lower(Cafe.email) == payload.email).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -82,7 +90,7 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     summary="Logowanie właściciela kawiarni",
 )
 def login(payload: LoginIn, db: Session = Depends(get_db)):
-    cafe = db.query(Cafe).filter(Cafe.email == payload.email).first()
+    cafe = db.query(Cafe).filter(func.lower(Cafe.email) == payload.email.lower()).first()
 
     if not cafe or not verify_password(payload.password, cafe.password_hash):
         raise HTTPException(

@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 import string
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -15,7 +15,7 @@ from app.models.client import Client
 from app.schemas.client import (
     ClientRegisterIn, ClientRegisterOut,
     ClientLoginIn, ClientTokenOut,
-    ClientProfileOut, NickAvailabilityOut,
+    ClientProfileOut, NickAvailabilityOut, EmailAvailabilityOut,
 )
 
 router = APIRouter(prefix="/client-auth", tags=["client-auth"])
@@ -82,6 +82,13 @@ def check_nick(nick: str, db: Session = Depends(get_db)):
     return NickAvailabilityOut(nick=nick, available=exists is None)
 
 
+@router.get("/email-available", response_model=EmailAvailabilityOut,
+            summary="Sprawdź czy adres e-mail jest wolny")
+def check_email(email: str = Query(..., max_length=254), db: Session = Depends(get_db)):
+    exists = db.query(Client.id).filter(func.lower(Client.email) == email.strip().lower()).first()
+    return EmailAvailabilityOut(email=email, available=exists is None)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # REJESTRACJA
 # ══════════════════════════════════════════════════════════════════════════════
@@ -93,7 +100,7 @@ def check_nick(nick: str, db: Session = Depends(get_db)):
     summary="Rejestracja nowego użytkownika",
 )
 def register(payload: ClientRegisterIn, db: Session = Depends(get_db)):
-    existing_email = db.query(Client).filter(Client.email == payload.email).first()
+    existing_email = db.query(Client).filter(func.lower(Client.email) == payload.email).first()
     if existing_email:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -146,7 +153,7 @@ def register(payload: ClientRegisterIn, db: Session = Depends(get_db)):
     summary="Logowanie użytkownika",
 )
 def login(payload: ClientLoginIn, db: Session = Depends(get_db)):
-    client = db.query(Client).filter(Client.email == payload.email).first()
+    client = db.query(Client).filter(func.lower(Client.email) == payload.email.lower()).first()
 
     if not client or not verify_password(payload.password, client.password_hash):
         raise HTTPException(

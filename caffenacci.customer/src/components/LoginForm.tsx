@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { API_URL } from '../config'
+import { apiErrorText } from '../i18n/apiError'
 import { useI18n } from '../i18n/I18nProvider'
 
 interface LoginResponse {
@@ -33,15 +34,16 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, registerSucce
       const res = await fetch(`${API_URL}/client-auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
       if (!res.ok) {
-        throw new Error(data.detail || t('login.err_credentials'))
+        setError(apiErrorText(data?.detail, t, 'login.err_credentials'))
+        return
       }
       onSuccess(data as LoginResponse)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('login.err_unexpected'))
+    } catch {
+      setError(t('login.err_unexpected'))
     } finally {
       setLoading(false)
     }

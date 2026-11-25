@@ -1,12 +1,20 @@
-import { useState, useEffect, useRef } from 'react'
-import { Check } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Check, X } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n/I18nProvider'
+import { apiErrorText } from '../i18n/apiError'
+import PhoneField from './PhoneField'
+import { buildPhone, detectRegion } from '../utils/phone'
+import {
+  PASSWORD_RULES, checkPassword, isPasswordValid, isPasswordTooLong,
+  isValidEmail, isValidNick, normalizeSpaces,
+} from '../utils/validation'
 
 interface FormData {
   full_name: string
   nick: string
   email: string
+  phone_country: string
   phone: string
   password: string
   password_confirm: string
@@ -15,7 +23,7 @@ interface FormData {
 }
 
 type FieldErrors = Partial<Record<keyof FormData, string>>
-type NickStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error'
+type AvailStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error'
 
 interface Props {
   onSuccess: () => void
@@ -26,6 +34,7 @@ const INITIAL: FormData = {
   full_name: '',
   nick: '',
   email: '',
+  phone_country: 'PL',
   phone: '',
   password: '',
   password_confirm: '',
@@ -33,60 +42,66 @@ const INITIAL: FormData = {
   accept_privacy: false,
 }
 
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
 export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
-  const { t } = useI18n()
-  const [form, setForm] = useState<FormData>(INITIAL)
+  const { t, language } = useI18n()
+  const [form, setForm] = useState<FormData>(() => ({ ...INITIAL, phone_country: detectRegion() }))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
-  const [nickStatus, setNickStatus] = useState<NickStatus>('idle')
-  const nickCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [nickStatus, setNickStatus] = useState<AvailStatus>('idle')
+  const [emailStatus, setEmailStatus] = useState<AvailStatus>('idle')
+  const pwChecks = checkPassword(form.password)
 
   function set<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
     setFieldErrors(prev => ({ ...prev, [key]: undefined }))
   }
 
-  // ── Sprawdzanie dostępności nicku na żywo ──────────────────────────────
   useEffect(() => {
-    if (nickCheckTimer.current) clearTimeout(nickCheckTimer.current)
-
     const nick = form.nick.trim()
-    if (nick.length < 3) {
-      setNickStatus('idle')
-      return
-    }
-
+    if (!isValidNick(nick)) { setNickStatus('idle'); return }
     setNickStatus('checking')
-    nickCheckTimer.current = setTimeout(async () => {
+    const ctrl = new AbortController()
+    const timer = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `${API_URL}/client-auth/nick-available?nick=${encodeURIComponent(nick)}`
-        )
+        const res = await fetch(`${API_URL}/client-auth/nick-available?nick=${encodeURIComponent(nick)}`, { signal: ctrl.signal })
         if (!res.ok) throw new Error()
-        const data = await res.json()
-        setNickStatus(data.available ? 'available' : 'taken')
-      } catch {
-        setNickStatus('error')
-      }
+        setNickStatus((await res.json()).available ? 'available' : 'taken')
+      } catch (err) { if ((err as Error).name !== 'AbortError') setNickStatus('error') }
     }, 450)
-
-    return () => {
-      if (nickCheckTimer.current) clearTimeout(nickCheckTimer.current)
-    }
+    return () => { clearTimeout(timer); ctrl.abort() }
   }, [form.nick])
+
+  useEffect(() => {
+    const email = form.email.trim().toLowerCase()
+    if (!isValidEmail(email)) { setEmailStatus('idle'); return }
+    setEmailStatus('checking')
+    const ctrl = new AbortController()
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_URL}/client-auth/email-available?email=${encodeURIComponent(email)}`, { signal: ctrl.signal })
+        if (!res.ok) throw new Error()
+        setEmailStatus((await res.json()).available ? 'available' : 'taken')
+      } catch (err) { if ((err as Error).name !== 'AbortError') setEmailStatus('error') }
+    }, 450)
+    return () => { clearTimeout(timer); ctrl.abort() }
+  }, [form.email])
 
   const validate = (): boolean => {
     const e: FieldErrors = {}
-    if (!form.full_name.trim())                  e.full_name         = t('reg.err_full_name')
-    if (form.nick.trim().length < 3)              e.nick              = t('reg.err_nick_short')
-    else if (nickStatus === 'taken')              e.nick              = t('reg.nick_taken')
-    if (!isValidEmail(form.email))                e.email             = t('reg.err_email')
-    if (form.password.length < 8)                 e.password          = t('reg.err_password_short')
+    const name = normalizeSpaces(form.full_name)
+    const nick = form.nick.trim()
+    const email = form.email.trim()
+
+    if (name.length < 2 || name.length > 150)    e.full_name = t('reg.err_full_name')
+    if (nick.length < 3)                         e.nick = t('reg.err_nick_short')
+    else if (!isValidNick(nick))                 e.nick = t('reg.err_nick_chars')
+    else if (nickStatus === 'taken')             e.nick = t('reg.nick_taken')
+    if (!isValidEmail(email))                    e.email = t('reg.err_email')
+    else if (emailStatus === 'taken')            e.email = t('reg.email_taken')
+    if (form.phone && !buildPhone(form.phone_country, form.phone)) e.phone = t('reg.err_phone')
+    if (isPasswordTooLong(form.password))        e.password = t('reg.err_password_long')
+    else if (!isPasswordValid(form.password))    e.password = t('reg.err_password_weak')
     if (form.password_confirm !== form.password)  e.password_confirm  = t('reg.err_password_mismatch')
     if (!form.accept_terms)                       e.accept_terms      = t('reg.err_terms')
     if (!form.accept_privacy)                     e.accept_privacy    = t('reg.err_privacy')
@@ -105,23 +120,24 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          full_name: form.full_name,
-          nick: form.nick,
-          email: form.email,
-          phone: form.phone || null,
+          full_name: normalizeSpaces(form.full_name),
+          nick: form.nick.trim(),
+          email: form.email.trim().toLowerCase(),
+          phone: form.phone ? buildPhone(form.phone_country, form.phone) : null,
           password: form.password,
           password_confirm: form.password_confirm,
           accept_terms: form.accept_terms,
           accept_privacy: form.accept_privacy,
         }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
       if (!res.ok) {
-        throw new Error(data.detail || t('reg.err_generic'))
+        setError(apiErrorText(data?.detail, t, 'reg.err_generic'))
+        return
       }
       onSuccess()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('reg.err_unexpected'))
+    } catch {
+      setError(t('reg.err_unexpected'))
     } finally {
       setLoading(false)
     }
@@ -152,6 +168,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
               onChange={e => set('full_name', e.target.value)}
               placeholder="Anna Kowalska"
               autoComplete="name"
+              maxLength={150}
             />
             {fe.full_name && <span className="field__error">{fe.full_name}</span>}
           </div>
@@ -166,6 +183,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
               onChange={e => set('nick', e.target.value)}
               placeholder="anna_k"
               autoComplete="username"
+              maxLength={40}
             />
             {fe.nick ? (
               <span className="field__error">{fe.nick}</span>
@@ -180,8 +198,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
             ) : null}
           </div>
 
-          <div className="field-row">
-            <div className="field field--grow">
+          <div className="field">
               <label className="field__label" htmlFor="reg-email">{t('reg.email')}</label>
               <input
                 id="reg-email"
@@ -191,23 +208,35 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
                 onChange={e => set('email', e.target.value)}
                 placeholder="anna@przyklad.pl"
                 autoComplete="email"
+                maxLength={254}
               />
-              {fe.email && <span className="field__error">{fe.email}</span>}
-            </div>
-
-            <div className="field">
-              <label className="field__label" htmlFor="reg-phone">{t('reg.phone_opt')}</label>
-              <input
-                id="reg-phone"
-                type="tel"
-                className="field__input"
-                value={form.phone}
-                onChange={e => set('phone', e.target.value)}
-                placeholder="+48 123 456 789"
-                autoComplete="tel"
-              />
-            </div>
+              {fe.email ? (
+                <span className="field__error">{fe.email}</span>
+              ) : emailStatus === 'checking' ? (
+                <span className="field__hint">{t('reg.email_checking')}</span>
+              ) : emailStatus === 'available' ? (
+                <span className="field__hint field__hint--ok" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <Check size={13} /> {t('reg.email_ok')}
+                </span>
+              ) : emailStatus === 'taken' ? (
+                <span className="field__error">{t('reg.email_taken')}</span>
+              ) : null}
           </div>
+
+          <PhoneField
+            id="reg-phone"
+            label={t('reg.phone_opt')}
+            country={form.phone_country}
+            national={form.phone}
+            locale={language.locale}
+            labels={{ country: t('reg.phone_country'), search: t('reg.phone_search'), noResults: t('reg.phone_none') }}
+            placeholder={t('reg.phone_ph')}
+            error={fe.phone}
+            onChange={(country, national) => {
+              setForm(prev => ({ ...prev, phone_country: country, phone: national }))
+              setFieldErrors(prev => ({ ...prev, phone: undefined }))
+            }}
+          />
         </div>
 
         {/* ── Hasło ── */}
@@ -226,6 +255,13 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }: Props) {
               autoComplete="new-password"
             />
             {fe.password && <span className="field__error">{fe.password}</span>}
+            <ul className="pw-rules" aria-live="polite">
+              {PASSWORD_RULES.map(r => (
+                <li key={r} className={`pw-rules__item${pwChecks[r] ? ' pw-rules__item--ok' : ''}`}>
+                  {pwChecks[r] ? <Check size={12} /> : <X size={12} />} {t(`reg.pw_${r}`)}
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="field">
