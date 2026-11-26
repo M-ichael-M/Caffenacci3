@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { CalendarDays, Users, X, RefreshCw, ArrowRight } from 'lucide-react'
 import { API_URL } from '../../config'
 import { useI18n } from '../../i18n/I18nProvider'
 import { formatDate, type LocaleFormat } from '../../i18n/localeFormat'
 import type { TFunction } from '../../i18n/system'
-import { wallToEpoch } from '../../utils/cafeTime'
+import { addDays, wallToEpoch } from '../../utils/cafeTime'
+import { usePaged } from '../../hooks/usePaged'
 
 type ResStatus = 'pending' | 'confirmed' | 'cancelled'
 
@@ -47,6 +48,9 @@ function startTimestamp(r: ClientReservation): number {
 function isPast(r: ClientReservation): boolean {
   return startTimestamp(r) + 60 * 60 * 1000 < Date.now()
 }
+
+/** Graniczna data (UTC − 2 dni): wcześniejsze rezerwacje na pewno już minęły. Dokładny podział robi isPast(). */
+const sinceDate = () => addDays(new Date().toISOString().slice(0, 10), -2)
 
 const CANCEL_DEADLINE_MS = 30 * 60 * 1000
 
@@ -206,26 +210,47 @@ function ReservationDetailModal({ r, onClose }: { r: ClientReservation; onClose:
 
 export default function MyReservationsTab({ token }: Props) {
   const { t } = useI18n()
-  const [reservations, setReservations] = useState<ClientReservation[]>([])
-  const [loading, setLoading] = useState(true)
+  const [upcoming, setUpcoming] = useState<ClientReservation[]>([])
+  const [loadingUpcoming, setLoadingUpcoming] = useState(true)
   const [activeSub, setActiveSub] = useState<'current' | 'history'>('current')
   const [detail, setDetail] = useState<ClientReservation | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [cancelError, setCancelError] = useState<string | null>(null)
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
+  // Nadchodzące (+ kilka ostatnich dni, które isPast przesunie do historii) — w całości
+  const fetchUpcoming = useCallback(async () => {
+    setLoadingUpcoming(true)
     try {
-      const res = await fetch(`${API_URL}/reservations/client/mine`, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.ok) {
-        const data = await res.json()
-        setReservations(data.reservations ?? [])
-      }
+      const res = await fetch(
+        `${API_URL}/reservations/client/mine?scope=upcoming&since=${sinceDate()}&limit=200`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      if (res.ok) setUpcoming((await res.json()).reservations ?? [])
     } catch { /* ignore */ }
-    finally { setLoading(false) }
+    finally { setLoadingUpcoming(false) }
   }, [token])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  // Starsze + anulowane — porcjami
+  const loadHistory = useCallback(async (offset: number, limit: number) => {
+    try {
+      const qs = `scope=history&since=${sinceDate()}&limit=${limit}&offset=${offset}`
+      const res = await fetch(`${API_URL}/reservations/client/mine?${qs}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return null
+      const d = await res.json()
+      return { items: (d.reservations ?? []) as ClientReservation[], hasMore: !!d.has_more }
+    } catch { return null }
+  }, [token])
+  const history = usePaged<ClientReservation>(loadHistory, activeSub === 'history')
+
+  useEffect(() => { fetchUpcoming() }, [fetchUpcoming])
+
+  const refresh = () => {
+    fetchUpcoming()
+    if (activeSub === 'history') history.reload()
+    else history.invalidate()
+  }
 
   const handleCancel = async (r: ClientReservation) => {
     if (!confirm(t('resv.confirm'))) return
@@ -238,30 +263,29 @@ export default function MyReservationsTab({ token }: Props) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : t('resv.err_cancel'))
-      setReservations(prev => prev.map(x => x.id === r.id ? { ...x, status: data.status, cancelled_by: data.cancelled_by } : x))
+      setUpcoming(prev => prev.filter(x => x.id !== r.id))
+      history.invalidate()
     } catch (err: unknown) {
       setCancelError(err instanceof Error ? err.message : t('resv.err_cancel'))
     } finally { setCancellingId(null) }
   }
 
-  const current = reservations
-    .filter(r => !isPast(r) && r.status !== 'cancelled')
+  const current = upcoming
+    .filter(r => !isPast(r))
     .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
 
-  const history = reservations
-    .filter(r => isPast(r) || r.status === 'cancelled')
-    .sort((a, b) => b.date.localeCompare(a.date) || b.start_time.localeCompare(a.start_time))
+  // Historia = świeżo minione z listy „nadchodzących” + strony z serwera (bez duplikatów)
+  const historyList = useMemo(() => {
+    const map = new Map<string, ClientReservation>()
+    for (const r of upcoming) if (isPast(r)) map.set(r.id, r)
+    for (const r of history.items) map.set(r.id, r)
+    return [...map.values()].sort((a, b) => b.date.localeCompare(a.date) || b.start_time.localeCompare(a.start_time))
+  }, [upcoming, history.items])
 
-  if (loading) {
-    return (
-      <div className="loading-state">
-        <div className="loading-spinner" />
-        <p>{t('resv.loading')}</p>
-      </div>
-    )
-  }
-
-  const list = activeSub === 'current' ? current : history
+  const list = activeSub === 'current' ? current : historyList
+  const spinner = activeSub === 'current'
+    ? loadingUpcoming && upcoming.length === 0
+    : (!history.loaded || history.loading) && historyList.length === 0
 
   return (
     <>
@@ -273,7 +297,7 @@ export default function MyReservationsTab({ token }: Props) {
             <div className="page-header__eyebrow">{t('acc.eyebrow')}</div>
             <h1 className="page-header__title" style={{ fontSize: '1.625rem' }}>{t('resv.title')}</h1>
           </div>
-          <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={fetchAll}>
+          <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={refresh}>
             <RefreshCw size={15} />
             {t('acc.refresh')}
           </button>
@@ -286,13 +310,17 @@ export default function MyReservationsTab({ token }: Props) {
           </button>
           <button type="button" className={`subtab-btn${activeSub === 'history' ? ' subtab-btn--active' : ''}`} onClick={() => setActiveSub('history')}>
             {t('resv.tab_history')}
-            {history.length > 0 && <span className="subtab-badge subtab-badge--muted">{history.length}</span>}
           </button>
         </div>
 
         {cancelError && <div className="form-error" role="alert">{cancelError}</div>}
 
-        {list.length === 0 ? (
+        {spinner ? (
+          <div className="loading-state">
+            <div className="loading-spinner" />
+            <p>{t('resv.loading')}</p>
+          </div>
+        ) : list.length === 0 ? (
           <div className="res-empty-card">
             <div className="res-empty-icon"><CalendarDays size={44} strokeWidth={1.4} /></div>
             <div className="res-empty-title">
@@ -316,6 +344,13 @@ export default function MyReservationsTab({ token }: Props) {
                 />
               )
             })}
+            {activeSub === 'history' && history.hasMore && (
+              <button type="button" className="btn btn--outline-dark"
+                style={{ alignSelf: 'center', width: 'auto' }}
+                onClick={history.more} disabled={history.loadingMore}>
+                {history.loadingMore ? t('acc.loading_more') : t('acc.load_more')}
+              </button>
+            )}
           </div>
         )}
       </div>

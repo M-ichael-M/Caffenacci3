@@ -34,6 +34,8 @@ from app.schemas.order import (
     MAX_ORDER_DAYS_AHEAD,
     ClientOrderOut, ClientOrderListOut,   # ← nowe
 )
+from app.core.pagination import DATE_PATTERN, LIST_LIMIT, check_date_range, fetch_page
+
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 bearer_scheme = HTTPBearer()
@@ -299,16 +301,21 @@ def cancel_order_public(
     summary="Pobierz wszystkie zamówienia zalogowanego klienta (wszystkie kawiarnie)",
 )
 def list_my_orders(
+    status_filter: list[str] = Query(default=[], alias="status"),
+    limit:  int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     current_client: Client = Depends(get_current_client),
-    db:             Session = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    rows = (
-        db.query(Order)
-        .options(selectinload(Order.items))
-        .filter(Order.client_id == current_client.id)
-        .order_by(Order.created_at.desc())
-        .all()
-    )
+    q = (db.query(Order).options(selectinload(Order.items))
+         .filter(Order.client_id == current_client.id))
+    if status_filter:
+        try:
+            q = q.filter(Order.status.in_([OrderStatus(s) for s in status_filter]))
+        except ValueError:
+            raise HTTPException(400, detail="Nieprawidłowy status.")
+    q = q.order_by(Order.created_at.desc(), Order.id.desc())
+    rows, has_more = fetch_page(q, limit, offset)
 
     cafe_ids = {o.cafe_id for o in rows}
     cafes = {c.id: c for c in db.query(Cafe).filter(Cafe.id.in_(cafe_ids)).all()} if cafe_ids else {}
@@ -322,7 +329,7 @@ def list_my_orders(
         )
         for o in rows
     ]
-    return ClientOrderListOut(orders=result)
+    return ClientOrderListOut(orders=result, has_more=has_more)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -368,19 +375,26 @@ def cancel_order_as_client(
 
 @router.get("", response_model=OrderListOut, summary="Pobierz zamówienia (właściciel/pracownik)")
 def list_orders(
-    status_filter: str | None = Query(None, alias="status"),
+    status_filter: list[str] = Query(default=[], alias="status"),
+    date_from: str | None = Query(None, pattern=DATE_PATTERN),
+    date_to:   str | None = Query(None, pattern=DATE_PATTERN),
+    limit: int = Query(LIST_LIMIT, ge=1, le=LIST_LIMIT),
     cafe_id: str = Depends(get_current_cafe_id),
     db: Session = Depends(get_db),
 ):
+    check_date_range(date_from, date_to)
     q = db.query(Order).options(selectinload(Order.items)).filter(Order.cafe_id == cafe_id)
     if status_filter:
         try:
-            st = OrderStatus(status_filter)
-            q = q.filter(Order.status == st)
+            q = q.filter(Order.status.in_([OrderStatus(s) for s in status_filter]))
         except ValueError:
-            raise HTTPException(400, detail=f"Nieprawidłowy status: {status_filter}")
-    rows = q.order_by(Order.date, Order.start_time).all()
-    return OrderListOut(orders=rows)
+            raise HTTPException(400, detail=f"Nieprawidłowy status: {', '.join(status_filter)}")
+    if date_from:
+        q = q.filter(Order.date >= date_from)
+    if date_to:
+        q = q.filter(Order.date <= date_to)
+    rows, has_more = fetch_page(q.order_by(Order.date, Order.start_time, Order.id), limit)
+    return OrderListOut(orders=rows, has_more=has_more)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -45,6 +45,7 @@
   "acc.loyalty_note": "Ten sam kod działa we wszystkich kawiarniach Caffenacci — każda prowadzi własny, niezależny program.",
   "acc.see_cafes": "Zobacz moje kawiarnie", "acc.quick": "Szybki dostęp",
   "acc.my_reservations": "Twoje rezerwacje", "acc.my_orders": "Twoje zamówienia", "acc.my_reviews": "Twoje opinie",
+  "acc.load_more": "Pokaż więcej", "acc.loading_more": "Wczytywanie…",
 
   "loy.show_code": "Pokaż mój kod lojalnościowy", "loy.your_code": "Twój kod",
   "loy.show_staff": "Pokaż ten kod obsłudze kawiarni, aby naliczyć punkty lub pieczątki.",

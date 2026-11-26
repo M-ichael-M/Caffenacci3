@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Check, X, Inbox, ClipboardList, CheckCircle2, XCircle, Link as LinkIcon, RefreshCw,
 } from 'lucide-react'
@@ -6,6 +6,9 @@ import { API_URL } from '../config'
 import { useI18n } from '../i18n'
 import { useCafeSettings } from './CafeSettingsContext'
 import { parseUtc } from '../utils/cafeTime'
+import WeekNav from './WeekNav' 
+import { useWeek } from '../hooks/useWeek'
+
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -408,39 +411,63 @@ function HistoryCard({ r, onDelete }: { r: ReservationOut; onDelete: (id: string
 
 export default function SimpleReservationTab({ token, cafeId }: Props) {
   const { t } = useI18n()
-  const [pending,   setPending]   = useState<ReservationOut[]>([])
-  const [history,   setHistory]   = useState<ReservationOut[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [deciding,  setDeciding]  = useState<{ r: ReservationOut; action: 'confirmed' | 'cancelled' } | null>(null)
-  const [saving,    setSaving]    = useState(false)
-  const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
+  const week = useWeek()
 
-  const fetchAll = useCallback(async () => {
+  const [pending,          setPending]          = useState<ReservationOut[]>([])
+  const [history,          setHistory]          = useState<ReservationOut[]>([])
+  const [loading,          setLoading]          = useState(true)
+  const [loadingHistory,   setLoadingHistory]   = useState(false)
+  const [historyTruncated, setHistoryTruncated] = useState(false)
+  const [deciding,         setDeciding]         = useState<{ r: ReservationOut; action: 'confirmed' | 'cancelled' } | null>(null)
+  const [saving,           setSaving]           = useState(false)
+  const [activeTab,        setActiveTab]        = useState<'pending' | 'history'>('pending')
+
+  const historyReq = useRef(0)
+
+  const fetchPending = useCallback(async () => {
     setLoading(true)
     try {
-      const [pendingRes, historyRes] = await Promise.all([
-        fetch(`${API_URL}/reservations?status=pending`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_URL}/reservations`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ])
-
-      if (pendingRes.ok) {
-        const data = await pendingRes.json()
+      const res = await fetch(`${API_URL}/reservations?status=pending`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
         setPending(data.reservations ?? [])
-      }
-      if (historyRes.ok) {
-        const data = await historyRes.json()
-        const all = data.reservations ?? []
-        setHistory(all.filter((r: ReservationOut) => r.status !== 'pending'))
       }
     } catch { /* ignore */ }
     finally { setLoading(false) }
   }, [token])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  const fetchHistory = useCallback(async (from: string, to: string) => {
+    const id = ++historyReq.current
+    setLoadingHistory(true)
+    try {
+      const qs = `status=confirmed&status=cancelled&date_from=${from}&date_to=${to}`
+      const res = await fetch(`${API_URL}/reservations?${qs}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok && id === historyReq.current) {
+        const data = await res.json()
+        setHistory(data.reservations ?? [])
+        setHistoryTruncated(!!data.has_more)
+      }
+    } catch { /* ignore */ }
+    finally {
+      if (id === historyReq.current) setLoadingHistory(false)
+    }
+  }, [token])
+
+  // Initial + pending always
+  useEffect(() => {
+    fetchPending()
+  }, [fetchPending])
+
+  // History only when tab is active
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchHistory(week.start, week.end)
+    }
+  }, [activeTab, week.start, week.end, fetchHistory])
 
   // ── Decision handler ──────────────────────────────────────────────────
 
@@ -459,7 +486,9 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
       if (!res.ok) throw new Error()
       const updated: ReservationOut = await res.json()
       setPending(prev => prev.filter(r => r.id !== updated.id))
-      setHistory(prev => [updated, ...prev])
+      if (week.contains(updated.date)) {
+        setHistory(prev => [updated, ...prev])
+      }
       setDeciding(null)
     } catch {
       // keep modal open
@@ -480,7 +509,7 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
 
   // ── Render ────────────────────────────────────────────────────────────
 
-  if (loading) {
+  if (loading && activeTab === 'pending') {
     return (
       <div className="loading-state">
         <div className="loading-spinner" />
@@ -548,7 +577,10 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
             <button
               className="btn btn--outline-dark"
               style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-              onClick={fetchAll}
+              onClick={() => {
+                fetchPending()
+                if (activeTab === 'history') fetchHistory(week.start, week.end)
+              }}
             >
               <RefreshCw size={15} />
               {t('common.refresh')}
@@ -638,7 +670,13 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
         {/* ── History list ───────────────────────────────────────────────── */}
         {activeTab === 'history' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-            {history.length === 0 ? (
+            <WeekNav week={week} />
+
+            {loadingHistory ? (
+              <div className="loading-state" style={{ padding: '2rem 0' }}>
+                <div className="loading-spinner" />
+              </div>
+            ) : history.length === 0 ? (
               <div className="res-empty-card">
                 <div className="res-empty-icon"><ClipboardList size={44} strokeWidth={1.4} /></div>
                 <div className="res-empty-title">{t('resSimple.empty.history.title')}</div>
@@ -651,10 +689,17 @@ export default function SimpleReservationTab({ token, cafeId }: Props) {
                     confirmed: history.filter(r => r.status === 'confirmed').length,
                     cancelled: history.filter(r => r.status === 'cancelled').length,
                   })}
+                  {historyTruncated && (
+                    <span style={{ marginLeft: '0.5rem', opacity: 0.7 }}>
+                      ({t('common.truncated')})
+                    </span>
+                  )}
                 </div>
                 {history
                   .slice()
-                  .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+                  .sort((a, b) =>
+                    b.date.localeCompare(a.date) || b.start_time.localeCompare(a.start_time)
+                  )
                   .map(r => (
                     <HistoryCard key={r.id} r={r} onDelete={handleDelete} />
                   ))}

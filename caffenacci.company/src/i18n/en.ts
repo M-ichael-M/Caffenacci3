@@ -834,6 +834,14 @@ export const en: Record<Exclude<keyof typeof pl, PolishOnlyPlural>, string> = {
   'profile.err.galleryDelete': 'Failed to remove the photo.',
   'profile.err.exceptionSave': 'Failed to save the exception.',
   'profile.err.invite': 'Failed to send the invitation.',
+  'week.prev': 'Previous week',
+  'week.next': 'Next week',
+  'week.current': 'Back to the current week',
+  'week.empty.title': 'Nothing in this week',
+  'week.empty.sub': 'Go to another week to see older or newer entries.',
+  'week.truncated': 'Only part of this week’s results is shown.',
+  'pagination.loadMore': 'Show more',
+  'common.loading': 'Loading…',
 }
 
 // Backend zwraca komunikaty błędów po polsku — tu mapujemy je na angielski.
@@ -935,6 +943,9 @@ export const enApiErrors: Record<string, string> = {
   'Logo jest w całości przezroczyste — nie ma z czego wygenerować palety.': 'The logo is fully transparent — there is nothing to generate a palette from.',
   'Nie udało się połączyć z serwerem, aby pobrać logo. Spróbuj ponownie.': 'Could not connect to the server to download the logo. Please try again.',
   'Nie udało się pobrać pliku logo.': 'Failed to download the logo file.',
+  'Nieprawidłowa data.': 'Invalid date.',
+  'Data początkowa jest późniejsza niż końcowa.': 'The start date is later than the end date.',
+  'Zakres dat jest zbyt duży.': 'The date range is too large.',
 }
 
 export const enApiPatterns: [RegExp, (m: RegExpMatchArray) => string][] = [

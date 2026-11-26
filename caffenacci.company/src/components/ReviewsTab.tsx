@@ -61,23 +61,40 @@ function ReviewCard({ r }: { r: ReviewOut }) {
 // MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════════════════
 
+const PAGE = 20
+
 export default function ReviewsTab({ token }: Props) {
   const { t, locale } = useI18n()
-  const [data, setData]       = useState<ReviewListOut | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [reviews, setReviews]     = useState<ReviewOut[]>([])
+  const [avg, setAvg]             = useState(0)
+  const [count, setCount]         = useState(0)
+  const [loading, setLoading]     = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
 
-  const fetchReviews = useCallback(async () => {
-    setLoading(true)
+  const fetchPage = useCallback(async (offset: number) => {
+    offset === 0 ? setLoading(true) : setLoadingMore(true)
     try {
-      const res = await fetch(`${API_URL}/reviews`, {
+      const res = await fetch(`${API_URL}/reviews?offset=${offset}&limit=${PAGE}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (res.ok) setData(await res.json())
+      if (res.ok) {
+        const d: ReviewListOut = await res.json()
+        setAvg(d.average_rating)
+        setCount(d.count)
+        setReviews(prev =>
+          offset === 0
+            ? d.reviews
+            : [...prev, ...d.reviews.filter(r => !prev.some(p => p.id === r.id))]
+        )
+      }
     } catch { /* ignore */ }
-    finally { setLoading(false) }
+    finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
   }, [token])
 
-  useEffect(() => { fetchReviews() }, [fetchReviews])
+  useEffect(() => { fetchPage(0) }, [fetchPage])
 
   if (loading) {
     return (
@@ -87,10 +104,6 @@ export default function ReviewsTab({ token }: Props) {
       </div>
     )
   }
-
-  const reviews = data?.reviews ?? []
-  const avg     = data?.average_rating ?? 0
-  const count   = data?.count ?? 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -108,7 +121,7 @@ export default function ReviewsTab({ token }: Props) {
         <button
           className="btn btn--outline-dark"
           style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-          onClick={fetchReviews}
+          onClick={() => fetchPage(0)}
         >
           <RefreshCw size={15} />
           {t('common.refresh')}
@@ -128,7 +141,6 @@ export default function ReviewsTab({ token }: Props) {
         </div>
       </div>
 
-
       {/* ── Lista opinii ───────────────────────────────────────────────── */}
       {reviews.length === 0 ? (
         <div className="res-empty-card">
@@ -140,6 +152,19 @@ export default function ReviewsTab({ token }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
           {reviews.map(r => <ReviewCard key={r.id} r={r} />)}
         </div>
+      )}
+
+      {/* ── Load more ──────────────────────────────────────────────────── */}
+      {reviews.length < count && (
+        <button
+          type="button"
+          className="btn btn--outline-dark"
+          style={{ width: 'auto', alignSelf: 'center' }}
+          onClick={() => fetchPage(reviews.length)}
+          disabled={loadingMore}
+        >
+          {loadingMore ? t('common.loading') : t('pagination.loadMore')}
+        </button>
       )}
     </div>
   )

@@ -5,6 +5,7 @@ import { useI18n } from '../../i18n/I18nProvider'
 import { formatCurrency, formatDate, type LocaleFormat } from '../../i18n/localeFormat'
 import type { TFunction } from '../../i18n/system'
 import { wallToEpoch } from '../../utils/cafeTime'
+import { usePaged } from '../../hooks/usePaged'
 
 type OrderStatusType = 'pending' | 'completed' | 'cancelled'
 
@@ -123,25 +124,45 @@ function OrderCard({ o, onCancel, cancelling }: { o: ClientOrder; onCancel: () =
 
 export default function MyOrdersTab({ token }: Props) {
   const { t } = useI18n()
-  const [orders, setOrders] = useState<ClientOrder[]>([])
-  const [loading, setLoading] = useState(true)
+  const [current, setCurrent] = useState<ClientOrder[]>([])
+  const [loadingCurrent, setLoadingCurrent] = useState(true)
   const [activeSub, setActiveSub] = useState<'current' | 'history'>('current')
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [cancelError, setCancelError] = useState<string | null>(null)
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
+  // Aktualne: zawsze w całości (jest ich niewiele, wygasają)
+  const fetchCurrent = useCallback(async () => {
+    setLoadingCurrent(true)
     try {
-      const res = await fetch(`${API_URL}/orders/client/mine`, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.ok) {
-        const data = await res.json()
-        setOrders(data.orders ?? [])
-      }
+      const res = await fetch(`${API_URL}/orders/client/mine?status=pending&limit=200`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) setCurrent((await res.json()).orders ?? [])
     } catch { /* ignore */ }
-    finally { setLoading(false) }
+    finally { setLoadingCurrent(false) }
   }, [token])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  // Historia: porcjami, dopiero po wejściu w zakładkę
+  const loadHistory = useCallback(async (offset: number, limit: number) => {
+    try {
+      const qs = `status=completed&status=cancelled&limit=${limit}&offset=${offset}`
+      const res = await fetch(`${API_URL}/orders/client/mine?${qs}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return null
+      const d = await res.json()
+      return { items: (d.orders ?? []) as ClientOrder[], hasMore: !!d.has_more }
+    } catch { return null }
+  }, [token])
+  const history = usePaged<ClientOrder>(loadHistory, activeSub === 'history')
+
+  useEffect(() => { fetchCurrent() }, [fetchCurrent])
+
+  const refresh = () => {
+    fetchCurrent()
+    if (activeSub === 'history') history.reload()
+    else history.invalidate()
+  }
 
   const handleCancel = async (o: ClientOrder) => {
     if (!confirm(t('ord.confirm'))) return
@@ -154,30 +175,21 @@ export default function MyOrdersTab({ token }: Props) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : t('ord.err_cancel'))
-      setOrders(prev => prev.map(x => x.id === o.id ? { ...x, status: data.status, cancelled_by: data.cancelled_by } : x))
+      setCurrent(prev => prev.filter(x => x.id !== o.id))
+      history.invalidate()   // anulowane trafia do historii — pobierze się przy wejściu w zakładkę
     } catch (err: unknown) {
       setCancelError(err instanceof Error ? err.message : t('ord.err_cancel'))
     } finally { setCancellingId(null) }
   }
 
-  const current = orders
-    .filter(o => o.status === 'pending')
+  const sortedCurrent = current
+    .slice()
     .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
 
-  const history = orders
-    .filter(o => o.status !== 'pending')
-    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
-
-  if (loading) {
-    return (
-      <div className="loading-state">
-        <div className="loading-spinner" />
-        <p>{t('ord.loading')}</p>
-      </div>
-    )
-  }
-
-  const list = activeSub === 'current' ? current : history
+  const list = activeSub === 'current' ? sortedCurrent : history.items
+  const spinner = activeSub === 'current'
+    ? loadingCurrent && current.length === 0
+    : (!history.loaded || history.loading) && history.items.length === 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -189,7 +201,7 @@ export default function MyOrdersTab({ token }: Props) {
         <button
           className="btn btn--outline-dark"
           style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-          onClick={fetchAll}
+          onClick={refresh}
         >
           <RefreshCw size={15} />
           {t('acc.refresh')}
@@ -203,13 +215,17 @@ export default function MyOrdersTab({ token }: Props) {
         </button>
         <button type="button" className={`subtab-btn${activeSub === 'history' ? ' subtab-btn--active' : ''}`} onClick={() => setActiveSub('history')}>
           {t('ord.tab_history')}
-          {history.length > 0 && <span className="subtab-badge subtab-badge--muted">{history.length}</span>}
         </button>
       </div>
 
       {cancelError && <div className="form-error" role="alert">{cancelError}</div>}
 
-      {list.length === 0 ? (
+      {spinner ? (
+        <div className="loading-state">
+          <div className="loading-spinner" />
+          <p>{t('ord.loading')}</p>
+        </div>
+      ) : list.length === 0 ? (
         <div className="res-empty-card">
           <div className="res-empty-icon">
             {activeSub === 'current'
@@ -228,6 +244,13 @@ export default function MyOrdersTab({ token }: Props) {
           {list.map(o => (
             <OrderCard key={o.id} o={o} onCancel={() => handleCancel(o)} cancelling={cancellingId === o.id} />
           ))}
+          {activeSub === 'history' && history.hasMore && (
+            <button type="button" className="btn btn--outline-dark"
+              style={{ alignSelf: 'center', width: 'auto' }}
+              onClick={history.more} disabled={history.loadingMore}>
+              {history.loadingMore ? t('acc.loading_more') : t('acc.load_more')}
+            </button>
+          )}
         </div>
       )}
     </div>

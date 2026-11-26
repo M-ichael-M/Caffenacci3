@@ -34,7 +34,10 @@ class OrderSettings(Base):
 
 class Order(Base):
     __tablename__ = "orders"
-    __table_args__ = (Index("ix_orders_cafe_status_date", "cafe_id", "status", "date"),)
+    __table_args__ = (
+        Index("ix_orders_cafe_status_date", "cafe_id", "status", "date"),
+        Index("ix_orders_client_created", "client_id", "created_at"),
+    )
 
     id      = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
     cafe_id = Column(ID, ForeignKey("cafes.id", ondelete="CASCADE"),

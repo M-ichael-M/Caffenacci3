@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useWeek } from '../hooks/useWeek'
+import WeekNav from './WeekNav'
 import { ShoppingCart, ClipboardList, Check, X, RefreshCw } from 'lucide-react'
 import { API_URL } from '../config'
 import { useI18n } from '../i18n'
@@ -329,17 +331,23 @@ function CompleteOrderModal({ order, pointsAvailable, onClose, onSubmit }: {
 
 export default function OrdersTab({ token }: Props) {
   const { t, tApi } = useI18n()
+  const week = useWeek()
+
   const [settings, setSettings]       = useState<OrderSettingsOut | null>(null)
   const [settingsSaving, setSettingsSaving] = useState(false)
 
   const [pending, setPending]   = useState<OrderOut[]>([])
   const [history, setHistory]   = useState<OrderOut[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [saving, setSaving]     = useState<string | null>(null)  // id zamówienia w trakcie zapisu
+  const [historyTruncated, setHistoryTruncated] = useState(false)
+  const [loadingPending, setLoadingPending] = useState(true)
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [saving, setSaving]     = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
   const [completing, setCompleting] = useState<OrderOut | null>(null)
   const [pointsAvailable, setPointsAvailable] = useState(false)
   const [doneMsg, setDoneMsg] = useState<string | null>(null)
+
+  const historyReq = useRef(0)
 
   // ── Fetch ───────────────────────────────────────────────────────────────
 
@@ -352,25 +360,39 @@ export default function OrdersTab({ token }: Props) {
     } catch { /* ignore */ }
   }, [token])
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true)
+  const fetchPending = useCallback(async () => {
+    setLoadingPending(true)
     try {
-      const res = await fetch(`${API_URL}/orders`, {
+      const res = await fetch(`${API_URL}/orders?status=pending`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (res.ok) {
+      if (res.ok) setPending((await res.json()).orders ?? [])
+    } catch { /* ignore */ }
+    finally { setLoadingPending(false) }
+  }, [token])
+
+  const fetchHistory = useCallback(async (from: string, to: string) => {
+    const id = ++historyReq.current
+    setLoadingHistory(true)
+    try {
+      const qs = `status=completed&status=cancelled&date_from=${from}&date_to=${to}`
+      const res = await fetch(`${API_URL}/orders?${qs}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok && id === historyReq.current) {
         const data = await res.json()
-        const all: OrderOut[] = data.orders ?? []
-        setPending(all.filter(o => o.status === 'pending'))
-        setHistory(all.filter(o => o.status !== 'pending'))
+        setHistory(data.orders ?? [])
+        setHistoryTruncated(!!data.has_more)
       }
     } catch { /* ignore */ }
-    finally { setLoading(false) }
+    finally { if (id === historyReq.current) setLoadingHistory(false) }
   }, [token])
 
   const fetchLoyalty = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/loyalty/settings`, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`${API_URL}/loyalty/settings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       if (res.ok) {
         const d = await res.json()
         setPointsAvailable(!!d.enabled && d.mode === 'points')
@@ -378,7 +400,20 @@ export default function OrdersTab({ token }: Props) {
     } catch { /* ignore */ }
   }, [token])
 
-  useEffect(() => { fetchSettings(); fetchOrders(); fetchLoyalty() }, [fetchSettings, fetchOrders, fetchLoyalty])
+  useEffect(() => {
+    fetchSettings()
+    fetchPending()
+    fetchLoyalty()
+  }, [fetchSettings, fetchPending, fetchLoyalty])
+
+  useEffect(() => {
+    if (activeTab === 'history') fetchHistory(week.start, week.end)
+  }, [activeTab, week.start, week.end, fetchHistory])
+
+  const refresh = () => {
+    fetchPending()
+    if (activeTab === 'history') fetchHistory(week.start, week.end)
+  }
 
   // ── Toggle ustawień ───────────────────────────────────────────────────
 
@@ -408,7 +443,7 @@ export default function OrdersTab({ token }: Props) {
       if (!res.ok) throw new Error()
       const updated: OrderOut = await res.json()
       setPending(prev => prev.filter(x => x.id !== updated.id))
-      setHistory(prev => [updated, ...prev])
+      setHistory(prev => week.contains(updated.date) ? [updated, ...prev] : prev)
     } catch { /* ignore */ }
     finally { setSaving(null) }
   }
@@ -426,7 +461,7 @@ export default function OrdersTab({ token }: Props) {
       if (!res.ok) return tApi(data.detail, 'orders.err.generic')
       const updated: OrderOut = data
       setPending(prev => prev.filter(x => x.id !== updated.id))
-      setHistory(prev => [updated, ...prev])
+      setHistory(prev => week.contains(updated.date) ? [updated, ...prev] : prev)
       setCompleting(null)
       setDoneMsg(awardPoints
         ? t('orders.msg.pointsAwarded', { count: updated.points_awarded ?? 0 })
@@ -472,7 +507,11 @@ export default function OrdersTab({ token }: Props) {
             {t('orders.title')}
           </h2>
         </div>
-        <button className="btn btn--outline-dark" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={fetchOrders}>
+        <button
+          className="btn btn--outline-dark"
+          style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+          onClick={refresh}
+        >
           <RefreshCw size={15} />
           {t('common.refresh')}
         </button>
@@ -499,82 +538,88 @@ export default function OrdersTab({ token }: Props) {
         </div>
       </div>
 
+      {/* ── Tabs ─────────────────────────────────────────────────── */}
+      <div style={{ borderBottom: '1px solid var(--border)' }}>
+        <button type="button" style={tabStyle(activeTab === 'pending')} onClick={() => setActiveTab('pending')}>
+          {t('orders.tab.pending')}
+          {pending.length > 0 && <span style={badgeStyle('var(--gold)')}>{pending.length}</span>}
+        </button>
+        <button type="button" style={tabStyle(activeTab === 'history')} onClick={() => setActiveTab('history')}>
+          {t('orders.tab.history')}
+        </button>
+      </div>
 
-      {loading ? (
-        <div className="loading-state">
-          <div className="loading-spinner" />
-          <p>{t('orders.loading')}</p>
+      {/* ── Pending ─────────────────────────────────────────────── */}
+      {activeTab === 'pending' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+          {loadingPending ? (
+            <div className="loading-state">
+              <div className="loading-spinner" />
+              <p>{t('orders.loading')}</p>
+            </div>
+          ) : pending.length === 0 ? (
+            <div className="res-empty-card">
+              <div className="res-empty-icon">
+                <ShoppingCart size={44} strokeWidth={1.4} />
+              </div>
+              <div className="res-empty-title">{t('orders.empty.pending.title')}</div>
+              <div className="res-empty-sub">{t('orders.empty.pending.sub')}</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                {t('orders.pending.count', { count: pending.length })}
+              </div>
+              {pending
+                .slice()
+                .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
+                .map(o => (
+                  <PendingOrderCard
+                    key={o.id}
+                    o={o}
+                    saving={saving === o.id}
+                    onDecide={(ord, st) => st === 'completed' ? setCompleting(ord) : handleDecide(ord, st)}
+                  />
+                ))}
+            </>
+          )}
         </div>
-      ) : (
-        <>
-          {/* ── Tabs ─────────────────────────────────────────────────── */}
-          <div style={{ borderBottom: '1px solid var(--border)' }}>
-            <button type="button" style={tabStyle(activeTab === 'pending')} onClick={() => setActiveTab('pending')}>
-              {t('orders.tab.pending')}
-              {pending.length > 0 && <span style={badgeStyle('var(--gold)')}>{pending.length}</span>}
-            </button>
-            <button type="button" style={tabStyle(activeTab === 'history')} onClick={() => setActiveTab('history')}>
-              {t('orders.tab.history')}
-              {history.length > 0 && <span style={badgeStyle('var(--text-muted)')}>{history.length}</span>}
-            </button>
-          </div>
+      )}
 
-          {/* ── Pending ─────────────────────────────────────────────── */}
-          {activeTab === 'pending' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-              {pending.length === 0 ? (
-                <div className="res-empty-card">
-                  <div className="res-empty-icon">
-                    <ShoppingCart size={44} strokeWidth={1.4} />
-                  </div>
-                  <div className="res-empty-title">{t('orders.empty.pending.title')}</div>
-                  <div className="res-empty-sub">{t('orders.empty.pending.sub')}</div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                    {t('orders.pending.count', { count: pending.length })}
-                  </div>
-                  {pending
-                    .slice()
-                    .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
-                    .map(o => (
-                      <PendingOrderCard key={o.id} o={o} saving={saving === o.id}
-                        onDecide={(ord, st) => st === 'completed' ? setCompleting(ord) : handleDecide(ord, st)} />
-                    ))}
-                </>
-              )}
+      {/* ── History ─────────────────────────────────────────────── */}
+      {activeTab === 'history' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+          <WeekNav week={week} />
+          {loadingHistory ? (
+            <div className="loading-state">
+              <div className="loading-spinner" />
             </div>
-          )}
-
-          {/* ── History ─────────────────────────────────────────────── */}
-          {activeTab === 'history' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-              {history.length === 0 ? (
-                <div className="res-empty-card">
-                  <div className="res-empty-icon">
-                    <ClipboardList size={44} strokeWidth={1.4} />
-                  </div>
-                  <div className="res-empty-title">{t('orders.empty.history.title')}</div>
-                  <div className="res-empty-sub">{t('orders.empty.history.sub')}</div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                    {t('orders.history.summary', {
-                      completed: history.filter(o => o.status === 'completed').length,
-                      cancelled: history.filter(o => o.status === 'cancelled').length,
-                    })}
-                  </div>
-                  {history
-                    .slice()
-                    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
-                    .map(o => <HistoryOrderCard key={o.id} o={o} />)}
-                </>
-              )}
+          ) : history.length === 0 ? (
+            <div className="res-empty-card">
+              <div className="res-empty-icon">
+                <ClipboardList size={44} strokeWidth={1.4} />
+              </div>
+              <div className="res-empty-title">{t('week.empty.title')}</div>
+              <div className="res-empty-sub">{t('week.empty.sub')}</div>
             </div>
+          ) : (
+            <>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                {t('orders.history.summary', {
+                  completed: history.filter(o => o.status === 'completed').length,
+                  cancelled: history.filter(o => o.status === 'cancelled').length,
+                })}
+              </div>
+              {history
+                .slice()
+                .sort((a, b) => b.date.localeCompare(a.date) || b.start_time.localeCompare(a.start_time))
+                .map(o => <HistoryOrderCard key={o.id} o={o} />)}
+              {historyTruncated && (
+                <div className="form-error">{t('week.truncated')}</div>
+              )}
+            </>
           )}
-        </>
+        </div>
       )}
     </div>
   )

@@ -155,6 +155,7 @@ class ReservationOut(BaseModel):
 class ReservationListOut(BaseModel):
     date:         Optional[str]
     reservations: List[ReservationOut]
+    has_more:     bool = False
 
 
 # ── Informacje publiczne dla widgetu klienta (tryb + stoliki + zajętość) ──
@@ -200,3 +201,4 @@ class ClientReservationOut(ReservationOut):
 
 class ClientReservationListOut(BaseModel):
     reservations: List[ClientReservationOut]
+    has_more: bool = False

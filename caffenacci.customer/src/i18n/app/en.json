@@ -45,6 +45,7 @@
   "acc.loyalty_note": "The same code works in every Caffenacci café — each runs its own independent programme.",
   "acc.see_cafes": "View my cafés", "acc.quick": "Quick access",
   "acc.my_reservations": "Your reservations", "acc.my_orders": "Your orders", "acc.my_reviews": "Your reviews",
+  "acc.load_more": "Show more", "acc.loading_more": "Loading…",
 
   "loy.show_code": "Show my loyalty code", "loy.your_code": "Your code",
   "loy.show_staff": "Show this code to the café staff to collect points or stamps.",

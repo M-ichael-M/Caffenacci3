@@ -31,4 +31,5 @@ class Review(Base):
     __table_args__ = (
         UniqueConstraint("cafe_id", "client_id", name="uq_review_cafe_client"),
         Index("ix_reviews_cafe_created", "cafe_id", "created_at"),
+        Index("ix_reviews_client_created", "client_id", "created_at"),
     )

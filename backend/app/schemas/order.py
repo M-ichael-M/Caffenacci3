@@ -93,6 +93,7 @@ class OrderOut(BaseModel):
 
 class OrderListOut(BaseModel):
     orders: List[OrderOut]
+    has_more: bool = False
 
 # ── "Moje zamówienia" — połączony widok klienta (wszystkie kawiarnie) ────
 
@@ -103,3 +104,4 @@ class ClientOrderOut(OrderOut):
 
 class ClientOrderListOut(BaseModel):
     orders: List[ClientOrderOut]
+    has_more: bool = False

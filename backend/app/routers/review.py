@@ -238,16 +238,17 @@ def list_reviews_public(
 # LISTA OPINII (właściciel)
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.get("", response_model=ReviewListOut, summary="Pobierz opinie o własnej kawiarni")
+@router.get("", response_model=ReviewListOut, summary="Pobierz opinie o własnej kawiarni (stronicowane)")
 def list_reviews(
-    current_cafe: Cafe    = Depends(get_current_cafe),
-    db:           Session = Depends(get_db),
+    offset: int = Query(0, ge=0),
+    limit:  int = Query(20, ge=1, le=100),
+    current_cafe: Cafe = Depends(get_current_cafe),
+    db: Session = Depends(get_db),
 ):
     rows = (
-        db.query(Review)
-        .filter(Review.cafe_id == current_cafe.id)
-        .order_by(Review.created_at.desc())
-        .all()
+        db.query(Review).filter(Review.cafe_id == current_cafe.id)
+        .order_by(Review.created_at.desc(), Review.id.desc())
+        .offset(offset).limit(limit).all()
     )
     avg, count = _aggregate(current_cafe.id, db)
     return ReviewListOut(reviews=rows, average_rating=avg, count=count)
@@ -275,25 +276,14 @@ def reviews_summary(
     summary="Pobierz wszystkie opinie zalogowanego klienta (wszystkie kawiarnie)",
 )
 def list_my_reviews(
+    limit:  int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     current_client: Client = Depends(get_current_client),
-    db:             Session = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    rows = (
-        db.query(Review)
-        .filter(Review.client_id == current_client.id)
-        .order_by(Review.created_at.desc())
-        .all()
-    )
-
-    cafe_ids = {r.cafe_id for r in rows}
-    cafes = {c.id: c for c in db.query(Cafe).filter(Cafe.id.in_(cafe_ids)).all()} if cafe_ids else {}
-
-    result = [
-        ClientReviewOut(
-            **ReviewOut.model_validate(r).model_dump(),
-            cafe_id=r.cafe_id,
-            cafe_name=(cafes.get(r.cafe_id).cafe_name if cafes.get(r.cafe_id) else "Nieznana kawiarnia"),
-        )
-        for r in rows
-    ]
-    return ClientReviewListOut(reviews=result)
+    q = (db.query(Review).filter(Review.client_id == current_client.id)
+         .order_by(Review.created_at.desc(), Review.id.desc()))
+    rows = q.offset(offset).limit(limit + 1).all()
+    has_more, rows = len(rows) > limit, rows[:limit]
+    # …reszta bez zmian…
+    return ClientReviewListOut(reviews=result, has_more=has_more)

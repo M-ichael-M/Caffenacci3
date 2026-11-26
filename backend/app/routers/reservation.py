@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import date as date_cls, datetime, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
@@ -17,6 +19,8 @@ from app.core.opening_hours import (
 )
 from app.core.security import decode_access_token
 from app.core.employee_access import get_current_cafe_id
+from app.core.pagination import DATE_PATTERN, LIST_LIMIT, check_date_range, fetch_page
+
 from app.models.cafe import Cafe
 from app.models.cafe_profile import CafeProfile
 from app.models.client import Client
@@ -570,16 +574,25 @@ def cancel_reservation_as_client(
     summary="Pobierz wszystkie rezerwacje zalogowanego klienta (wszystkie kawiarnie)",
 )
 def list_my_reservations(
+    scope: Literal["upcoming", "history"] | None = Query(None),
+    since: str | None = Query(None, pattern=DATE_PATTERN),
+    limit:  int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     current_client: Client = Depends(get_current_client),
-    db:             Session = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    rows = (
-        db.query(Reservation)
-        .options(selectinload(Reservation.table))
-        .filter(Reservation.client_id == current_client.id)
-        .order_by(Reservation.date.desc(), Reservation.start_time.desc())
-        .all()
-    )
+    q = (db.query(Reservation).options(selectinload(Reservation.table))
+         .filter(Reservation.client_id == current_client.id))
+    if scope:
+        if not since:
+            raise HTTPException(400, detail="Brak parametru since.")
+        cancelled = ReservationStatus("cancelled")
+        if scope == "upcoming":
+            q = q.filter(Reservation.status != cancelled, Reservation.date >= since)
+        else:
+            q = q.filter(or_(Reservation.status == cancelled, Reservation.date < since))
+    q = q.order_by(Reservation.date.desc(), Reservation.start_time.desc(), Reservation.id.desc())
+    rows, has_more = fetch_page(q, limit, offset)
 
     cafe_ids = {r.cafe_id for r in rows}
     cafes = {c.id: c for c in db.query(Cafe).filter(Cafe.id.in_(cafe_ids)).all()} if cafe_ids else {}
@@ -596,8 +609,7 @@ def list_my_reservations(
             time_zone=tzs.get(r.cafe_id),
         ))
 
-    return ClientReservationListOut(reservations=result)
-
+    return ClientReservationListOut(reservations=result, has_more=has_more)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # LISTA REZERWACJI (właściciel/pracownik)
@@ -609,27 +621,29 @@ def list_my_reservations(
     summary="Pobierz rezerwacje (właściciel/pracownik)",
 )
 def list_reservations(
-    date:          str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
-    status_filter: str | None = Query(None, alias="status"),
-    cafe_id:       str = Depends(get_current_cafe_id),
-    db:            Session = Depends(get_db),
+    date:          str | None = Query(None, pattern=DATE_PATTERN),
+    date_from:     str | None = Query(None, pattern=DATE_PATTERN),
+    date_to:       str | None = Query(None, pattern=DATE_PATTERN),
+    status_filter: list[str] = Query(default=[], alias="status"),
+    limit: int = Query(LIST_LIMIT, ge=1, le=LIST_LIMIT),
+    cafe_id: str = Depends(get_current_cafe_id),
+    db: Session = Depends(get_db),
 ):
-    q = (
-        db.query(Reservation)
-        .filter(Reservation.cafe_id == cafe_id)
-    )
+    check_date_range(date_from, date_to)
+    q = db.query(Reservation).options(selectinload(Reservation.table)).filter(Reservation.cafe_id == cafe_id)
     if date:
         q = q.filter(Reservation.date == date)
+    if date_from:
+        q = q.filter(Reservation.date >= date_from)
+    if date_to:
+        q = q.filter(Reservation.date <= date_to)
     if status_filter:
         try:
-            st = ReservationStatus(status_filter)
-            q = q.filter(Reservation.status == st)
+            q = q.filter(Reservation.status.in_([ReservationStatus(s) for s in status_filter]))
         except ValueError:
-            raise HTTPException(400, detail=f"Nieprawidłowy status: {status_filter}")
-
-    rows = q.order_by(Reservation.date, Reservation.start_time).all()
-    return ReservationListOut(date=date, reservations=[_reservation_to_out(r) for r in rows])
-
+            raise HTTPException(400, detail=f"Nieprawidłowy status: {', '.join(status_filter)}")
+    rows, has_more = fetch_page(q.order_by(Reservation.date, Reservation.start_time, Reservation.id), limit)
+    return ReservationListOut(date=date, reservations=[_reservation_to_out(r) for r in rows], has_more=has_more)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ZMIANA STATUSU — akceptacja lub odrzucenie — WYŁĄCZNIE TRYB SIMPLE

@@ -873,4 +873,12 @@ export const pl = {
   'profile.err.galleryDelete': 'Błąd usuwania zdjęcia.',
   'profile.err.exceptionSave': 'Błąd zapisu wyjątku.',
   'profile.err.invite': 'Błąd wysyłania zaproszenia.',
+  'week.prev': 'Poprzedni tydzień',
+  'week.next': 'Następny tydzień',
+  'week.current': 'Wróć do bieżącego tygodnia',
+  'week.empty.title': 'Brak pozycji w tym tygodniu',
+  'week.empty.sub': 'Przejdź do innego tygodnia, aby zobaczyć starsze lub nowsze wpisy.',
+  'week.truncated': 'Wyświetlono tylko część wyników z tego tygodnia.',
+  'pagination.loadMore': 'Pokaż więcej',
+  'common.loading': 'Wczytywanie…',
 }

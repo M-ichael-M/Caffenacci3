@@ -79,7 +79,10 @@ class CafeTable(Base):
 
 class Reservation(Base):
     __tablename__ = "reservations"
-    __table_args__ = (Index("ix_reservations_cafe_date_status", "cafe_id", "date", "status"),)
+    __table_args__ = (
+        Index("ix_reservations_cafe_date_status", "cafe_id", "date", "status"),
+        Index("ix_reservations_client_date", "client_id", "date", "start_time"),
+    )
 
     id            = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))
     table_id      = Column(ID, ForeignKey("cafe_tables.id", ondelete="SET NULL"),

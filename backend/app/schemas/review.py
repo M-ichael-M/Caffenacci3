@@ -54,3 +54,4 @@ class ClientReviewOut(ReviewOut):
 
 class ClientReviewListOut(BaseModel):
     reviews: List[ClientReviewOut]
+    has_more: bool = False

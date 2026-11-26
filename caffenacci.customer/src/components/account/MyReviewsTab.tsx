@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
 import { MessageCircle } from 'lucide-react'
 import { API_URL } from '../../config'
 import { useI18n } from '../../i18n/I18nProvider'
 import { formatDateTime } from '../../i18n/localeFormat'
+import { usePaged } from '../../hooks/usePaged'
 
 interface ClientReview {
   id: string
@@ -44,24 +45,20 @@ function ReviewCard({ r }: { r: ClientReview }) {
 
 export default function MyReviewsTab({ token }: Props) {
   const { t } = useI18n()
-  const [reviews, setReviews] = useState<ClientReview[]>([])
-  const [loading, setLoading] = useState(true)
 
-  const fetchReviews = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (offset: number, limit: number) => {
     try {
-      const res = await fetch(`${API_URL}/reviews/client/mine`, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.ok) {
-        const data = await res.json()
-        setReviews(data.reviews ?? [])
-      }
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
+      const res = await fetch(`${API_URL}/reviews/client/mine?limit=${limit}&offset=${offset}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return null
+      const d = await res.json()
+      return { items: (d.reviews ?? []) as ClientReview[], hasMore: !!d.has_more }
+    } catch { return null }
   }, [token])
+  const reviews = usePaged<ClientReview>(load, true)
 
-  useEffect(() => { fetchReviews() }, [fetchReviews])
-
-  if (loading) {
+  if ((!reviews.loaded || reviews.loading) && reviews.items.length === 0) {
     return (
       <div className="loading-state">
         <div className="loading-spinner" />
@@ -77,7 +74,7 @@ export default function MyReviewsTab({ token }: Props) {
         <h1 className="page-header__title" style={{ fontSize: '1.625rem' }}>{t('rev.title')}</h1>
       </div>
 
-      {reviews.length === 0 ? (
+      {reviews.items.length === 0 ? (
         <div className="res-empty-card">
           <div className="res-empty-icon"><MessageCircle size={44} strokeWidth={1.4} /></div>
           <div className="res-empty-title">{t('rev.empty_title')}</div>
@@ -85,7 +82,14 @@ export default function MyReviewsTab({ token }: Props) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-          {reviews.map(r => <ReviewCard key={r.id} r={r} />)}
+          {reviews.items.map(r => <ReviewCard key={r.id} r={r} />)}
+          {reviews.hasMore && (
+            <button type="button" className="btn btn--outline-dark"
+              style={{ alignSelf: 'center', width: 'auto' }}
+              onClick={reviews.more} disabled={reviews.loadingMore}>
+              {reviews.loadingMore ? t('acc.loading_more') : t('acc.load_more')}
+            </button>
+          )}
         </div>
       )}
     </div>
