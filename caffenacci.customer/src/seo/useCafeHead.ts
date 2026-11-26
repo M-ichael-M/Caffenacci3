@@ -3,17 +3,44 @@ import { imageUrl } from '../components/ResponsiveImage'
 
 export interface CafeSeoData {
   cafe_name: string
+  city?: string
   logo_url: string | null
 }
 
+const TITLE_MAX = 70
+
+function buildCafeTitle(name: string, city: string | undefined, lang: string): string {
+  const isPl = lang === 'pl'
+  if (!city) {
+    return `${name} | Caffenacci`
+  }
+  const full = isPl
+    ? `${name} – kawiarnia w ${city} | Menu, godziny, opinie`
+    : `${name} – café in ${city} | Menu, hours, reviews`
+  if (full.length <= TITLE_MAX) return full
+
+  const short = isPl
+    ? `${name} – kawiarnia w ${city} | Caffenacci`
+    : `${name} – café in ${city} | Caffenacci`
+  if (short.length <= TITLE_MAX) return short
+
+  return `${name} – ${city}`
+}
+
 // JSON-LD, canonical, OG itd. generuje backend (routers/seo.py). Tu zostaje tylko to,
-// co ma sens po stronie klienta: og:site_name i favicon.
-export function useCafeHead(d: CafeSeoData, enabled: boolean) {
-  const { cafe_name, logo_url } = d
+// co ma sens po stronie klienta: document.title, og:site_name i favicon.
+export function useCafeHead(d: CafeSeoData, enabled: boolean, lang: string = 'pl') {
+  const { cafe_name, city, logo_url } = d
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || !cafe_name) return
     const undo: (() => void)[] = []
+
+    const prevTitle = document.title
+    document.title = buildCafeTitle(cafe_name, city, lang)
+    undo.push(() => {
+      document.title = prevTitle
+    })
 
     if (!document.querySelector('meta[property="og:site_name"]')) {
       const meta = document.createElement('meta')
@@ -45,5 +72,5 @@ export function useCafeHead(d: CafeSeoData, enabled: boolean) {
     }
 
     return () => undo.forEach(cleanup => cleanup())
-  }, [enabled, cafe_name, logo_url])
+  }, [enabled, cafe_name, city, logo_url, lang])
 }

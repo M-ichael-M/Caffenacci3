@@ -46,11 +46,6 @@ class OrderItemOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class PublicOrderCancelIn(BaseModel):
-    """Klient anuluje własne zamówienie — autoryzacja przez client_id."""
-    client_id: Optional[str] = Field(None, max_length=100)
-
-
 # ── Zamówienie od zalogowanego klienta (strona kawiarni) ──────────────────
 # nick i client_id NIE są przyjmowane z formularza — pochodzą z tokenu JWT,
 # żeby nie dało się podszyć pod innego klienta.

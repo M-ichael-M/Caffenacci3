@@ -29,10 +29,10 @@ from app.routers.loyalty import (
 )
 from app.schemas.order import (
     OrderSettingsIn, OrderSettingsOut,
-    PublicOrderCancelIn, ClientOrderIn,
+    ClientOrderIn,
     OrderStatusUpdate, OrderOut, OrderListOut,
     MAX_ORDER_DAYS_AHEAD,
-    ClientOrderOut, ClientOrderListOut,   # ← nowe
+    ClientOrderOut, ClientOrderListOut,
 )
 from app.core.pagination import DATE_PATTERN, LIST_LIMIT, check_date_range, fetch_page
 
@@ -255,37 +255,6 @@ def create_order_as_client(
     _fill_items(order, payload.items, cafe_id, currency, db)
 
     db.add(order)
-    db.commit()
-    db.refresh(order)
-    return order
-
-
-@router.post(
-    "/public/{order_id}/cancel",
-    response_model=OrderOut,
-    summary="Anuluj zamówienie jako klient (publiczny)",
-)
-def cancel_order_public(
-    order_id: str,
-    payload:  PublicOrderCancelIn,
-    db:       Session = Depends(get_db),
-):
-    order = db.query(Order).options(selectinload(Order.items)).filter(Order.id == order_id).first()
-    if not order:
-        raise HTTPException(404, detail="Zamówienie nie istnieje.")
-    if order.status != OrderStatus.pending:
-        raise HTTPException(
-            400,
-            detail=f"Zamówienie ma już status '{order.status}' i nie może być anulowane.",
-        )
-    if order.client_id and order.client_id != payload.client_id:
-        raise HTTPException(403, detail="Brak uprawnień do anulowania tego zamówienia.")
-
-    _ensure_client_can_cancel(order.date, order.start_time, cafe_tz(order.cafe_id, db))
-
-    order.status       = OrderStatus.cancelled
-    order.cancelled_by = "client"
-    order.updated_at   = datetime.utcnow()
     db.commit()
     db.refresh(order)
     return order

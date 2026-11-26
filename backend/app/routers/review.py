@@ -15,8 +15,8 @@ from app.models.client import Client
 from app.models.review import Review
 from app.routers.client_auth import get_current_client
 from app.schemas.review import (
-    ReviewIn, ReviewOut, ReviewListOut, ReviewSummaryOut, ClientReviewIn, ReviewUpdateIn,
-    ClientReviewOut, ClientReviewListOut,   # ← nowe
+    ReviewOut, ReviewListOut, ReviewSummaryOut, ClientReviewIn, ReviewUpdateIn,
+    ClientReviewOut, ClientReviewListOut,
 )
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 bearer_scheme = HTTPBearer()
@@ -47,56 +47,6 @@ def _aggregate(cafe_id: str, db: Session) -> tuple[float, int]:
     )
     return (round(float(avg), 2) if avg is not None else 0.0, count or 0)
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# PUBLICZNY ENDPOINT — klient dodaje opinię (bez logowania — zachowane wstecznie)
-# ══════════════════════════════════════════════════════════════════════════════
-
-@router.post(
-    "/public/{cafe_id}",
-    response_model=ReviewOut,
-    status_code=status.HTTP_201_CREATED,
-    summary="Dodaj opinię o kawiarni (publiczny)",
-)
-def create_review(
-    cafe_id: str,
-    payload: ReviewIn,
-    db:      Session = Depends(get_db),
-):
-    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
-    if not cafe:
-        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
-
-    if payload.client_id:
-        existing = (
-            db.query(Review)
-            .filter(Review.cafe_id == cafe_id, Review.client_id == payload.client_id)
-            .first()
-        )
-        if existing:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                detail="To konto dodało już opinię o tej kawiarni.",
-            )
-
-    review = Review(
-        cafe_id   = cafe_id,
-        nick      = payload.nick,
-        rating    = payload.rating,
-        comment   = payload.comment,
-        client_id = payload.client_id,
-    )
-    db.add(review)
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            detail="To konto dodało już opinię o tej kawiarni.",
-        )
-    db.refresh(review)
-    return review
 
 
 # ══════════════════════════════════════════════════════════════════════════════

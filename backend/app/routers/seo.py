@@ -359,7 +359,12 @@ def _localize(site: PublicSiteOut, entries: dict[str, str]) -> PublicSiteOut:
 
 
 def _title(site: PublicSiteOut, u: dict) -> str:
-    return site.cafe_name
+    kw = dict(name=site.cafe_name, city=site.city)
+    full = u["title_cafe"].format(**kw)
+    if len(full) <= TITLE_MAX:
+        return full
+    short = u["title_cafe_short"].format(**kw)
+    return short if len(short) <= TITLE_MAX else _clip(short, TITLE_MAX)
 
 
 def _meta_description(site: PublicSiteOut, u: dict, lang: str) -> str:

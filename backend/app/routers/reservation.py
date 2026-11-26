@@ -32,10 +32,10 @@ from app.routers.client_auth import get_current_client
 from app.schemas.reservation import (
     ReservationSettingsIn, ReservationSettingsOut,
     ReservationIn, ReservationOut, ReservationListOut,
-    PublicReservationIn, ClientReservationIn, ClientAdvancedReservationIn,
+    ClientReservationIn, ClientAdvancedReservationIn,
     ReservationStatusUpdate, ReservationInfoOut, OccupiedSlotOut,
     ReservationHourExceptionOut,
-    ClientReservationOut, ClientReservationListOut,   # ← nowe
+    ClientReservationOut, ClientReservationListOut,
 )
 
 router = APIRouter(prefix="/reservations", tags=["reservations"])
@@ -354,61 +354,6 @@ def get_reservation_info(
         time_zone=cafe_tz_name(cafe_id, db),
     )
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# PUBLICZNY ENDPOINT — klient składa rezerwację (bez logowania) — TRYB SIMPLE
-# ══════════════════════════════════════════════════════════════════════════════
-
-@router.post(
-    "/public/{cafe_id}",
-    response_model=ReservationOut,
-    status_code=status.HTTP_201_CREATED,
-    summary="Złóż rezerwację jako klient (publiczny, WYŁĄCZNIE simple mode)",
-)
-def create_public_reservation(
-    cafe_id: str,
-    payload: PublicReservationIn,
-    db:      Session = Depends(get_db),
-):
-    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
-    if not cafe:
-        raise HTTPException(404, detail="Kawiarnia nie istnieje.")
-
-    s = (
-        db.query(ReservationSettings)
-        .filter(ReservationSettings.cafe_id == cafe_id)
-        .first()
-    )
-    if not s or not s.enabled:
-        raise HTTPException(400, detail="Ta kawiarnia nie przyjmuje rezerwacji online.")
-
-    if s.mode != "simple":
-        raise HTTPException(
-            400,
-            detail="Ta kawiarnia korzysta z zaawansowanego systemu rezerwacji — wymagany jest wybór stolika przez zalogowanego klienta.",
-        )
-
-    _validate_not_in_past(payload.date, payload.start_time, cafe_tz(cafe_id, db))
-
-    r = Reservation(
-        table_id         = None,        # brak przydziału stolika w trybie simple
-        cafe_id          = cafe_id,
-        date             = payload.date,
-        start_time       = payload.start_time,
-        guests           = payload.guests,
-        guest_name       = payload.guest_name,
-        guest_phone      = payload.guest_phone,
-        guest_email      = payload.guest_email,
-        comment          = payload.comment,
-        client_id        = None,
-        created_by_owner = False,
-        status           = ReservationStatus.pending,
-    )
-    db.add(r)
-    db.commit()
-    db.refresh(r)
-
-    return _reservation_to_out(r)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -67,20 +67,6 @@ class ReservationSettingsOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── Rezerwacja publiczna (od klienta, bez logowania) — WYŁĄCZNIE simple ───
-
-class PublicReservationIn(BaseModel):
-    """Formularz klienta bez konta — dozwolony tylko dla trybu simple,
-    bo nie zawiera wyboru stolika."""
-    date:        str  = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
-    start_time:  str  = Field(..., pattern=r"^\d{2}:\d{2}$")
-    guests:      int  = Field(..., ge=1, le=50)
-    guest_name:  str  = Field(..., min_length=2, max_length=150)
-    guest_phone: Optional[str] = Field(None, max_length=30)
-    guest_email: EmailStr
-    comment:     Optional[str] = Field(None, max_length=1000)
-
-
 # ── Rezerwacja od zalogowanego klienta — TRYB SIMPLE ──────────────────────
 # guest_name pochodzi z profilu klienta, brak wyboru stolika — zawsze pending.
 

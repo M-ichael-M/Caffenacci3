@@ -17,7 +17,7 @@ import { BADGE_CATALOG } from '../../badges'
 import InfoTooltip from './InfoTooltip'
 import { API_URL } from '../../config'
 import { syncCafeSlugInUrl, setCafeLangInUrl } from '../../utils/slugUrl'
-import { homePath, cityPath, cafePath, langFromCafePath } from '../../utils/sitePaths'
+import { homePath, cafePath, langFromCafePath } from '../../utils/sitePaths'
 import { loadThemeFonts } from '../../fonts/themeFonts'
 import LazyLocationMap from './LazyLocationMap'
 import LazyOnVisible from '../LazyOnVisible'
@@ -434,9 +434,7 @@ function CafeContent({
   const hasMenu = menuSections.length > 0
 
   const gmapsUrl = hasLocation ? `https://www.google.com/maps?q=${data.latitude},${data.longitude}` : null
-  useCafeHead(rawData, !isPreview)
-  const listingLang = language.code
-  const citySlug = data.city_slug ?? ''
+  useCafeHead(data, !isPreview, language.code)
   const nearby = data.nearby_cafes ?? []
 
   return (
