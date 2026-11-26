@@ -37,6 +37,8 @@ class Order(Base):
     __table_args__ = (
         Index("ix_orders_cafe_status_date", "cafe_id", "status", "date"),
         Index("ix_orders_client_created", "client_id", "created_at"),
+        Index("ix_orders_cafe_created", "cafe_id", "created_at"),
+
     )
 
     id      = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))

@@ -17,6 +17,7 @@ from app.core.cache_purge import purge_urls, cafe_page_urls
 from app.core.config import settings
 from app.core.currency import cafe_currency, round_decimal
 from app.core.loyalty_rules import DEFAULT_POINTS, default_unit, compute_points
+from app.core.images import logo_url as versioned_logo_url
 from app.models.cafe import Cafe
 from app.models.cafe_profile import CafeProfile
 from app.models.client import Client
@@ -445,12 +446,12 @@ def list_my_loyalty(
             continue
         s = settings_map.get(r.cafe_id)
         profile = profiles.get(r.cafe_id)
-        logo_url = f"/profile/logo/{cafe.id}" if profile and profile.logo_path else None
+        logo = versioned_logo_url(cafe.id, profile.logo_path) if profile else None
 
         result.append(ClientCafeLoyaltyOut(
             cafe_id=cafe.id,
             cafe_name=cafe.cafe_name,
-            logo_url=logo_url,
+            logo_url=logo,
             mode=(s.mode if s else "points"),
             points=r.points,
             stamps=r.stamps,

@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime, ForeignKey, Text,
-    UniqueConstraint,
+    UniqueConstraint, Index,
 )
 from app.core.types import ID
 from sqlalchemy.orm import relationship
@@ -103,3 +103,7 @@ class LoyaltyTransaction(Base):
     currency = Column(String(3), nullable=False, default="PLN", server_default="PLN")
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_loyalty_tx_cafe_created", "cafe_id", "created_at"),
+    )

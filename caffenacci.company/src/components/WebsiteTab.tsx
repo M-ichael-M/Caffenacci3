@@ -12,6 +12,7 @@ import { loadAuth } from '../authStorage'
 import { SESSION_TOKEN_UPDATED_EVENT } from '../sessionGuard'
 import LanguagesCard from './LanguagesCard'
 import { useI18n } from '../i18n'
+import { thumbUrl } from '../utils/imageUrl'
 
 interface Props {
   token: string
@@ -127,7 +128,8 @@ export default function WebsiteTab({ token, cafeId }: Props) {
     setGeneratingPalette(true)
     setPaletteGenError(null)
     try {
-      const vars = await extractPaletteFromImageUrl(`${API_URL}${logoUrl}`)
+      // canvas i tak skaluje do 64×64, więc 128 px wystarczy; wariant 128 zachowuje alfę
+      const vars = await extractPaletteFromImageUrl(thumbUrl(logoUrl, 128))
       setCustomPaletteVars(vars)
       setPalette('custom')
     } catch (err: unknown) {
@@ -338,8 +340,11 @@ export default function WebsiteTab({ token, cafeId }: Props) {
               display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)',
             }}>
               {logoUrl ? (
-                <img src={`${API_URL}${logoUrl}`} alt={t('website.logoPalette.alt')}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img
+                  src={thumbUrl(logoUrl, 256)}
+                  alt={t('website.logoPalette.alt')}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
               ) : (
                 <ImageIcon size={24} style={{ opacity: 0.35 }} />
               )}

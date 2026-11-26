@@ -82,6 +82,8 @@ class Reservation(Base):
     __table_args__ = (
         Index("ix_reservations_cafe_date_status", "cafe_id", "date", "status"),
         Index("ix_reservations_client_date", "client_id", "date", "start_time"),
+        Index("ix_reservations_cafe_created", "cafe_id", "created_at"),
+
     )
 
     id            = Column(ID, primary_key=True, default=lambda: str(uuid.uuid4()))

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Gift, Coffee, RefreshCw, PartyPopper } from 'lucide-react'
 import { API_URL } from '../../config'
 import { useI18n } from '../../i18n/I18nProvider'
+import ResponsiveImage from '../ResponsiveImage'
 
 interface RewardItem { id: string; name: string; cost_points: number }
 
@@ -19,6 +20,7 @@ interface CafeLoyaltyItem {
 interface Props { token: string }
 
 const API = API_URL
+const AVATAR_WIDTHS = [128, 256] as const
 
 function StampsTrack({ stamps, max }: { stamps: number; max: number }) {
   return (
@@ -55,7 +57,13 @@ function CafeLoyaltyCard({ c }: { c: CafeLoyaltyItem }) {
           background: 'var(--surface-2)', color: 'var(--gold)',
         }}>
           {c.logo_url ? (
-            <img src={`${API}${c.logo_url}`} alt={c.cafe_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <ResponsiveImage
+              src={c.logo_url}
+              alt={c.cafe_name}
+              widths={AVATAR_WIDTHS}
+              sizes="52px"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           ) : (
             <Coffee size={20} />
           )}
