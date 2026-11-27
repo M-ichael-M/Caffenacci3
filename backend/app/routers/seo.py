@@ -786,7 +786,10 @@ def _serve_home(request: Request, db: Session, lang: str) -> Response:
     if loaded is None:
         return _no_template()
     index_html, mtime = loaded
-    return _html_response(request, ("__home__", mtime, lang), lambda: _build_home(index_html, db, lang))
+    resp = _html_response(request, ("__home__", mtime, lang), lambda: _build_home(index_html, db, lang))
+    if "konto" in request.query_params:
+        resp.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return resp
 
 
 @router.get("/", include_in_schema=False)
@@ -1038,7 +1041,6 @@ def robots():
         "User-agent: *\n"
         "Allow: /\n"
         "Disallow: /preview/\n"
-        "Disallow: /konto\n"
         "\n"
         f"Sitemap: {base}/sitemap.xml\n"
     )

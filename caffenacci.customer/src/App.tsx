@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import CityLinks from './components/CityLinks'
+import SeoHandoff from './components/SeoHandoff'
 import TopBar from './components/TopBar'
 import { loadClientAuth, saveClientAuth, clearClientAuth } from './authStorage'
 import type { ClientAuthState } from './authStorage'
@@ -206,6 +207,7 @@ export default function App() {
         <>
           <Suspense fallback={<PageSpinner />}>
             <HomePage token={auth?.token ?? null} initial={homeInitial} />
+            <SeoHandoff />
           </Suspense>
           <CityLinks />
           <p

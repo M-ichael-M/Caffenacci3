@@ -24,6 +24,11 @@ installSessionGuard({
 })
 void loadSystem(SITE_LANGUAGES[detectSiteLanguage()].code)
 
-createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root')!
+const mount = document.createElement('div')
+mount.id = 'app' // React montuje się w osobnym kontenerze, nie naruszając SSR SEO.
+root.appendChild(mount)
+
+createRoot(mount).render(
   <StrictMode><SiteLanguageProvider><App /></SiteLanguageProvider></StrictMode>
 )

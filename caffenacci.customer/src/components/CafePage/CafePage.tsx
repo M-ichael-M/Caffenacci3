@@ -21,6 +21,7 @@ import { homePath, cafePath, langFromCafePath } from '../../utils/sitePaths'
 import { loadThemeFonts } from '../../fonts/themeFonts'
 import LazyLocationMap from './LazyLocationMap'
 import LazyOnVisible from '../LazyOnVisible'
+import SeoHandoff from '../SeoHandoff'
 import ResponsiveImage, { IMAGE_WIDTHS } from '../ResponsiveImage'
 import { CafeI18nProvider, normalizeI18n, useI18n, type CafeI18nData } from '../../i18n/I18nProvider'
 import { localizeSite } from '../../i18n/localizeSite'
@@ -438,7 +439,9 @@ function CafeContent({
   const nearby = data.nearby_cafes ?? []
 
   return (
-    <div className={`cafe-page cafe-page--${data.template}`} style={paletteVars as CSSProperties}>
+    <>
+      <SeoHandoff />
+      <div className={`cafe-page cafe-page--${data.template}`} style={paletteVars as CSSProperties}>
       {isPreview && (
         <div className="cp-preview-banner">
           <Eye size={15} />
@@ -755,5 +758,6 @@ function CafeContent({
       {data.template === 'magic' && <div ref={sparkLayerRef} className="cp-spark-layer" aria-hidden="true" />}
       {!isPreview && <HomeFab />}
     </div>
+      </>
   )
 }

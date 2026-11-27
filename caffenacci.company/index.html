@@ -1,50 +1,47 @@
-
 <!doctype html>
-<html lang="en">
+<html lang="pl">
   <head>
     <meta charset="UTF-8" />
-
-    <!-- SEO: panel biznesowy nie powinien być indeksowany -->
-    <meta name="robots" content="noindex, nofollow" />
-
-    <!-- Favicon -->
-    <link
-      rel="icon"
-      type="image/png"
-      href="/src/assets/logo/logo_circle.png"
-    />
-
-    <!-- Responsywność -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Tytuł karty przeglądarki -->
-    <title>Caffenacci Business</title>
+    <title>Strona internetowa dla kawiarni – menu, zamówienia | Caffenacci</title>
+    <meta name="description" content="Gotowa strona kawiarni zoptymalizowana pod Google: menu, rezerwacje, zamówienia online i program lojalnościowy. Bez znajomości IT. 20 zł/mies." />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="%VITE_COMPANY_URL%/" />
+    <link rel="icon" type="image/png" href="/src/assets/logo/logo_circle.png" />
 
-    <!--
-      Ustawia język dokumentu przed uruchomieniem Reacta,
-      aby przeglądarka poprawnie wykryła język strony.
-    -->
+    <!-- Open Graph / Twitter (boty społecznościowe nie wykonują JS, więc wersja PL jest statyczna) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Caffenacci" />
+    <meta property="og:title" content="Strona internetowa dla kawiarni – menu, zamówienia | Caffenacci" />
+    <meta property="og:description" content="Gotowa strona kawiarni zoptymalizowana pod Google: menu, rezerwacje, zamówienia online i program lojalnościowy. Bez znajomości IT." />
+    <meta property="og:url" content="http://localhost:5173/" />
+    <meta property="og:locale" content="pl_PL" />
+    <meta property="og:image" content="%VITE_COMPANY_URL%/og-landing.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Strona internetowa dla kawiarni – menu, zamówienia | Caffenacci" />
+    <meta name="twitter:description" content="Gotowa strona kawiarni zoptymalizowana pod Google: menu, rezerwacje, zamówienia online i program lojalnościowy." />
+    <meta name="twitter:image" content="%VITE_COMPANY_URL%/og-landing.png" />
+
     <script>
       (function () {
         var lang = 'en';
-
         try {
+          var path = location.pathname.replace(/\/+$/, '');
           var stored = localStorage.getItem('caffenacci_ui_lang');
-
-          if (stored === 'pl' || stored === 'en') {
+          if (path === '/en') {
+            lang = 'en';
+          } else if (!location.hash && path === '') {
+            lang = 'pl'; // landing PL
+          } else if (stored === 'pl' || stored === 'en') {
             lang = stored;
           } else {
-            var pref =
-              (navigator.languages && navigator.languages[0]) ||
-              navigator.language ||
-              '';
-
-            if (pref.toLowerCase().indexOf('pl') === 0) {
-              lang = 'pl';
-            }
+            var pref = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+            if (pref.toLowerCase().indexOf('pl') === 0) lang = 'pl';
           }
         } catch (e) {}
-
         document.documentElement.lang = lang;
       })();
     </script>
@@ -52,7 +49,11 @@
 
   <body>
     <div id="root"></div>
-
+    <noscript>
+      <h1>Caffenacci – strona internetowa dla kawiarni</h1>
+      <p>Menu, rezerwacje, zamówienia online i program lojalnościowy. Zoptymalizowane pod Google, bez znajomości IT. 20 zł miesięcznie.</p>
+      <p><a href="/en">English version</a></p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

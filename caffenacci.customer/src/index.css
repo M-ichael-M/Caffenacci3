@@ -8,10 +8,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 #root > .seo-content {
-  min-height: 100vh;
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 2rem;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: auto;
+  background: var(--app-bg);
+  padding: 2rem max(2rem, calc((100% - 900px) / 2));
   color: var(--text-body);
   font-family: 'Inter', system-ui, sans-serif;
   line-height: 1.6;

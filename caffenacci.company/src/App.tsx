@@ -3,6 +3,7 @@ import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
 import Dashboard from './components/Dashboard'
 import LanguageSwitcher from './components/LanguageSwitcher'
+import Landing from './landing/Landing'
 import logoTransparent from './assets/logo/logo_transparent.png'
 import './index.css'
 import { ArrowRight } from 'lucide-react'
@@ -12,54 +13,67 @@ import { CafeSettingsProvider } from './components/CafeSettingsContext'
 import { loadAuth, saveAuth, clearAuth, type AuthState } from './authStorage'
 import { SESSION_EXPIRED_EVENT } from './sessionGuard'
 
-type View = 'login' | 'register' | 'dashboard'
+type View = 'landing' | 'login' | 'register' | 'dashboard'
 
 export type { AuthState } from './authStorage'
 
+// Landing: "/" (PL) i "/en" (EN). Logowanie i rejestracja: "#logowanie" / "#rejestracja".
+function viewFromHash(): View {
+  const h = window.location.hash
+  return h === '#rejestracja' ? 'register' : h === '#logowanie' ? 'login' : 'landing'
+}
+const landingLang = () => (window.location.pathname.replace(/\/+$/, '') === '/en' ? 'en' : 'pl')
+const setHash = (h: string) => history.replaceState(null, '', window.location.pathname + h)
+
 export default function App() {
   const { t } = useI18n()
-  const [view, setView] = useState<View>('login')
-  const [auth, setAuth] = useState<AuthState | null>(null)
+  const [auth, setAuth] = useState<AuthState | null>(loadAuth)
+  const [view, setView] = useState<View>(() => (loadAuth() ? 'dashboard' : viewFromHash()))
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null)
   const [loadingProfile, setLoadingProfile] = useState(false)
   const [registerSuccess, setRegisterSuccess] = useState(false)
   const [sessionExpired, setSessionExpired] = useState(false)
 
+  function goTo(v: 'landing' | 'login' | 'register') {
+    setHash(v === 'login' ? '#logowanie' : v === 'register' ? '#rejestracja' : '')
+    setView(v)
+  }
+
   useEffect(() => {
     const onExpired = () => {
       setAuth(null)
       setProfile(null)
-      setView('login')
+      goTo('login')
       setSessionExpired(true)
     }
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired)
   }, [])
 
-  // Restore session on mount
+  // Linki z landingu (#rejestracja / #logowanie) i przyciski wstecz/dalej
   useEffect(() => {
-    const stored = loadAuth()
-    if (stored) {
-      setAuth(stored)
-      setView('dashboard')
-      fetchProfile(stored.token)
-    }
+    const onHash = () => { if (!loadAuth()) setView(viewFromHash()) }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  // Odtworzenie sesji
+  useEffect(() => {
+    if (auth) fetchProfile(auth.token)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function fetchProfile(token: string) {
     setLoadingProfile(true)
     try {
-      const res = await fetch(`${API_URL}/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await fetch(`${API_URL}/me`, { headers: { Authorization: `Bearer ${token}` } })
       if (res.ok) {
         setProfile(await res.json())
       } else {
-        // Token expired or invalid — force logout
         handleLogout()
       }
     } catch {
-      // Network error — keep showing dashboard with stored data
+      // brak sieci — zostajemy w panelu z zapisanymi danymi
     } finally {
       setLoadingProfile(false)
     }
@@ -80,39 +94,50 @@ export default function App() {
     saveAuth(state)
     setSessionExpired(false)
     setAuth(state)
+    setHash('')
     setView('dashboard')
     fetchProfile(data.access_token)
   }
 
   function handleRegisterSuccess() {
     setRegisterSuccess(true)
-    setView('login')
+    goTo('login')
   }
 
   function handleLogout() {
     clearAuth()
     setAuth(null)
     setProfile(null)
-    setView('login')
+    goTo('login')
   }
 
   // ── Dashboard ──────────────────────────────────
   if (view === 'dashboard' && auth) {
     return (
       <CafeSettingsProvider token={auth.token}>
-        <Dashboard auth={auth} profile={profile} loadingProfile={loadingProfile} onLogout={handleLogout} />
+        <Dashboard
+          auth={auth}
+          profile={profile}
+          loadingProfile={loadingProfile}
+          onLogout={handleLogout}
+        />
       </CafeSettingsProvider>
     )
   }
 
-  // ── Auth layout ────────────────────────────────
+  // ── Landing ────────────────────────────────────
+  if (view === 'landing') return <Landing lang={landingLang()} />
+
+  // ── Logowanie / rejestracja ────────────────────
   return (
     <div className="auth-layout">
       <aside className="auth-brand">
         <div className="auth-brand__rings" aria-hidden="true" />
 
         <div className="auth-brand__content">
-          <img src={logoTransparent} alt="Caffenacci" className="auth-brand__logo" />
+          <a href={landingLang() === 'en' ? '/en' : '/'} aria-label="Caffenacci">
+            <img src={logoTransparent} alt="Caffenacci" className="auth-brand__logo" />
+          </a>
           <div className="auth-brand__rule" />
           <h1 className="auth-brand__wordmark" translate="no">Caffenacci</h1>
           <p className="auth-brand__tagline">{t('app.tagline')}</p>
@@ -134,14 +159,14 @@ export default function App() {
           {view === 'login' ? (
             <LoginForm
               onSuccess={handleLoginSuccess}
-              onSwitchToRegister={() => { setRegisterSuccess(false); setView('register') }}
+              onSwitchToRegister={() => { setRegisterSuccess(false); goTo('register') }}
               registerSuccess={registerSuccess}
               sessionExpired={sessionExpired}
             />
           ) : (
             <RegisterForm
               onSuccess={handleRegisterSuccess}
-              onSwitchToLogin={() => setView('login')}
+              onSwitchToLogin={() => goTo('login')}
             />
           )}
           <p className="cross-app-link" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem' }}>
